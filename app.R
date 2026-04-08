@@ -368,19 +368,15 @@ server <- function(input, output, session) {
     # Compute stats per owner
     alltime <- compute_alltime_standings(rv$standings_data)
 
-    # Championships: who finished 1st in standings each season
+    # Championships: ESPN league_rank == 1 is the playoff champion
     champs <- rv$standings_data |>
-      group_by(season) |>
-      filter(h2h_wins == max(h2h_wins)) |>
-      slice_max(points_for, n = 1) |>
-      ungroup() |>
+      filter(league_rank == 1) |>
       count(owner, name = "championships")
 
-    # Sackos: who finished last in standings each season
+    # Sackos: ESPN league_rank == max (last place overall)
     sackos <- rv$standings_data |>
       group_by(season) |>
-      filter(h2h_wins == min(h2h_wins)) |>
-      slice_min(points_for, n = 1) |>
+      filter(league_rank == max(league_rank)) |>
       ungroup() |>
       count(owner, name = "sackos")
 
