@@ -376,9 +376,9 @@ server <- function(input, output, session) {
   }
 
   # Auto-load on startup
-  observe({
+  session$onFlushed(function() {
     load_league_data()
-  }) |> bindEvent(TRUE, once = TRUE)
+  }, once = TRUE)
 
   # Reload button
   observeEvent(input$reload_data, {
