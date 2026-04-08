@@ -373,10 +373,11 @@ server <- function(input, output, session) {
       filter(league_rank == 1) |>
       count(owner, name = "championships")
 
-    # Sackos: ESPN league_rank == max (last place overall)
+    # Sackos: worst regular season record (fewest wins, then lowest PF as tiebreaker)
     sackos <- rv$standings_data |>
       group_by(season) |>
-      filter(league_rank == max(league_rank)) |>
+      arrange(h2h_wins, points_for) |>
+      slice_head(n = 1) |>
       ungroup() |>
       count(owner, name = "sackos")
 
