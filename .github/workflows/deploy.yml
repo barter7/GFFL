@@ -45,6 +45,7 @@ jobs:
             appName   = "gffl-dashboard",
             appTitle  = "GFFL Historical Dashboard",
             appFiles  = c("app.R", "helpers.R",
+                          list.files("data", recursive = TRUE, full.names = TRUE),
                           list.files("www", recursive = TRUE, full.names = TRUE)),
             forceUpdate = TRUE
           )
