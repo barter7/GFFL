@@ -1,0 +1,13 @@
+# Copy this file to .Renviron and fill in your ESPN credentials.
+# Then restart R for the values to take effect.
+#
+# To find these values:
+#   1. Log into fantasy.espn.com in your browser
+#   2. Open Developer Tools (F12)
+#   3. Go to Application (Chrome) or Storage (Firefox) > Cookies > fantasy.espn.com
+#   4. Copy the values for espn_s2 and SWID
+#
+# The .Renviron file is gitignored so your credentials stay local.
+
+ESPN_S2=paste_your_espn_s2_cookie_here
+ESPN_SWID={paste-your-swid-here}
