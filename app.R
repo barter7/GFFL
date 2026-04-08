@@ -395,14 +395,31 @@ server <- function(input, output, session) {
 
     owners <- sort(unique(rv$standings_data$owner))
 
-    # Build a card for each owner
-    owner_cards <- lapply(owners, function(o) {
+    # Legacy owners (no longer in the league)
+    legacy_owners <- c("Joe")
+    active_owners <- setdiff(owners, legacy_owners)
+
+    # Build owner stats for sorting
+    owner_stats <- data.frame(owner = owners, stringsAsFactors = FALSE) |>
+      left_join(champs, by = "owner") |>
+      left_join(sackos, by = "owner") |>
+      mutate(
+        championships = ifelse(is.na(championships), 0, championships),
+        sackos = ifelse(is.na(sackos), 0, sackos)
+      ) |>
+      arrange(desc(championships), sackos)
+
+    active_sorted <- owner_stats |> filter(owner %in% active_owners) |> pull(owner)
+    legacy_sorted <- owner_stats |> filter(owner %in% legacy_owners) |> pull(owner)
+
+    # Function to build a card for one owner
+    build_owner_card <- function(o) {
       stats <- alltime |> filter(Team == o)
       n_champs <- if (o %in% champs$owner) champs$championships[champs$owner == o] else 0
       n_sackos <- if (o %in% sackos$owner) sackos$sackos[sackos$owner == o] else 0
 
       record <- paste0(stats$W, "-", stats$L)
-      pf <- format(round(stats$PF, 1), nsmall = 1, big.mark = ",")
+      pf <- format(round(stats$PF, 0), big.mark = ",")
 
       # Championship trophies - use lombardi image
       trophy_html <- if (n_champs > 0) {
@@ -483,12 +500,30 @@ server <- function(input, output, session) {
           )
         )
       )
-    })
+    }
 
-    # Arrange in a responsive grid (4 per row on large screens)
-    layout_column_wrap(
-      width = "250px",
-      !!!owner_cards
+    # Build active owner cards (sorted by championships desc, sackos asc)
+    active_cards <- lapply(active_sorted, build_owner_card)
+
+    # Build legacy owner cards
+    legacy_cards <- lapply(legacy_sorted, build_owner_card)
+
+    tagList(
+      layout_column_wrap(
+        width = "250px",
+        !!!active_cards
+      ),
+      if (length(legacy_cards) > 0) {
+        tagList(
+          hr(),
+          h4(class = "text-muted text-center mt-4 mb-3",
+             icon("clock-rotate-left"), " Legacy Owners"),
+          layout_column_wrap(
+            width = "250px",
+            !!!legacy_cards
+          )
+        )
+      }
     )
   })
 
