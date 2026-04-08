@@ -412,17 +412,34 @@ server <- function(input, output, session) {
         class = "text-center",
         card_header(class = "fw-bold fs-5", o),
         card_body(
-          # Owner photo or placeholder
-          if (!is.null(photo_file)) {
-            tags$img(src = photo_file,
-                     style = "width:120px; height:150px; object-fit:cover; border-radius:8px; margin:0 auto 12px; display:block;")
-          } else {
+          # Owner photo with ornate portrait frame, or placeholder
+          div(
+            style = paste0(
+              "width:140px; height:170px; margin:0 auto 12px; padding:6px; ",
+              "background: linear-gradient(135deg, #c9a84c, #f0d675, #c9a84c, #a07828); ",
+              "border-radius:4px; ",
+              "box-shadow: 0 4px 12px rgba(0,0,0,0.3), inset 0 0 6px rgba(255,255,255,0.3); ",
+              "position:relative;"
+            ),
             div(
-              style = "width:120px; height:150px; background:#e9ecef; border:2px dashed #adb5bd; border-radius:8px; margin:0 auto 12px; display:flex; align-items:center; justify-content:center;",
-              tags$span(style = "color:#6c757d; font-size:2rem;",
-                        icon("user"))
+              style = paste0(
+                "width:100%; height:100%; ",
+                "border: 2px solid #8b6914; ",
+                "box-shadow: inset 0 0 8px rgba(0,0,0,0.4); ",
+                "overflow:hidden; background:#e9ecef;"
+              ),
+              if (!is.null(photo_file)) {
+                tags$img(src = photo_file,
+                         style = "width:100%; height:100%; object-fit:contain; object-position:top; background:#fff;")
+              } else {
+                div(
+                  style = "width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#e9ecef;",
+                  tags$span(style = "color:#6c757d; font-size:2.5rem;",
+                            icon("user"))
+                )
+              }
             )
-          },
+          ),
           # Championships
           div(class = "mb-2",
             tags$strong("Championships"),
