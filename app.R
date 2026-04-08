@@ -375,10 +375,14 @@ server <- function(input, output, session) {
     )
   }
 
-  # Auto-load on startup
-  session$onFlushed(function() {
-    load_league_data()
-  }, once = TRUE)
+  # Auto-load on startup (must run inside observe for reactive access)
+  auto_loaded <- reactiveVal(FALSE)
+  observe({
+    if (!auto_loaded()) {
+      auto_loaded(TRUE)
+      load_league_data()
+    }
+  })
 
   # Reload button
   observeEvent(input$reload_data, {
