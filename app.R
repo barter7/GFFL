@@ -460,9 +460,16 @@ server <- function(input, output, session) {
           ),
           # Sackos
           div(class = "mb-2",
-            tags$strong("Sackos: "),
-            tags$span(class = if (n_sackos > 0) "text-danger fw-bold" else "",
-                      n_sackos)
+            tags$strong("Sackos"),
+            div(style = "min-height:40px; display:flex; align-items:center; justify-content:center; gap:2px;",
+              if (n_sackos > 0 && file.exists("www/photos/sacko_trophy.png")) {
+                HTML(paste(rep("<img src='photos/sacko_trophy.png' height='35' style='margin-right:2px;'>", n_sackos), collapse = ""))
+              } else if (n_sackos > 0) {
+                tags$span(class = "text-danger fw-bold", n_sackos)
+              } else {
+                tags$span(style = "color:#999;", "None")
+              }
+            )
           ),
           # All-Time Record
           div(class = "mb-2",
