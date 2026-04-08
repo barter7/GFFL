@@ -19,6 +19,9 @@ if (requireNamespace("nflplotR", quietly = TRUE)) library(nflplotR)
 # --- Source Helpers ---
 source("helpers.R")
 
+# Load owner mapping from CSV if available
+OWNER_MAP <<- load_owner_csv()
+
 # --- UI ---
 ui <- page_navbar(
   title = "GFFL Historical Dashboard",
@@ -43,7 +46,7 @@ ui <- page_navbar(
       "Seasons",
       min = 2004,
       max = 2025,
-      value = c(2004, 2025),
+      value = c(2017, 2025),
       step = 1,
       sep = ""
     ),
@@ -58,12 +61,15 @@ ui <- page_navbar(
     helpText("Auto-populated from ESPN_S2 and ESPN_SWID environment variables.",
              "Or paste values from your browser cookies at espn.com."),
     hr(),
-    actionButton("fetch_data", "Load League Data", class = "btn-primary w-100", icon = icon("football")),
+    actionButton("fetch_data", "Load League Data", class = "btn-primary w-100",
+                 icon = icon("football")),
     hr(),
     uiOutput("league_info_panel")
   ),
 
   # --- Tab Panels ---
+
+  # STANDINGS
   nav_panel(
     title = "Standings",
     icon = icon("trophy"),
@@ -87,6 +93,7 @@ ui <- page_navbar(
     )
   ),
 
+  # MATCHUPS
   nav_panel(
     title = "Matchups",
     icon = icon("people-arrows"),
@@ -97,12 +104,11 @@ ui <- page_navbar(
           class = "d-flex justify-content-between align-items-center",
           "Weekly Matchup Results",
           div(
-            selectInput(
-              "matchup_season",
-              label = NULL,
-              choices = NULL,
-              width = "120px"
-            )
+            class = "d-flex gap-2",
+            selectInput("matchup_season", label = NULL, choices = NULL, width = "120px"),
+            selectInput("matchup_type", label = NULL,
+                        choices = c("All", "Regular Season", "Playoffs"),
+                        width = "150px")
           )
         ),
         DTOutput("matchups_table")
@@ -121,6 +127,7 @@ ui <- page_navbar(
     )
   ),
 
+  # HEAD-TO-HEAD
   nav_panel(
     title = "Head-to-Head",
     icon = icon("scale-balanced"),
@@ -129,6 +136,7 @@ ui <- page_navbar(
       card(
         card_header("Select Matchup"),
         uiOutput("h2h_team_selectors"),
+        checkboxInput("h2h_reg_only", "Regular Season Only", value = TRUE),
         actionButton("calc_h2h", "Compare", class = "btn-primary w-100 mt-2")
       ),
       card(
@@ -143,9 +151,47 @@ ui <- page_navbar(
         card_header("Head-to-Head Matchup History"),
         DTOutput("h2h_detail_table")
       )
+    ),
+    layout_columns(
+      col_widths = c(12),
+      card(
+        card_header("Owner vs Owner Record Matrix (Regular Season)"),
+        DTOutput("owner_vs_owner_table")
+      )
     )
   ),
 
+  # DRAFT HISTORY
+  nav_panel(
+    title = "Drafts",
+    icon = icon("list-ol"),
+    layout_columns(
+      col_widths = c(12),
+      card(
+        card_header(
+          class = "d-flex justify-content-between align-items-center",
+          "Draft Results",
+          div(
+            selectInput("draft_season", label = NULL, choices = NULL, width = "120px")
+          )
+        ),
+        DTOutput("draft_table")
+      )
+    ),
+    layout_columns(
+      col_widths = c(6, 6),
+      card(
+        card_header("Round 1 Pick Distribution by Owner"),
+        plotlyOutput("draft_r1_plot", height = "400px")
+      ),
+      card(
+        card_header("Most Drafted Positions by Owner"),
+        plotlyOutput("draft_pos_plot", height = "400px")
+      )
+    )
+  ),
+
+  # SEASON RECAPS
   nav_panel(
     title = "Season Recaps",
     icon = icon("calendar"),
@@ -156,12 +202,7 @@ ui <- page_navbar(
           class = "d-flex justify-content-between align-items-center",
           "Season Recap",
           div(
-            selectInput(
-              "recap_season",
-              label = NULL,
-              choices = NULL,
-              width = "120px"
-            )
+            selectInput("recap_season", label = NULL, choices = NULL, width = "120px")
           )
         ),
         layout_columns(
@@ -180,6 +221,7 @@ ui <- page_navbar(
     )
   ),
 
+  # RECORDS
   nav_panel(
     title = "Records",
     icon = icon("medal"),
@@ -243,7 +285,9 @@ server <- function(input, output, session) {
     league_data = NULL,
     standings_data = NULL,
     schedule_data = NULL,
-    all_teams = NULL,
+    draft_data = NULL,
+    owner_map = NULL,
+    all_owners = NULL,
     seasons_loaded = NULL
   )
 
@@ -254,7 +298,7 @@ server <- function(input, output, session) {
     league_id <- as.integer(input$league_id)
     seasons <- seq(input$season_range[1], input$season_range[2])
 
-    # Auth params (empty string = NULL for ffscrapr)
+    # Auth params
     s2 <- if (nchar(input$espn_s2) > 0) input$espn_s2 else NULL
     sw <- if (nchar(input$swid) > 0) input$swid else NULL
 
@@ -263,6 +307,7 @@ server <- function(input, output, session) {
 
       all_standings <- list()
       all_schedules <- list()
+      all_drafts <- list()
       all_league <- list()
 
       for (i in seq_along(seasons)) {
@@ -281,13 +326,19 @@ server <- function(input, output, session) {
           standings <- ff_standings(conn)
           schedule <- ff_schedule(conn)
 
-          # Add season column if not present
+          # Try to get draft data
+          draft <- tryCatch(ff_draft(conn), error = function(e) NULL)
+
           if (!"season" %in% names(standings)) standings$season <- s
           if (!"season" %in% names(schedule)) schedule$season <- s
+          if (!is.null(draft) && !"season" %in% names(draft)) draft$season <- s
 
           all_league[[as.character(s)]] <- league_info
           all_standings[[as.character(s)]] <- standings
           all_schedules[[as.character(s)]] <- schedule
+          if (!is.null(draft) && nrow(draft) > 0) {
+            all_drafts[[as.character(s)]] <- draft
+          }
 
         }, error = function(e) {
           showNotification(
@@ -301,12 +352,34 @@ server <- function(input, output, session) {
       # Combine all data
       rv$league_data <- all_league
       rv$standings_data <- bind_rows(all_standings)
-      rv$schedule_data <- bind_rows(all_schedules)
+      rv$schedule_data <- bind_rows(all_schedules) |> classify_game_type()
+      rv$draft_data <- bind_rows(all_drafts)
       rv$seasons_loaded <- seasons[as.character(seasons) %in% names(all_standings)]
 
-      # Extract unique team names
+      # Build owner mapping from draft data
+      if (!is.null(rv$draft_data) && nrow(rv$draft_data) > 0) {
+        rv$owner_map <- build_owner_map(rv$draft_data)
+
+        # Attach owner names to schedule and standings
+        rv$schedule_data <- attach_owners(rv$schedule_data, rv$owner_map)
+        rv$standings_data <- attach_owners_standings(rv$standings_data, rv$owner_map)
+
+        # Attach owner names to draft data
+        rv$draft_data <- rv$draft_data |>
+          left_join(
+            rv$owner_map |> select(season, franchise_id, owner),
+            by = c("season", "franchise_id")
+          ) |>
+          mutate(owner = ifelse(is.na(owner), franchise_name, owner))
+      } else {
+        rv$schedule_data$team_owner <- rv$schedule_data$franchise_name
+        rv$schedule_data$opponent_owner <- rv$schedule_data$opponent_name
+        rv$standings_data$owner <- rv$standings_data$franchise_name
+      }
+
+      # Extract unique owner names
       if (nrow(rv$standings_data) > 0) {
-        rv$all_teams <- sort(unique(rv$standings_data$franchise_name))
+        rv$all_owners <- sort(unique(rv$standings_data$owner))
       }
 
       # Update season selectors
@@ -316,13 +389,14 @@ server <- function(input, output, session) {
                           choices = sort(loaded, decreasing = TRUE))
         updateSelectInput(session, "recap_season",
                           choices = sort(loaded, decreasing = TRUE))
+        updateSelectInput(session, "draft_season",
+                          choices = sort(loaded, decreasing = TRUE))
       }
     })
 
     showNotification(
       paste("Loaded", length(rv$seasons_loaded), "seasons successfully!"),
-      type = "message",
-      duration = 5
+      type = "message", duration = 5
     )
   })
 
@@ -352,11 +426,7 @@ server <- function(input, output, session) {
     alltime <- compute_alltime_standings(rv$standings_data)
     datatable(
       alltime,
-      options = list(
-        pageLength = 20,
-        dom = "t",
-        order = list(list(2, "desc"))
-      ),
+      options = list(pageLength = 20, dom = "t", order = list(list(2, "desc"))),
       rownames = FALSE
     ) |>
       formatPercentage("Win%", digits = 1) |>
@@ -366,9 +436,9 @@ server <- function(input, output, session) {
   output$wins_by_season_plot <- renderPlotly({
     req(rv$standings_data)
     p <- rv$standings_data |>
-      ggplot(aes(x = factor(season), y = h2h_wins, fill = franchise_name)) +
+      ggplot(aes(x = factor(season), y = h2h_wins, fill = owner)) +
       geom_col(position = "dodge") +
-      labs(x = "Season", y = "Wins", fill = "Team") +
+      labs(x = "Season", y = "Wins", fill = "Owner") +
       theme_minimal() +
       theme(legend.position = "bottom", legend.title = element_blank())
     ggplotly(p, tooltip = c("fill", "y")) |>
@@ -378,9 +448,9 @@ server <- function(input, output, session) {
   output$points_by_season_plot <- renderPlotly({
     req(rv$standings_data)
     p <- rv$standings_data |>
-      ggplot(aes(x = factor(season), y = points_for, fill = franchise_name)) +
+      ggplot(aes(x = factor(season), y = points_for, fill = owner)) +
       geom_col(position = "dodge") +
-      labs(x = "Season", y = "Points For", fill = "Team") +
+      labs(x = "Season", y = "Points For", fill = "Owner") +
       scale_y_continuous(labels = comma) +
       theme_minimal() +
       theme(legend.position = "bottom", legend.title = element_blank())
@@ -392,26 +462,31 @@ server <- function(input, output, session) {
   # MATCHUPS TAB
   # ==========================================================================
 
-  output$matchups_table <- renderDT({
+  filtered_schedule <- reactive({
     req(rv$schedule_data, input$matchup_season)
-    sched <- rv$schedule_data |>
-      filter(season == as.integer(input$matchup_season)) |>
+    df <- rv$schedule_data |>
+      filter(season == as.integer(input$matchup_season))
+    if (input$matchup_type != "All" && "game_type" %in% names(df)) {
+      df <- df |> filter(game_type == input$matchup_type)
+    }
+    df
+  })
+
+  output$matchups_table <- renderDT({
+    sched <- filtered_schedule() |>
       select(
         Week = week,
-        Team = franchise_name,
+        Type = game_type,
+        Owner = team_owner,
         Score = franchise_score,
-        Opponent = opponent_name,
+        Opponent = opponent_owner,
         `Opp Score` = opponent_score,
         Result = result
       ) |>
-      arrange(Week, Team)
+      arrange(Week, Owner)
 
-    datatable(
-      sched,
-      options = list(pageLength = 25, dom = "ftp"),
-      rownames = FALSE,
-      filter = "top"
-    ) |>
+    datatable(sched, options = list(pageLength = 25, dom = "ftp"),
+              rownames = FALSE, filter = "top") |>
       formatRound(c("Score", "Opp Score"), 2)
   })
 
@@ -420,13 +495,8 @@ server <- function(input, output, session) {
     top <- rv$schedule_data |>
       arrange(desc(franchise_score)) |>
       head(25) |>
-      select(
-        Season = season,
-        Week = week,
-        Team = franchise_name,
-        Score = franchise_score,
-        Opponent = opponent_name
-      )
+      select(Season = season, Week = week, Owner = team_owner,
+             Score = franchise_score, Opponent = opponent_owner)
     datatable(top, options = list(pageLength = 10, dom = "tp"), rownames = FALSE) |>
       formatRound("Score", 2)
   })
@@ -438,15 +508,9 @@ server <- function(input, output, session) {
       filter(margin > 0) |>
       arrange(desc(margin)) |>
       head(25) |>
-      select(
-        Season = season,
-        Week = week,
-        Winner = franchise_name,
-        `Win Score` = franchise_score,
-        Loser = opponent_name,
-        `Lose Score` = opponent_score,
-        Margin = margin
-      )
+      select(Season = season, Week = week, Winner = team_owner,
+             `Win Score` = franchise_score, Loser = opponent_owner,
+             `Lose Score` = opponent_score, Margin = margin)
     datatable(blowouts, options = list(pageLength = 10, dom = "tp"), rownames = FALSE) |>
       formatRound(c("Win Score", "Lose Score", "Margin"), 2)
   })
@@ -456,27 +520,29 @@ server <- function(input, output, session) {
   # ==========================================================================
 
   output$h2h_team_selectors <- renderUI({
-    req(rv$all_teams)
-    teams <- rv$all_teams
+    req(rv$all_owners)
+    owners <- rv$all_owners
     tagList(
-      selectInput("h2h_team1", "Team 1", choices = teams, selected = teams[1]),
-      selectInput("h2h_team2", "Team 2", choices = teams, selected = teams[min(2, length(teams))])
+      selectInput("h2h_team1", "Owner 1", choices = owners, selected = owners[1]),
+      selectInput("h2h_team2", "Owner 2", choices = owners,
+                  selected = owners[min(2, length(owners))])
     )
   })
 
   h2h_data <- eventReactive(input$calc_h2h, {
     req(rv$schedule_data, input$h2h_team1, input$h2h_team2)
-    rv$schedule_data |>
-      filter(
-        franchise_name == input$h2h_team1,
-        opponent_name == input$h2h_team2
-      )
+    df <- rv$schedule_data |>
+      filter(team_owner == input$h2h_team1, opponent_owner == input$h2h_team2)
+    if (input$h2h_reg_only && "game_type" %in% names(df)) {
+      df <- df |> filter(game_type == "Regular Season")
+    }
+    df
   })
 
   output$h2h_summary <- renderUI({
     req(h2h_data())
     df <- h2h_data()
-    if (nrow(df) == 0) return(h5("No matchups found between these teams."))
+    if (nrow(df) == 0) return(h5("No matchups found between these owners."))
 
     wins <- sum(df$result == "W", na.rm = TRUE)
     losses <- sum(df$result == "L", na.rm = TRUE)
@@ -487,7 +553,8 @@ server <- function(input, output, session) {
     div(
       class = "text-center mb-3",
       h4(paste(input$h2h_team1, "vs", input$h2h_team2)),
-      h5(paste0(wins, "W - ", losses, "L", if (ties > 0) paste0(" - ", ties, "T") else "")),
+      h5(paste0(wins, "W - ", losses, "L",
+                if (ties > 0) paste0(" - ", ties, "T") else "")),
       tags$small(paste0("Avg Score: ", avg_score, " - ", avg_opp))
     )
   })
@@ -499,7 +566,7 @@ server <- function(input, output, session) {
 
     df <- df |>
       mutate(
-        game_label = paste("S", season, "W", week),
+        game_label = paste0(season, " W", week),
         margin = franchise_score - opponent_score,
         color = ifelse(margin >= 0, "Win", "Loss")
       )
@@ -509,10 +576,8 @@ server <- function(input, output, session) {
       scale_fill_manual(values = c("Win" = "#28a745", "Loss" = "#dc3545")) +
       labs(x = NULL, y = "Score Margin", fill = NULL) +
       theme_minimal() +
-      theme(
-        axis.text.x = element_text(angle = 45, hjust = 1, size = 7),
-        legend.position = "none"
-      )
+      theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 7),
+            legend.position = "none")
     ggplotly(p, tooltip = c("y"))
   })
 
@@ -520,18 +585,69 @@ server <- function(input, output, session) {
     req(h2h_data())
     df <- h2h_data() |>
       mutate(Margin = franchise_score - opponent_score) |>
-      select(
-        Season = season,
-        Week = week,
-        !!input$h2h_team1 := franchise_score,
-        !!input$h2h_team2 := opponent_score,
-        Margin,
-        Result = result
-      ) |>
+      select(Season = season, Week = week,
+             !!input$h2h_team1 := franchise_score,
+             !!input$h2h_team2 := opponent_score,
+             Margin, Result = result) |>
       arrange(desc(Season), desc(Week))
-
     datatable(df, options = list(pageLength = 20, dom = "tp"), rownames = FALSE) |>
       formatRound(c(input$h2h_team1, input$h2h_team2, "Margin"), 2)
+  })
+
+  output$owner_vs_owner_table <- renderDT({
+    req(rv$schedule_data)
+    ovo <- compute_owner_vs_owner(rv$schedule_data, reg_season_only = TRUE) |>
+      select(Owner, Opponent, W, L, Games, `Win%`, `Avg Margin`)
+    datatable(ovo, options = list(pageLength = 25, dom = "ftp"),
+              rownames = FALSE, filter = "top") |>
+      formatRound("Avg Margin", 1)
+  })
+
+  # ==========================================================================
+  # DRAFTS TAB
+  # ==========================================================================
+
+  output$draft_table <- renderDT({
+    req(rv$draft_data, input$draft_season)
+    df <- rv$draft_data |>
+      filter(season == as.integer(input$draft_season)) |>
+      select(Round = round, Pick = pick, Overall = overall,
+             Owner = owner, Player = player_name,
+             Pos = pos, Team = team) |>
+      arrange(Overall)
+    datatable(df, options = list(pageLength = 25, dom = "ftp"),
+              rownames = FALSE, filter = "top")
+  })
+
+  output$draft_r1_plot <- renderPlotly({
+    req(rv$draft_data)
+    r1 <- rv$draft_data |>
+      filter(round == 1) |>
+      count(owner, name = "First_Round_Picks") |>
+      arrange(desc(First_Round_Picks))
+    r1$owner <- factor(r1$owner, levels = rev(r1$owner))
+
+    p <- ggplot(r1, aes(x = owner, y = First_Round_Picks, fill = owner)) +
+      geom_col(show.legend = FALSE) +
+      coord_flip() +
+      labs(x = NULL, y = "Round 1 Picks (All Seasons)") +
+      theme_minimal()
+    ggplotly(p, tooltip = c("y"))
+  })
+
+  output$draft_pos_plot <- renderPlotly({
+    req(rv$draft_data)
+    pos_counts <- rv$draft_data |>
+      filter(round <= 5) |>
+      count(owner, pos) |>
+      arrange(owner, desc(n))
+
+    p <- ggplot(pos_counts, aes(x = owner, y = n, fill = pos)) +
+      geom_col(position = "stack") +
+      coord_flip() +
+      labs(x = NULL, y = "Picks (Rounds 1-5)", fill = "Position") +
+      theme_minimal()
+    ggplotly(p, tooltip = c("fill", "y"))
   })
 
   # ==========================================================================
@@ -543,10 +659,9 @@ server <- function(input, output, session) {
     df <- rv$standings_data |>
       filter(season == as.integer(input$recap_season)) |>
       arrange(desc(h2h_wins))
+    df$owner <- factor(df$owner, levels = rev(df$owner))
 
-    df$franchise_name <- factor(df$franchise_name, levels = rev(df$franchise_name))
-
-    p <- ggplot(df, aes(x = franchise_name, y = h2h_wins, fill = franchise_name)) +
+    p <- ggplot(df, aes(x = owner, y = h2h_wins, fill = owner)) +
       geom_col(show.legend = FALSE) +
       coord_flip() +
       labs(x = NULL, y = "Wins", title = paste(input$recap_season, "Standings")) +
@@ -557,12 +672,14 @@ server <- function(input, output, session) {
   output$season_points_dist_plot <- renderPlotly({
     req(rv$schedule_data, input$recap_season)
     df <- rv$schedule_data |>
-      filter(season == as.integer(input$recap_season))
+      filter(season == as.integer(input$recap_season),
+             game_type == "Regular Season")
 
-    p <- ggplot(df, aes(x = franchise_name, y = franchise_score, fill = franchise_name)) +
+    p <- ggplot(df, aes(x = team_owner, y = franchise_score, fill = team_owner)) +
       geom_boxplot(show.legend = FALSE) +
       coord_flip() +
-      labs(x = NULL, y = "Weekly Score", title = paste(input$recap_season, "Score Distribution")) +
+      labs(x = NULL, y = "Weekly Score",
+           title = paste(input$recap_season, "Score Distribution")) +
       theme_minimal()
     ggplotly(p, tooltip = c("y"))
   })
@@ -573,14 +690,9 @@ server <- function(input, output, session) {
       filter(season == as.integer(input$recap_season)) |>
       arrange(desc(h2h_wins), desc(points_for)) |>
       mutate(Rank = row_number()) |>
-      select(
-        Rank,
-        Team = franchise_name,
-        W = h2h_wins,
-        L = h2h_losses,
-        PF = points_for,
-        PA = points_against
-      )
+      select(Rank, Owner = owner, Team = franchise_name,
+             W = h2h_wins, L = h2h_losses,
+             PF = points_for, PA = points_against)
     datatable(df, options = list(pageLength = 20, dom = "t"), rownames = FALSE) |>
       formatRound(c("PF", "PA"), 1)
   })
@@ -595,11 +707,9 @@ server <- function(input, output, session) {
     alltime$Team <- factor(alltime$Team, levels = rev(alltime$Team))
 
     p <- ggplot(alltime, aes(x = Team, y = `Win%`, fill = Team)) +
-      geom_col(show.legend = FALSE) +
-      coord_flip() +
+      geom_col(show.legend = FALSE) + coord_flip() +
       scale_y_continuous(labels = percent) +
-      labs(x = NULL, y = "Win %") +
-      theme_minimal()
+      labs(x = NULL, y = "Win %") + theme_minimal()
     ggplotly(p, tooltip = c("y"))
   })
 
@@ -609,10 +719,8 @@ server <- function(input, output, session) {
     alltime$Team <- factor(alltime$Team, levels = rev(alltime$Team))
 
     p <- ggplot(alltime, aes(x = Team, y = `PF/G`, fill = Team)) +
-      geom_col(show.legend = FALSE) +
-      coord_flip() +
-      labs(x = NULL, y = "Points Per Game") +
-      theme_minimal()
+      geom_col(show.legend = FALSE) + coord_flip() +
+      labs(x = NULL, y = "Points Per Game") + theme_minimal()
     ggplotly(p, tooltip = c("y"))
   })
 
@@ -626,7 +734,7 @@ server <- function(input, output, session) {
   output$record_high_score <- renderText({
     req(rv$schedule_data)
     top <- rv$schedule_data |> arrange(desc(franchise_score)) |> head(1)
-    paste0(top$franchise_name, " (", round(top$franchise_score, 1), ")")
+    paste0(top$team_owner, " (", round(top$franchise_score, 1), ")")
   })
 
   output$record_win_streak <- renderText({
