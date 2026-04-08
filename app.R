@@ -50,6 +50,18 @@ ui <- page_navbar(
     uiOutput("owners_grid")
   ),
 
+  # HALL OF FAME
+  nav_panel(
+    title = "Hall of Fame",
+    icon = icon("landmark"),
+    div(
+      class = "text-center my-3",
+      h2(style = "color:#8B6914; font-family:Georgia,serif; letter-spacing:2px;", "GFFL HALL OF FAME"),
+      tags$hr(style = "border-color:#8B6914; width:200px; margin:0 auto;")
+    ),
+    uiOutput("hof_gallery")
+  ),
+
   # STANDINGS
   nav_panel(
     title = "Standings",
@@ -470,6 +482,117 @@ server <- function(input, output, session) {
     layout_column_wrap(
       width = "250px",
       !!!owner_cards
+    )
+  })
+
+  # ==========================================================================
+  # HALL OF FAME TAB
+  # ==========================================================================
+
+  output$hof_gallery <- renderUI({
+    req(rv$standings_data)
+
+    # Get champion for each season using league_rank == 1
+    champ_rows <- rv$standings_data |>
+      filter(league_rank == 1) |>
+      arrange(season)
+
+    bust_cards <- lapply(seq_len(nrow(champ_rows)), function(i) {
+      row <- champ_rows[i, ]
+      owner <- row$owner
+      yr <- row$season
+      team_name <- trimws(row$franchise_name)
+      record <- paste0(row$h2h_wins, "-", row$h2h_losses)
+
+      # Find owner photo
+      photo_file <- NULL
+      for (ext in c(".jpg", ".jpeg", ".png")) {
+        if (file.exists(file.path("www", "photos", paste0(owner, ext)))) {
+          photo_file <- paste0("photos/", owner, ext)
+          break
+        }
+      }
+
+      div(
+        class = "d-inline-block text-center mx-3 mb-4",
+        style = "width:200px; vertical-align:top;",
+
+        # Bronze bust pedestal
+        div(
+          style = paste0(
+            "position:relative; width:160px; margin:0 auto; "
+          ),
+
+          # Bust photo with bronze effect
+          div(
+            style = paste0(
+              "width:140px; height:170px; margin:0 auto; ",
+              "border-radius:50% 50% 45% 45% / 55% 55% 45% 45%; ",
+              "overflow:hidden; ",
+              "background: radial-gradient(ellipse at 30% 30%, #d4a84b, #8b6914, #5c4413); ",
+              "box-shadow: 0 6px 20px rgba(0,0,0,0.5), ",
+              "inset 0 -4px 10px rgba(0,0,0,0.3), ",
+              "inset 0 4px 10px rgba(255,215,0,0.2); ",
+              "padding:8px;"
+            ),
+            if (!is.null(photo_file)) {
+              tags$img(
+                src = photo_file,
+                style = paste0(
+                  "width:100%; height:100%; ",
+                  "object-fit:cover; object-position:top; ",
+                  "border-radius:50% 50% 40% 40% / 55% 55% 45% 45%; ",
+                  "filter: sepia(0.8) saturate(0.6) brightness(0.85) contrast(1.1); ",
+                  "mix-blend-mode: luminosity;"
+                )
+              )
+            } else {
+              div(
+                style = paste0(
+                  "width:100%; height:100%; display:flex; align-items:center; justify-content:center; ",
+                  "border-radius:50% 50% 40% 40% / 55% 55% 45% 45%; ",
+                  "background: radial-gradient(ellipse at 40% 35%, #c9a84c, #7a5a1e);"
+                ),
+                tags$span(style = "color:#5c4413; font-size:3rem; opacity:0.6;",
+                          icon("user"))
+              )
+            }
+          ),
+
+          # Bronze nameplate base
+          div(
+            style = paste0(
+              "width:170px; margin:-5px auto 0; padding:10px 8px 8px; ",
+              "background: linear-gradient(180deg, #b8932b, #d4a84b 30%, #c9984a 70%, #8b6914); ",
+              "border-radius:0 0 8px 8px; ",
+              "box-shadow: 0 4px 12px rgba(0,0,0,0.4); ",
+              "border-top:2px solid #5c4413;"
+            ),
+            div(
+              style = "color:#3d2b0a; font-family:Georgia,serif; font-weight:bold; font-size:16px; line-height:1.2;",
+              owner
+            ),
+            div(
+              style = "color:#5c4413; font-family:Georgia,serif; font-size:22px; font-weight:bold; margin:2px 0;",
+              yr
+            ),
+            div(
+              style = "color:#3d2b0a; font-size:11px; font-style:italic;",
+              paste0('"', team_name, '"')
+            ),
+            div(
+              style = "color:#5c4413; font-size:11px; margin-top:2px;",
+              record
+            )
+          )
+        )
+      )
+    })
+
+    div(
+      class = "text-center",
+      style = "padding:20px; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); border-radius:12px; min-height:400px;",
+      bust_cards
     )
   })
 
