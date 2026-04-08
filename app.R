@@ -404,9 +404,9 @@ server <- function(input, output, session) {
       record <- paste0(stats$W, "-", stats$L)
       pf <- format(round(stats$PF, 1), nsmall = 1, big.mark = ",")
 
-      # Lombardi trophies as repeated icons
+      # Championship trophies - use lombardi image
       trophy_html <- if (n_champs > 0) {
-        paste(rep("<i class='fas fa-trophy' style='color:#FFD700; font-size:28px; margin-right:4px;'></i>", n_champs), collapse = "")
+        paste(rep("<img src='photos/lombardi.webp' height='40' style='margin-right:4px;'>", n_champs), collapse = "")
       } else {
         "<span style='color:#999;'>None</span>"
       }
@@ -462,8 +462,8 @@ server <- function(input, output, session) {
           div(class = "mb-2",
             tags$strong("Sackos"),
             div(style = "min-height:40px; display:flex; align-items:center; justify-content:center; gap:2px;",
-              if (n_sackos > 0 && file.exists("www/photos/sacko_trophy.png")) {
-                HTML(paste(rep("<img src='photos/sacko_trophy.png' height='35' style='margin-right:2px;'>", n_sackos), collapse = ""))
+              if (n_sackos > 0 && file.exists("www/photos/sacko-trophy.png")) {
+                HTML(paste(rep("<img src='photos/sacko-trophy.png' height='35' style='margin-right:2px;'>", n_sackos), collapse = ""))
               } else if (n_sackos > 0) {
                 tags$span(class = "text-danger fw-bold", n_sackos)
               } else {
