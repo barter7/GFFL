@@ -44,7 +44,8 @@ jobs:
             appDir    = ".",
             appName   = "gffl-dashboard",
             appTitle  = "GFFL Historical Dashboard",
-            appFiles  = c("app.R", "helpers.R"),
+            appFiles  = c("app.R", "helpers.R",
+                          list.files("www", recursive = TRUE, full.names = TRUE)),
             forceUpdate = TRUE
           )
         shell: Rscript {0}
