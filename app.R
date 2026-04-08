@@ -457,16 +457,30 @@ server <- function(input, output, session) {
         "<span style='color:#999;'>None</span>"
       }
 
+      # Check for owner photo (www/photos/Name.jpg or .png)
+      photo_file <- NULL
+      for (ext in c(".jpg", ".jpeg", ".png")) {
+        if (file.exists(file.path("www", "photos", paste0(o, ext)))) {
+          photo_file <- paste0("photos/", o, ext)
+          break
+        }
+      }
+
       card(
         class = "text-center",
         card_header(class = "fw-bold fs-5", o),
         card_body(
-          # Photo placeholder
-          div(
-            style = "width:120px; height:150px; background:#e9ecef; border:2px dashed #adb5bd; border-radius:8px; margin:0 auto 12px; display:flex; align-items:center; justify-content:center;",
-            tags$span(style = "color:#6c757d; font-size:2rem;",
-                      icon("user"))
-          ),
+          # Owner photo or placeholder
+          if (!is.null(photo_file)) {
+            tags$img(src = photo_file,
+                     style = "width:120px; height:150px; object-fit:cover; border-radius:8px; margin:0 auto 12px; display:block;")
+          } else {
+            div(
+              style = "width:120px; height:150px; background:#e9ecef; border:2px dashed #adb5bd; border-radius:8px; margin:0 auto 12px; display:flex; align-items:center; justify-content:center;",
+              tags$span(style = "color:#6c757d; font-size:2rem;",
+                        icon("user"))
+            )
+          },
           # Championships
           div(class = "mb-2",
             tags$strong("Championships"),
