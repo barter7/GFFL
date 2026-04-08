@@ -406,7 +406,7 @@ server <- function(input, output, session) {
 
       # Championship trophies - use lombardi image
       trophy_html <- if (n_champs > 0) {
-        paste(rep("<img src='photos/lombardi.webp' height='40' style='margin-right:4px;'>", n_champs), collapse = "")
+        paste(rep("<img src='photos/lombardi.png' height='55' style='margin-right:4px;'>", n_champs), collapse = "")
       } else {
         "<span style='color:#999;'>None</span>"
       }
@@ -463,7 +463,7 @@ server <- function(input, output, session) {
             tags$strong("Sackos"),
             div(style = "min-height:40px; display:flex; align-items:center; justify-content:center; gap:2px;",
               if (n_sackos > 0 && file.exists("www/photos/sacko-trophy.png")) {
-                HTML(paste(rep("<img src='photos/sacko-trophy.png' height='35' style='margin-right:2px;'>", n_sackos), collapse = ""))
+                HTML(paste(rep("<img src='photos/sacko-trophy.png' height='55' style='margin-right:4px;'>", n_sackos), collapse = ""))
               } else if (n_sackos > 0) {
                 tags$span(class = "text-danger fw-bold", n_sackos)
               } else {
