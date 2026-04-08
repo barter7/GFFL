@@ -184,6 +184,42 @@ ui <- page_navbar(
     )
   ),
 
+  # TOP PERFORMANCES
+  nav_panel(
+    title = "Top Performances",
+    icon = icon("star"),
+    layout_columns(
+      col_widths = c(12),
+      card(
+        card_header(
+          class = "d-flex justify-content-between align-items-center",
+          "Top Player Performances (All-Time)",
+          div(
+            class = "d-flex gap-2",
+            selectInput("perf_pos", label = NULL,
+                        choices = c("All", "QB", "RB", "WR", "TE", "K", "D/ST"),
+                        width = "100px"),
+            selectInput("perf_season", label = NULL,
+                        choices = NULL,
+                        width = "120px")
+          )
+        ),
+        uiOutput("top_performances_cards")
+      )
+    ),
+    layout_columns(
+      col_widths = c(6, 6),
+      card(
+        card_header("Top Performers by Position"),
+        DTOutput("top_by_position_table")
+      ),
+      card(
+        card_header("Most Appearances in Top 25"),
+        plotlyOutput("top_appearances_plot", height = "400px")
+      )
+    )
+  ),
+
   # SEASON RECAPS
   nav_panel(
     title = "Season Recaps",
@@ -279,6 +315,8 @@ server <- function(input, output, session) {
     standings_data = NULL,
     schedule_data = NULL,
     draft_data = NULL,
+    starters_data = NULL,
+    player_ids = NULL,
     owner_map = NULL,
     all_owners = NULL,
     seasons_loaded = NULL
@@ -293,6 +331,12 @@ server <- function(input, output, session) {
       rv$standings_data <- readRDS("data/standings.rds")
       rv$schedule_data <- readRDS("data/schedule.rds") |> classify_game_type()
       rv$draft_data <- readRDS("data/drafts.rds")
+      if (file.exists("data/starters.rds")) {
+        rv$starters_data <- readRDS("data/starters.rds")
+      }
+      if (file.exists("data/player_ids.rds")) {
+        rv$player_ids <- readRDS("data/player_ids.rds")
+      }
       rv$seasons_loaded <- sort(unique(rv$standings_data$season))
 
       # Build owner mapping from draft data
@@ -330,6 +374,8 @@ server <- function(input, output, session) {
                           choices = sort(loaded, decreasing = TRUE))
         updateSelectInput(session, "draft_season",
                           choices = sort(loaded, decreasing = TRUE))
+        updateSelectInput(session, "perf_season",
+                          choices = c("All-Time", sort(loaded, decreasing = TRUE)))
       }
     })
 
@@ -869,6 +915,162 @@ server <- function(input, output, session) {
       labs(x = NULL, y = "Picks (Rounds 1-5)", fill = "Position") +
       theme_minimal()
     ggplotly(p, tooltip = c("fill", "y"))
+  })
+
+  # ==========================================================================
+  # TOP PERFORMANCES TAB
+  # ==========================================================================
+
+  # Helper to get player headshot URL from player_ids
+  get_headshot_url <- function(player_name, player_ids_df) {
+    if (is.null(player_ids_df)) return(NULL)
+    # Try matching by name
+    match <- player_ids_df |>
+      filter(tolower(name) == tolower(player_name)) |>
+      head(1)
+    if (nrow(match) > 0 && "espn_id" %in% names(match)) {
+      espn_id <- match$espn_id
+      if (!is.na(espn_id)) {
+        return(paste0("https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/", espn_id, ".png&w=96&h=70&cb=1"))
+      }
+    }
+    NULL
+  }
+
+  # Filtered starters for top performances
+  filtered_starters <- reactive({
+    req(rv$starters_data)
+    df <- rv$starters_data |>
+      filter(lineup_slot != "BE", lineup_slot != "IR")
+
+    # Season filter
+    if (!is.null(input$perf_season) && input$perf_season != "All-Time") {
+      df <- df |> filter(season == as.integer(input$perf_season))
+    }
+
+    # Position filter
+    if (!is.null(input$perf_pos) && input$perf_pos != "All") {
+      if (input$perf_pos == "D/ST") {
+        df <- df |> filter(pos %in% c("DST", "D/ST", "DEF"))
+      } else {
+        df <- df |> filter(pos == input$perf_pos)
+      }
+    }
+
+    df |> arrange(desc(player_score))
+  })
+
+  # Top performances cards with headshots
+  output$top_performances_cards <- renderUI({
+    req(filtered_starters())
+    df <- filtered_starters() |> head(25)
+
+    if (nrow(df) == 0) return(h5(class = "text-muted text-center", "No data available. Run fetch_data.R to cache starters data."))
+
+    # Attach owner names if available
+    if (!is.null(rv$owner_map)) {
+      df <- df |>
+        left_join(
+          rv$owner_map |> select(season, franchise_id, owner),
+          by = c("season", "franchise_id")
+        ) |>
+        mutate(owner = ifelse(is.na(owner), franchise_name, owner))
+    } else {
+      df$owner <- df$franchise_name
+    }
+
+    rows <- lapply(seq_len(nrow(df)), function(i) {
+      row <- df[i, ]
+
+      # Get headshot
+      headshot_url <- get_headshot_url(row$player_name, rv$player_ids)
+
+      headshot_img <- if (!is.null(headshot_url)) {
+        tags$img(src = headshot_url,
+                 style = "width:70px; height:70px; object-fit:cover; border-radius:50%; border:3px solid #013369; background:#eee;",
+                 onerror = "this.style.display='none'; this.nextElementSibling.style.display='flex';")
+      } else {
+        NULL
+      }
+
+      placeholder <- div(
+        style = paste0(
+          "width:70px; height:70px; border-radius:50%; background:#e9ecef; ",
+          "border:3px solid #013369; align-items:center; justify-content:center; ",
+          "display:", if (is.null(headshot_url)) "flex;" else "none;",
+          " color:#6c757d; font-size:1.5rem;"
+        ),
+        icon("football")
+      )
+
+      rank_color <- if (i == 1) "#FFD700" else if (i == 2) "#C0C0C0" else if (i == 3) "#CD7F32" else "#6c757d"
+
+      div(
+        class = "d-flex align-items-center p-2 mb-1",
+        style = paste0("border-bottom:1px solid #eee;", if (i <= 3) " background:#f8f9fa;" else ""),
+
+        # Rank
+        div(style = paste0("width:40px; font-size:20px; font-weight:bold; color:", rank_color, "; text-align:center;"),
+            paste0("#", i)),
+
+        # Headshot
+        div(style = "width:80px; display:flex; justify-content:center;",
+            headshot_img, placeholder),
+
+        # Player info
+        div(style = "flex:1; margin-left:12px;",
+          div(style = "font-weight:bold; font-size:16px;", row$player_name),
+          div(style = "color:#666; font-size:13px;",
+              paste0(row$pos, " - ", row$team, " | ",
+                     row$season, " Week ", row$week, " | ",
+                     "Owner: ", row$owner))
+        ),
+
+        # Score
+        div(style = "width:80px; text-align:right; font-size:22px; font-weight:bold; color:#013369;",
+            round(row$player_score, 1))
+      )
+    })
+
+    div(style = "max-height:700px; overflow-y:auto;", rows)
+  })
+
+  # Top by position table
+  output$top_by_position_table <- renderDT({
+    req(rv$starters_data)
+    df <- rv$starters_data |>
+      filter(lineup_slot != "BE", lineup_slot != "IR") |>
+      group_by(pos) |>
+      slice_max(player_score, n = 1) |>
+      ungroup() |>
+      select(Pos = pos, Player = player_name, Team = team,
+             Score = player_score, Season = season, Week = week) |>
+      arrange(desc(Score))
+    datatable(df, options = list(pageLength = 15, dom = "t"), rownames = FALSE) |>
+      formatRound("Score", 1)
+  })
+
+  # Most appearances in top 25
+  output$top_appearances_plot <- renderPlotly({
+    req(rv$starters_data)
+    top25 <- rv$starters_data |>
+      filter(lineup_slot != "BE", lineup_slot != "IR") |>
+      arrange(desc(player_score)) |>
+      head(100)
+
+    appearances <- top25 |>
+      count(player_name, sort = TRUE) |>
+      head(15)
+
+    appearances$player_name <- factor(appearances$player_name,
+                                       levels = rev(appearances$player_name))
+
+    p <- ggplot(appearances, aes(x = player_name, y = n, fill = player_name)) +
+      geom_col(show.legend = FALSE) +
+      coord_flip() +
+      labs(x = NULL, y = "Appearances in Top 100 Scores") +
+      theme_minimal()
+    ggplotly(p, tooltip = c("y"))
   })
 
   # ==========================================================================

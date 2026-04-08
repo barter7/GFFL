@@ -33,6 +33,7 @@ cat("Fetching GFFL league data for seasons", min(SEASONS), "-", max(SEASONS), "\
 all_standings <- list()
 all_schedules <- list()
 all_drafts <- list()
+all_starters <- list()
 all_league <- list()
 
 for (s in SEASONS) {
@@ -50,16 +51,21 @@ for (s in SEASONS) {
     standings <- ff_standings(conn)
     schedule <- ff_schedule(conn)
     draft <- tryCatch(ff_draft(conn), error = function(e) NULL)
+    starters <- tryCatch(ff_starters(conn), error = function(e) NULL)
 
     if (!"season" %in% names(standings)) standings$season <- s
     if (!"season" %in% names(schedule)) schedule$season <- s
     if (!is.null(draft) && !"season" %in% names(draft)) draft$season <- s
+    if (!is.null(starters) && !"season" %in% names(starters)) starters$season <- s
 
     all_league[[as.character(s)]] <- league_info
     all_standings[[as.character(s)]] <- standings
     all_schedules[[as.character(s)]] <- schedule
     if (!is.null(draft) && nrow(draft) > 0) {
       all_drafts[[as.character(s)]] <- draft
+    }
+    if (!is.null(starters) && nrow(starters) > 0) {
+      all_starters[[as.character(s)]] <- starters
     }
 
     cat("OK\n")
@@ -74,15 +80,27 @@ dir.create("data", showWarnings = FALSE)
 standings_data <- bind_rows(all_standings)
 schedule_data <- bind_rows(all_schedules)
 draft_data <- bind_rows(all_drafts)
+starters_data <- bind_rows(all_starters)
 
 saveRDS(all_league, "data/league_info.rds")
 saveRDS(standings_data, "data/standings.rds")
 saveRDS(schedule_data, "data/schedule.rds")
 saveRDS(draft_data, "data/drafts.rds")
+saveRDS(starters_data, "data/starters.rds")
+
+# Also fetch and save NFL player headshots for display
+cat("\nFetching NFL player headshots from nflreadr...\n")
+tryCatch({
+  player_ids <- nflreadr::load_ff_playerids()
+  saveRDS(player_ids, "data/player_ids.rds")
+  cat("  Saved player IDs (", nrow(player_ids), "players)\n")
+}, error = function(e) cat("  Could not fetch player IDs:", e$message, "\n"))
 
 cat("\nSaved cached data to data/ folder:\n")
 cat("  data/league_info.rds\n")
 cat("  data/standings.rds  (", nrow(standings_data), "rows)\n")
 cat("  data/schedule.rds   (", nrow(schedule_data), "rows)\n")
 cat("  data/drafts.rds     (", nrow(draft_data), "rows)\n")
+cat("  data/starters.rds   (", nrow(starters_data), "rows)\n")
+cat("  data/player_ids.rds\n")
 cat("\nDone! The Shiny app will now load from these cached files.\n")
