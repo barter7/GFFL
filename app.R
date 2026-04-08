@@ -35,15 +35,15 @@ ui <- page_navbar(
     textInput(
       "league_id",
       "ESPN League ID",
-      placeholder = "e.g. 12345678"
+      value = "570237"
     ),
     helpText("Find your league ID in the URL of your ESPN fantasy league page."),
     sliderInput(
       "season_range",
       "Seasons",
-      min = 2018,
+      min = 2004,
       max = 2025,
-      value = c(2020, 2025),
+      value = c(2004, 2025),
       step = 1,
       sep = ""
     ),
