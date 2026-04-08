@@ -397,7 +397,7 @@ server <- function(input, output, session) {
 
       # Lombardi trophies as repeated icons
       trophy_html <- if (n_champs > 0) {
-        paste(rep("<img src='https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Vince_Lombardi_Trophy.svg/40px-Vince_Lombardi_Trophy.svg.png' height='35' style='margin-right:2px;'>", n_champs), collapse = "")
+        paste(rep("<i class='fas fa-trophy' style='color:#FFD700; font-size:28px; margin-right:4px;'></i>", n_champs), collapse = "")
       } else {
         "<span style='color:#999;'>None</span>"
       }
