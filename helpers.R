@@ -4,54 +4,73 @@
 # OWNER MAPPING
 # =============================================================================
 
-#' GFFL Owner name mapping from ESPN user_nickname to real first name.
-#' Edit this list to match your league members.
-#' The app will use these names everywhere instead of ESPN nicknames/team names.
-OWNER_MAP <- c(
-  # "espn_user_nickname" = "Owner Name"
-  # These will be populated after the first data load.
-  # Run the app once, check the console for unmapped nicknames, then fill in here.
+#' GFFL Owner names mapped by alphabetical index of ESPN user_nickname.
+#' When user_nicknames are sorted alphabetically, these are the real names
+#' at each position (1-13). Duplicates mean one person had multiple accounts.
+OWNER_NAMES_BY_INDEX <- c(
+  "Alex",    # index 1
+  "Connor",  # index 2
+  "Harry",   # index 3
+  "Matt",    # index 4
+  "Connor",  # index 5 (same person, different ESPN account)
+  "Harry",   # index 6 (same person, different ESPN account)
+  "Joe",     # index 7
+  "Jack",    # index 8
+  "Mike",    # index 9
+  "Kerley",  # index 10
+  "RJ",      # index 11
+  "Faz",     # index 12
+  "Tom"      # index 13
 )
 
 #' Build owner mapping from draft data
-#' Uses user_nickname from drafts to identify owners across seasons,
-#' since franchise names change but user_nickname stays consistent.
+#' Uses user_nickname from drafts to identify owners across seasons.
+#' Matches the alphabetical index of unique nicknames to OWNER_NAMES_BY_INDEX.
 #' @param draft_data Combined draft data with user_nickname column
 #' @return Tibble mapping season + franchise_id to owner name
 build_owner_map <- function(draft_data) {
   if (is.null(draft_data) || nrow(draft_data) == 0) return(NULL)
 
-  # Get unique user_nickname per season/franchise
-  nickname_map <- draft_data |>
-    dplyr::distinct(season, franchise_id, franchise_name, user_nickname)
+  # Build the nickname-to-owner lookup using alphabetical index
+  # (same approach as the original GFFL analysis code)
+  unique_nicknames <- draft_data |>
+    dplyr::distinct(user_nickname) |>
+    dplyr::arrange(user_nickname) |>
+    dplyr::mutate(index = dplyr::row_number())
 
-  # Apply owner name mapping
-  nickname_map$owner <- ifelse(
-    nickname_map$user_nickname %in% names(OWNER_MAP),
-    OWNER_MAP[nickname_map$user_nickname],
-    nickname_map$user_nickname  # fallback to ESPN nickname
+  # Map index to real owner name
+  owner_lookup <- data.frame(
+    index = seq_along(OWNER_NAMES_BY_INDEX),
+    owner = OWNER_NAMES_BY_INDEX,
+    stringsAsFactors = FALSE
   )
 
-  # Log unmapped nicknames to help user fill in OWNER_MAP
-  unmapped <- setdiff(unique(nickname_map$user_nickname), names(OWNER_MAP))
-  if (length(unmapped) > 0 && length(OWNER_MAP) > 0) {
-    message("Unmapped ESPN nicknames (add to OWNER_MAP in helpers.R): ",
-            paste(unmapped, collapse = ", "))
+  nickname_to_owner <- dplyr::left_join(unique_nicknames, owner_lookup, by = "index")
+
+  # Log the mapping for debugging
+  message("Owner mapping:")
+  for (i in seq_len(nrow(nickname_to_owner))) {
+    message("  ", nickname_to_owner$user_nickname[i], " -> ",
+            nickname_to_owner$owner[i])
   }
+
+  # Fallback: if more nicknames than mapped names, use the nickname itself
+  nickname_to_owner$owner <- ifelse(
+    is.na(nickname_to_owner$owner),
+    nickname_to_owner$user_nickname,
+    nickname_to_owner$owner
+  )
+
+  # Get unique user_nickname per season/franchise, then attach owner
+  nickname_map <- draft_data |>
+    dplyr::distinct(season, franchise_id, franchise_name, user_nickname) |>
+    dplyr::left_join(
+      nickname_to_owner |> dplyr::select(user_nickname, owner),
+      by = "user_nickname"
+    ) |>
+    dplyr::mutate(owner = ifelse(is.na(owner), user_nickname, owner))
 
   nickname_map
-}
-
-#' Try to load owner mapping from owners.csv if it exists
-load_owner_csv <- function() {
-  if (file.exists("owners.csv")) {
-    owners <- utils::read.csv("owners.csv", stringsAsFactors = FALSE)
-    if (all(c("user_nickname", "owner") %in% names(owners))) {
-      mapping <- stats::setNames(owners$owner, owners$user_nickname)
-      return(mapping)
-    }
-  }
-  return(OWNER_MAP)
 }
 
 #' Attach owner names to schedule data

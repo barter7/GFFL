@@ -19,8 +19,7 @@ if (requireNamespace("nflplotR", quietly = TRUE)) library(nflplotR)
 # --- Source Helpers ---
 source("helpers.R")
 
-# Load owner mapping from CSV if available
-OWNER_MAP <<- load_owner_csv()
+# Owner mapping is hardcoded in helpers.R via OWNER_NAMES_BY_INDEX
 
 # --- League Configuration ---
 LEAGUE_ID <- 570237
