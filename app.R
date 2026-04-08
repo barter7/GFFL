@@ -48,6 +48,13 @@ ui <- page_navbar(
 
   # --- Tab Panels ---
 
+  # OWNERS
+  nav_panel(
+    title = "Owners",
+    icon = icon("users"),
+    uiOutput("owners_grid")
+  ),
+
   # STANDINGS
   nav_panel(
     title = "Standings",
@@ -403,6 +410,93 @@ server <- function(input, output, session) {
           paste(range(rv$seasons_loaded), collapse = "-")
         )
       )
+    )
+  })
+
+  # ==========================================================================
+  # OWNERS TAB
+  # ==========================================================================
+
+  output$owners_grid <- renderUI({
+    req(rv$standings_data, rv$schedule_data)
+
+    # Compute stats per owner
+    alltime <- compute_alltime_standings(rv$standings_data)
+
+    # Championships: who finished 1st in standings each season
+    champs <- rv$standings_data |>
+      group_by(season) |>
+      filter(h2h_wins == max(h2h_wins)) |>
+      slice_max(points_for, n = 1) |>
+      ungroup() |>
+      count(owner, name = "championships")
+
+    # Sackos: who finished last in standings each season
+    sackos <- rv$standings_data |>
+      group_by(season) |>
+      filter(h2h_wins == min(h2h_wins)) |>
+      slice_min(points_for, n = 1) |>
+      ungroup() |>
+      count(owner, name = "sackos")
+
+    owners <- sort(unique(rv$standings_data$owner))
+
+    # Build a card for each owner
+    owner_cards <- lapply(owners, function(o) {
+      stats <- alltime |> filter(Team == o)
+      n_champs <- if (o %in% champs$owner) champs$championships[champs$owner == o] else 0
+      n_sackos <- if (o %in% sackos$owner) sackos$sackos[sackos$owner == o] else 0
+
+      record <- paste0(stats$W, "-", stats$L)
+      pf <- format(round(stats$PF, 1), nsmall = 1, big.mark = ",")
+
+      # Lombardi trophies as repeated icons
+      trophy_html <- if (n_champs > 0) {
+        paste(rep("<img src='https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Vince_Lombardi_Trophy.svg/40px-Vince_Lombardi_Trophy.svg.png' height='35' style='margin-right:2px;'>", n_champs), collapse = "")
+      } else {
+        "<span style='color:#999;'>None</span>"
+      }
+
+      card(
+        class = "text-center",
+        card_header(class = "fw-bold fs-5", o),
+        card_body(
+          # Photo placeholder
+          div(
+            style = "width:120px; height:150px; background:#e9ecef; border:2px dashed #adb5bd; border-radius:8px; margin:0 auto 12px; display:flex; align-items:center; justify-content:center;",
+            tags$span(style = "color:#6c757d; font-size:2rem;",
+                      icon("user"))
+          ),
+          # Championships
+          div(class = "mb-2",
+            tags$strong("Championships"),
+            div(style = "min-height:40px; display:flex; align-items:center; justify-content:center;",
+                HTML(trophy_html))
+          ),
+          # Sackos
+          div(class = "mb-2",
+            tags$strong("Sackos: "),
+            tags$span(class = if (n_sackos > 0) "text-danger fw-bold" else "",
+                      n_sackos)
+          ),
+          # All-Time Record
+          div(class = "mb-2",
+            tags$strong("All-Time Record: "),
+            tags$span(record)
+          ),
+          # Points For
+          div(class = "mb-1",
+            tags$strong("Points For: "),
+            tags$span(pf)
+          )
+        )
+      )
+    })
+
+    # Arrange in a responsive grid (4 per row on large screens)
+    layout_column_wrap(
+      width = "250px",
+      !!!owner_cards
     )
   })
 
