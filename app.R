@@ -22,6 +22,12 @@ source("helpers.R")
 # Load owner mapping from CSV if available
 OWNER_MAP <<- load_owner_csv()
 
+# --- League Configuration ---
+LEAGUE_ID <- 570237
+SEASONS <- 2017:2025
+ESPN_S2_TOKEN <- "AEA1%2BjaW2g9NUF4iIXuqdbRZ5qVRGdaxEa3YlbfwdrOPXeKIQvKQZvY7jAiem0XvhcnYczVj2lXY%2FpOTeYUQWSR6tpdRCWrKhUWv%2BvkZ3Q7CiTNr40zp3SZxiPTiyitikEwxmmDA6Dz4dAI1yRU1MWBYQpsRTBjapEBbs0ZKB4mOVPSc0NACSMFxtmb52rdidtJBVyRSAAtI5c9eJUmcsz7bozC96i5p9PAYr18U1Gm56W04Z8XqC3onM3iuqcj0F7dDrwRGKRVYHJSpm3xzJa2TFJH5K6nS4Ps%2B4xSjhsz3ag%3D%3D"
+ESPN_SWID_TOKEN <- "{5762B088-9519-444D-A2B0-889519E44D16}"
+
 # --- UI ---
 ui <- page_navbar(
   title = "GFFL Historical Dashboard",
@@ -33,38 +39,12 @@ ui <- page_navbar(
     "navbar-bg" = "#013369"
   ),
   sidebar = sidebar(
-    width = 300,
-    title = "League Settings",
-    textInput(
-      "league_id",
-      "ESPN League ID",
-      value = "570237"
-    ),
-    helpText("Find your league ID in the URL of your ESPN fantasy league page."),
-    sliderInput(
-      "season_range",
-      "Seasons",
-      min = 2004,
-      max = 2025,
-      value = c(2017, 2025),
-      step = 1,
-      sep = ""
-    ),
+    width = 280,
+    title = "GFFL",
+    uiOutput("league_info_panel"),
     hr(),
-    h6("Private League Auth"),
-    passwordInput("espn_s2", "ESPN_S2 Cookie",
-                  value = Sys.getenv("ESPN_S2"),
-                  placeholder = "Auto-loaded from .Renviron if set"),
-    passwordInput("swid", "SWID Cookie",
-                  value = Sys.getenv("ESPN_SWID"),
-                  placeholder = "Auto-loaded from .Renviron if set"),
-    helpText("Auto-populated from ESPN_S2 and ESPN_SWID environment variables.",
-             "Or paste values from your browser cookies at espn.com."),
-    hr(),
-    actionButton("fetch_data", "Load League Data", class = "btn-primary w-100",
-                 icon = icon("football")),
-    hr(),
-    uiOutput("league_info_panel")
+    actionButton("reload_data", "Reload Data", class = "btn-outline-primary w-100",
+                 icon = icon("rotate"))
   ),
 
   # --- Tab Panels ---
@@ -291,16 +271,12 @@ server <- function(input, output, session) {
     seasons_loaded = NULL
   )
 
-  # --- Fetch Data ---
-  observeEvent(input$fetch_data, {
-    req(input$league_id)
-
-    league_id <- as.integer(input$league_id)
-    seasons <- seq(input$season_range[1], input$season_range[2])
-
-    # Auth params
-    s2 <- if (nchar(input$espn_s2) > 0) input$espn_s2 else NULL
-    sw <- if (nchar(input$swid) > 0) input$swid else NULL
+  # --- Fetch Data (auto-loads on startup, reload button available) ---
+  load_league_data <- function() {
+    league_id <- LEAGUE_ID
+    seasons <- SEASONS
+    s2 <- ESPN_S2_TOKEN
+    sw <- ESPN_SWID_TOKEN
 
     withProgress(message = "Fetching league data...", value = 0, {
       n_seasons <- length(seasons)
@@ -398,6 +374,16 @@ server <- function(input, output, session) {
       paste("Loaded", length(rv$seasons_loaded), "seasons successfully!"),
       type = "message", duration = 5
     )
+  }
+
+  # Auto-load on startup
+  observe({
+    load_league_data()
+  }) |> bindEvent(TRUE, once = TRUE)
+
+  # Reload button
+  observeEvent(input$reload_data, {
+    load_league_data()
   })
 
   # --- League Info Panel ---
