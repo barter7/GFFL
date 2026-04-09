@@ -873,9 +873,9 @@ server <- function(input, output, session) {
         .lombardi-img { height:55px; margin:0 12px; }
         .hunt-img { height:42px; margin:0 4px; }
         .sacko-img { height:45px; width:36px; margin:0 1px; }
-        .banner-img { height:65px; margin:2px; }
-        .gffl-img { height:60px; margin:0 6px; }
-        .banner-side { display:flex; flex-wrap:wrap; justify-content:center; align-content:center; flex:1; }
+        .banner-img { height:45px; margin:1px; }
+        .gffl-img { height:55px; margin:0 6px; }
+        .banner-side { display:flex; flex-wrap:wrap; justify-content:center; align-content:center; flex:1; overflow:visible; }
 
         .trophy-shelf { height:80px; }
         .banner-shelf { height:80px; }
