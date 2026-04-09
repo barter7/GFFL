@@ -756,16 +756,16 @@ server <- function(input, output, session) {
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-end; padding:4px 4px 6px;"
+            "display:flex; align-items:flex-end; padding:4px 4px 6px; overflow:hidden;"
           ),
           div(
-            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; overflow:hidden;",
             HTML(gffl_imgs)
           ),
           div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
           div(
-            style = paste0("flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
-                           if (n_sackos > 3) " flex:2;" else ""),
+            style = paste0("display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden;",
+                           if (n_sackos > 3) " flex:2;" else " flex:1;"),
             HTML(sacko_imgs)
           )
         ),
@@ -796,7 +796,7 @@ server <- function(input, output, session) {
         .trophy-img { object-fit:contain; }
         .lombardi-img { height:55px; margin:0 12px; }
         .hunt-img { height:42px; margin:0 4px; }
-        .sacko-img { height:60px; width:48px; margin:0 2px; }
+        .sacko-img { height:45px; width:36px; margin:0 1px; }
         .banner-img { height:65px; margin:2px; }
         .gffl-img { height:60px; margin:0 6px; }
         .banner-side { display:flex; flex-wrap:wrap; justify-content:center; align-content:center; flex:1; }
