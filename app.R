@@ -615,10 +615,10 @@ server <- function(input, output, session) {
         oneseed_imgs <- paste(banners, collapse = "")
       }
 
-      # GFFL trophy (most PF) - single image repeated per year won
+      # GFFL trophy (most PF) - single image repeated per year won, slightly smaller
       gffl_imgs <- ""
       if (length(gffl_pf_years) > 0) {
-        gffl_imgs <- paste(rep("<img src='photos/GFFL.png' class='trophy-img banner-img'>", length(gffl_pf_years)), collapse = "")
+        gffl_imgs <- paste(rep("<img src='photos/GFFL.png' class='trophy-img gffl-img'>", length(gffl_pf_years)), collapse = "")
       }
 
       photo_file <- NULL
@@ -787,9 +787,10 @@ server <- function(input, output, session) {
         .hunt-img { height:42px; margin:0 2px; }
         .sacko-img { height:60px; width:48px; margin:0 2px; }
         .banner-img { height:80px; margin:2px; }
+        .gffl-img { height:65px; margin:2px; }
 
         .trophy-shelf { height:80px; }
-        .banner-shelf { height:110px; }
+        .banner-shelf { height:80px; }
         .sacko-shelf { height:80px; }
         .owner-photo-frame { width:130px; height:155px; }
 
@@ -799,9 +800,10 @@ server <- function(input, output, session) {
           .hunt-img { height:70px; margin:0 5px; }
           .sacko-img { height:90px; width:70px; margin:0 4px; }
           .banner-img { height:140px; margin:5px; }
+          .gffl-img { height:100px; margin:3px; }
 
           .trophy-shelf { height:110px; }
-          .banner-shelf { height:170px; }
+          .banner-shelf { height:110px; }
           .sacko-shelf { height:110px; }
           .owner-photo-frame { width:160px; height:190px; }
         }
