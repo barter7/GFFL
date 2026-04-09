@@ -585,6 +585,15 @@ server <- function(input, output, session) {
       filter(league_rank == 1) |>
       arrange(season)
 
+    # Get championship rosters if starters data available
+    champ_rosters <- NULL
+    if (!is.null(rv$starters_data) && nrow(rv$starters_data) > 0) {
+      champ_rosters <- get_championship_rosters(
+        rv$starters_data, rv$standings_data,
+        if (!is.null(rv$schedule_data)) rv$schedule_data else readRDS("data/schedule.rds")
+      )
+    }
+
     bust_cards <- lapply(seq_len(nrow(champ_rows)), function(i) {
       row <- champ_rows[i, ]
       owner <- row$owner
@@ -605,20 +614,97 @@ server <- function(input, output, session) {
         }
       }
 
-      # Use bust image if available (no CSS filter needed), otherwise CSS bronze effect
       has_bust <- !is.null(bust_file)
-      display_file <- if (has_bust) bust_file else photo_file
+
+      # Build championship roster dropdown
+      roster_html <- NULL
+      if (!is.null(champ_rosters)) {
+        roster <- champ_rosters |>
+          filter(season == yr) |>
+          arrange(match(pos, c("QB", "RB", "WR", "TE", "K", "DST", "D/ST", "DEF")), desc(player_score))
+
+        if (nrow(roster) > 0) {
+          roster_rows <- lapply(seq_len(nrow(roster)), function(j) {
+            p <- roster[j, ]
+            headshot_url <- NULL
+            if (!is.null(rv$player_ids)) {
+              match_row <- rv$player_ids |>
+                filter(tolower(name) == tolower(p$player_name)) |>
+                head(1)
+              if (nrow(match_row) > 0 && "espn_id" %in% names(match_row) && !is.na(match_row$espn_id)) {
+                headshot_url <- paste0("https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/",
+                                       match_row$espn_id, ".png&w=96&h=70&cb=1")
+              }
+            }
+
+            tags$tr(
+              tags$td(
+                style = "width:40px; padding:3px;",
+                if (!is.null(headshot_url)) {
+                  tags$img(src = headshot_url,
+                           style = paste0(
+                             "width:32px; height:32px; border-radius:50%; object-fit:cover; ",
+                             "filter: sepia(0.7) saturate(0.5) brightness(0.9) contrast(1.1); ",
+                             "border:2px solid #8b6914;"
+                           ),
+                           onerror = "this.style.display='none'")
+                }
+              ),
+              tags$td(
+                style = "color:#d4a84b; font-size:11px; text-align:left; padding:3px;",
+                tags$span(style = "font-weight:bold;", p$player_name),
+                tags$br(),
+                tags$span(style = "color:#8b6914; font-size:9px;",
+                          paste0(p$pos, " - ", p$team))
+              ),
+              tags$td(
+                style = "color:#d4a84b; font-weight:bold; font-size:12px; text-align:right; padding:3px;",
+                round(p$player_score, 1)
+              )
+            )
+          })
+
+          total_score <- round(sum(roster$player_score, na.rm = TRUE), 1)
+
+          roster_html <- div(
+            style = "margin-top:6px;",
+            tags$details(
+              style = "cursor:pointer;",
+              tags$summary(
+                style = "color:#d4a84b; font-family:Georgia,serif; font-size:11px; text-align:center; list-style:none; padding:4px;",
+                tags$span(style = "border-bottom:1px solid #c9a84c;", "View Roster")
+              ),
+              div(
+                style = paste0(
+                  "margin-top:4px; padding:4px; background:#0a0a1a; ",
+                  "border:1px solid #c9a84c; border-radius:4px;"
+                ),
+                tags$table(
+                  style = "width:100%; border-collapse:collapse;",
+                  roster_rows,
+                  tags$tr(
+                    style = "border-top:1px solid #c9a84c;",
+                    tags$td(style = "padding:3px;"),
+                    tags$td(style = "color:#d4a84b; font-weight:bold; font-size:11px; text-align:left; padding:3px;",
+                            "TOTAL"),
+                    tags$td(style = "color:#d4a84b; font-weight:bold; font-size:13px; text-align:right; padding:3px;",
+                            total_score)
+                  )
+                )
+              )
+            )
+          )
+        }
+      }
 
       div(
         class = "d-inline-block text-center mb-4",
         style = "width:48%; min-width:160px; max-width:200px; vertical-align:top; margin:0 1%;",
 
-        # Bust display
         div(
           style = "position:relative; width:160px; margin:0 auto;",
 
           if (has_bust) {
-            # Real bust image - display as-is, no frame needed
             tags$img(
               src = bust_file,
               style = paste0(
@@ -627,7 +713,6 @@ server <- function(input, output, session) {
               )
             )
           } else {
-            # CSS bronze effect on regular photo
             div(
               style = paste0(
                 "width:140px; height:170px; margin:0 auto; ",
@@ -664,7 +749,7 @@ server <- function(input, output, session) {
             )
           },
 
-          # Black plaque with gold text - Owner name
+          # Black plaque - Owner name
           div(
             style = paste0(
               "width:160px; margin:8px auto 4px; padding:8px 12px; ",
@@ -677,7 +762,7 @@ server <- function(input, output, session) {
             )
           ),
 
-          # Black plaque with gold text - Year
+          # Black plaque - Year
           div(
             style = paste0(
               "width:120px; margin:4px auto 0; padding:6px 10px; ",
@@ -688,7 +773,10 @@ server <- function(input, output, session) {
               style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:20px; letter-spacing:2px;",
               yr
             )
-          )
+          ),
+
+          # Championship roster dropdown
+          roster_html
         )
       )
     })
