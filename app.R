@@ -600,8 +600,10 @@ server <- function(input, output, session) {
 
     div(
       style = "background:#e8e0d4; padding:20px; border-radius:12px;",
+      tags$style(".trophy-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
+                  @media (max-width:768px) { .trophy-grid { grid-template-columns: 1fr; } }"),
       div(
-        style = "display:grid; grid-template-columns: repeat(2, 1fr); gap:16px;",
+        class = "trophy-grid",
         active_cards
       ),
       if (length(legacy_cards) > 0) {
@@ -610,7 +612,7 @@ server <- function(input, output, session) {
           h4(style = "color:#666; text-align:center; margin-top:16px; margin-bottom:12px;",
              icon("clock-rotate-left"), " Legacy Owners"),
           div(
-            style = "display:grid; grid-template-columns: repeat(2, 1fr); gap:16px;",
+            class = "trophy-grid",
             legacy_cards
           )
         )
