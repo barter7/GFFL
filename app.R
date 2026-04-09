@@ -487,25 +487,21 @@ server <- function(input, output, session) {
         class = "text-center",
         card_header(class = "fw-bold fs-5", o),
         card_body(
-          # Owner photo with ornate portrait frame, or placeholder
+          # Owner photo with ornate frame overlay
           div(
             style = paste0(
-              "width:140px; height:170px; margin:0 auto 12px; padding:6px; ",
-              "background: linear-gradient(135deg, #c9a84c, #f0d675, #c9a84c, #a07828); ",
-              "border-radius:4px; ",
-              "box-shadow: 0 4px 12px rgba(0,0,0,0.3), inset 0 0 6px rgba(255,255,255,0.3); ",
+              "width:150px; height:180px; margin:0 auto 12px; ",
               "position:relative;"
             ),
+            # Photo layer (behind the frame)
             div(
               style = paste0(
-                "width:100%; height:100%; ",
-                "border: 2px solid #8b6914; ",
-                "box-shadow: inset 0 0 8px rgba(0,0,0,0.4); ",
+                "position:absolute; top:12%; left:12%; width:76%; height:76%; ",
                 "overflow:hidden; background:#e9ecef;"
               ),
               if (!is.null(photo_file)) {
                 tags$img(src = photo_file,
-                         style = "width:100%; height:100%; object-fit:contain; object-position:top; background:#fff;")
+                         style = "width:100%; height:100%; object-fit:cover; object-position:top;")
               } else {
                 div(
                   style = "width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#e9ecef;",
@@ -513,7 +509,13 @@ server <- function(input, output, session) {
                             icon("user"))
                 )
               }
-            )
+            ),
+            # Frame overlay (on top of photo)
+            tags$img(src = "photos/frame.jpeg",
+                     style = paste0(
+                       "position:absolute; top:0; left:0; width:100%; height:100%; ",
+                       "pointer-events:none;"
+                     ))
           ),
           # Championships
           div(class = "mb-2",
