@@ -734,7 +734,7 @@ server <- function(input, output, session) {
           )
         ),
 
-        # GFFL (left) | empty (right) split shelf
+        # GFFL (left) | Sackos (right) split shelf
         div(
           class = "trophy-shelf",
           style = paste0(
@@ -744,22 +744,8 @@ server <- function(input, output, session) {
           ),
           div(
             style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
-            HTML(gffl_imgs)
-          ),
-          div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
-          div(style = "flex:1;")
-        ),
-
-        # Sacko shelf (4th row)
-        div(
-          class = "sacko-shelf",
-          style = paste0(
-            "border-bottom:3px solid rgba(255,255,255,0.15); ",
-            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-end; justify-content:center; ",
-            "flex-wrap:wrap; padding:4px 2px 6px; overflow:hidden;"
-          ),
-          HTML(sacko_imgs)
+            HTML(gffl_imgs), HTML(sacko_imgs)
+          )
         ),
 
         # Bottom trim
@@ -789,9 +775,9 @@ server <- function(input, output, session) {
         .lombardi-img { height:55px; margin:0 12px; }
         .hunt-img { height:42px; margin:0 4px; }
         .sacko-img { height:60px; width:48px; margin:0 2px; }
-        .banner-img { height:55px; margin:2px; }
+        .banner-img { height:65px; margin:2px; }
         .gffl-img { height:60px; margin:0 6px; }
-        .banner-side { display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start; width:120px; }
+        .banner-side { display:flex; flex-wrap:wrap; justify-content:center; align-content:center; flex:1; }
 
         .trophy-shelf { height:80px; }
         .banner-shelf { height:80px; }
@@ -803,9 +789,9 @@ server <- function(input, output, session) {
           .lombardi-img { height:90px; margin:0 15px; }
           .hunt-img { height:70px; margin:0 10px; }
           .sacko-img { height:90px; width:70px; margin:0 4px; }
-          .banner-img { height:90px; margin:3px; }
+          .banner-img { height:100px; margin:3px; }
           .gffl-img { height:90px; margin:0 8px; }
-          .banner-side { width:200px; }
+          .banner-side { flex:1; }
 
           .trophy-shelf { height:110px; }
           .banner-shelf { height:110px; }
