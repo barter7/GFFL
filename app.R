@@ -43,10 +43,10 @@ ui <- page_navbar(
 
   # --- Tab Panels ---
 
-  # OWNERS
+  # TROPHY ROOM
   nav_panel(
-    title = "Owners",
-    icon = icon("users"),
+    title = "Trophy Room",
+    icon = icon("award"),
     uiOutput("owners_grid")
   ),
 
@@ -417,7 +417,7 @@ server <- function(input, output, session) {
   })
 
   # ==========================================================================
-  # OWNERS TAB
+  # TROPHY ROOM TAB
   # ==========================================================================
 
   output$owners_grid <- renderUI({
@@ -475,14 +475,14 @@ server <- function(input, output, session) {
 
       # Championship trophies - use lombardi image
       trophy_html <- if (n_champs > 0) {
-        paste(rep("<img src='photos/lombardi.png' height='55' style='margin-right:4px;'>", n_champs), collapse = "")
+        paste(rep("<img src='photos/lombardi.png' height='55' style='margin-right:4px; border:2px solid white; border-radius:4px; padding:2px; background:rgba(255,255,255,0.1);'>", n_champs), collapse = "")
       } else {
         "<span style='color:#999;'>None</span>"
       }
 
       # Championship appearances - use Hunt trophy image
       appear_html <- if (n_appear > 0) {
-        paste(rep("<img src='photos/Hunt.png' height='50' style='margin-right:4px;'>", n_appear), collapse = "")
+        paste(rep("<img src='photos/Hunt.png' height='50' style='margin-right:4px; border:2px solid white; border-radius:4px; padding:2px; background:rgba(255,255,255,0.1);'>", n_appear), collapse = "")
       } else {
         "<span style='color:#999;'>None</span>"
       }
@@ -498,9 +498,10 @@ server <- function(input, output, session) {
 
       card(
         class = "text-center",
-        card_header(class = "fw-bold fs-6", o),
+        style = "background:#1a1a2e; border:1px solid #333;",
+        card_header(class = "fw-bold fs-6", style = "background:#0f3460; color:#d4a84b; border-bottom:1px solid #c9a84c;", o),
         card_body(
-          style = "padding:8px;",
+          style = "padding:8px; color:#e0e0e0;",
           # Owner photo with ornate frame overlay
           div(
             style = paste0(
@@ -533,22 +534,22 @@ server <- function(input, output, session) {
           ),
           # Championships
           div(class = "mb-2",
-            tags$strong("Championships"),
-            div(style = "min-height:40px; display:flex; align-items:center; justify-content:center;",
+            tags$strong(style = "color:#d4a84b;", "Championships"),
+            div(style = "min-height:40px; display:flex; align-items:center; justify-content:center; flex-wrap:wrap;",
                 HTML(trophy_html))
           ),
           # Championship Appearances
           div(class = "mb-2",
-            tags$strong("Title Game Appearances"),
+            tags$strong(style = "color:#c0c0c0;", "Title Game Appearances"),
             div(style = "min-height:40px; display:flex; align-items:center; justify-content:center; flex-wrap:wrap;",
                 HTML(appear_html))
           ),
           # Sackos
           div(class = "mb-2",
-            tags$strong("Sackos"),
+            tags$strong(style = "color:#cd7f32;", "Sackos"),
             div(style = "min-height:40px; display:flex; align-items:center; justify-content:center; gap:2px;",
               if (n_sackos > 0 && file.exists("www/photos/sacko-trophy.png")) {
-                HTML(paste(rep("<img src='photos/sacko-trophy.png' height='55' style='margin-right:4px;'>", n_sackos), collapse = ""))
+                HTML(paste(rep("<img src='photos/sacko-trophy.png' height='55' style='margin-right:4px; border:2px solid white; border-radius:4px; padding:2px; background:rgba(255,255,255,0.1);'>", n_sackos), collapse = ""))
               } else if (n_sackos > 0) {
                 tags$span(class = "text-danger fw-bold", n_sackos)
               } else {
@@ -558,13 +559,13 @@ server <- function(input, output, session) {
           ),
           # All-Time Record
           div(class = "mb-2",
-            tags$strong("All-Time Record: "),
-            tags$span(record)
+            tags$strong(style = "color:#aaa;", "All-Time Record: "),
+            tags$span(style = "color:#fff;", record)
           ),
           # Points For
           div(class = "mb-1",
-            tags$strong("Points For: "),
-            tags$span(pf)
+            tags$strong(style = "color:#aaa;", "Points For: "),
+            tags$span(style = "color:#fff;", pf)
           )
         )
       )
@@ -576,15 +577,16 @@ server <- function(input, output, session) {
     # Build legacy owner cards
     legacy_cards <- lapply(legacy_sorted, build_owner_card)
 
-    tagList(
+    div(
+      style = "background: linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%); padding:16px; border-radius:12px;",
       div(
         style = "display:grid; grid-template-columns: repeat(2, 1fr); gap:8px;",
         active_cards
       ),
       if (length(legacy_cards) > 0) {
         tagList(
-          hr(),
-          h4(class = "text-muted text-center mt-4 mb-3",
+          tags$hr(style = "border-color:#333;"),
+          h4(style = "color:#888; text-align:center; margin-top:16px; margin-bottom:12px;",
              icon("clock-rotate-left"), " Legacy Owners"),
           div(
             style = "display:grid; grid-template-columns: repeat(2, 1fr); gap:8px;",
