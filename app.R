@@ -488,20 +488,16 @@ server <- function(input, output, session) {
         card_header(class = "fw-bold fs-6", o),
         card_body(
           style = "padding:8px;",
-          # Owner photo with ornate gold frame
+          # Owner photo with ornate frame overlay
           div(
             style = paste0(
-              "width:120px; height:150px; margin:0 auto 8px; padding:8px; ",
-              "background: linear-gradient(135deg, #a07828, #c9a84c 15%, #f0d675 30%, #c9a84c 45%, #8b6914 55%, #c9a84c 70%, #f0d675 85%, #a07828); ",
-              "border-radius:3px; ",
-              "box-shadow: 0 3px 10px rgba(0,0,0,0.4), inset 0 1px 3px rgba(255,255,255,0.3); ",
+              "width:130px; height:160px; margin:0 auto 8px; ",
               "position:relative;"
             ),
+            # Photo layer (behind the frame)
             div(
               style = paste0(
-                "width:100%; height:100%; ",
-                "border:2px solid #6b4e1a; ",
-                "box-shadow: inset 0 0 6px rgba(0,0,0,0.5), 0 0 0 1px #d4a84b; ",
+                "position:absolute; top:10%; left:10%; width:80%; height:80%; ",
                 "overflow:hidden; background:#e9ecef;"
               ),
               if (!is.null(photo_file)) {
@@ -514,7 +510,13 @@ server <- function(input, output, session) {
                             icon("user"))
                 )
               }
-            )
+            ),
+            # Frame overlay (on top, transparent center shows photo through)
+            tags$img(src = "photos/frame.PNG",
+                     style = paste0(
+                       "position:absolute; top:0; left:0; width:100%; height:100%; ",
+                       "pointer-events:none;"
+                     ))
           ),
           # Championships
           div(class = "mb-2",
