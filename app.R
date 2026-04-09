@@ -487,35 +487,23 @@ server <- function(input, output, session) {
         class = "text-center",
         card_header(class = "fw-bold fs-5", o),
         card_body(
-          # Owner photo with ornate frame overlay
+          # Owner photo with ornate frame
           div(
             style = paste0(
-              "width:150px; height:180px; margin:0 auto 12px; ",
-              "position:relative;"
+              "width:140px; height:170px; margin:0 auto 12px; ",
+              "border-image:url('photos/frame.jpeg') 80 fill / 20px; ",
+              "overflow:hidden;"
             ),
-            # Photo layer (behind the frame)
-            div(
-              style = paste0(
-                "position:absolute; top:12%; left:12%; width:76%; height:76%; ",
-                "overflow:hidden; background:#e9ecef;"
-              ),
-              if (!is.null(photo_file)) {
-                tags$img(src = photo_file,
-                         style = "width:100%; height:100%; object-fit:cover; object-position:top;")
-              } else {
-                div(
-                  style = "width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#e9ecef;",
-                  tags$span(style = "color:#6c757d; font-size:2.5rem;",
-                            icon("user"))
-                )
-              }
-            ),
-            # Frame overlay (on top of photo)
-            tags$img(src = "photos/frame.jpeg",
-                     style = paste0(
-                       "position:absolute; top:0; left:0; width:100%; height:100%; ",
-                       "pointer-events:none;"
-                     ))
+            if (!is.null(photo_file)) {
+              tags$img(src = photo_file,
+                       style = "width:100%; height:100%; object-fit:cover; object-position:top;")
+            } else {
+              div(
+                style = "width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#e9ecef;",
+                tags$span(style = "color:#6c757d; font-size:2.5rem;",
+                          icon("user"))
+              )
+            }
           ),
           # Championships
           div(class = "mb-2",
