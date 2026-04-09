@@ -59,11 +59,12 @@ ui <- page_navbar(
     title = "Standings",
     icon = icon("trophy"),
     layout_columns(
-      col_widths = c(12),
+      col_widths = c(8, 4),
       card(
         card_header("All-Time Standings"),
         DTOutput("alltime_standings_table")
-      )
+      ),
+      div()
     )
   ),
 
@@ -1153,6 +1154,13 @@ server <- function(input, output, session) {
   output$alltime_standings_table <- renderDT({
     req(rv$standings_data)
     alltime <- compute_alltime_standings(rv$standings_data)
+
+    # Color breaks for conditional formatting
+    w_breaks <- quantile(alltime$W, probs = c(0.33, 0.66), na.rm = TRUE)
+    pf_breaks <- quantile(alltime$PF, probs = c(0.33, 0.66), na.rm = TRUE)
+    pa_breaks <- quantile(alltime$PA, probs = c(0.33, 0.66), na.rm = TRUE)
+    ppg_breaks <- quantile(alltime$`PF/G`, probs = c(0.33, 0.66), na.rm = TRUE)
+
     datatable(
       alltime,
       options = list(
@@ -1160,14 +1168,38 @@ server <- function(input, output, session) {
         dom = "t",
         order = list(list(2, "desc")),
         columnDefs = list(
-          list(width = "80px", targets = 0),
+          list(width = "70px", targets = 0),
           list(className = "dt-center", targets = 1:7)
         )
       ),
       rownames = FALSE
     ) |>
       formatPercentage("Win%", digits = 1) |>
-      formatRound(c("PF", "PA", "PF/G"), 1)
+      formatRound(c("PF", "PA", "PF/G"), 1) |>
+      formatStyle("W",
+        background = styleInterval(
+          w_breaks,
+          c("rgba(220,53,69,0.2)", "rgba(255,193,7,0.2)", "rgba(40,167,69,0.2)")
+        )
+      ) |>
+      formatStyle("PF",
+        background = styleInterval(
+          pf_breaks,
+          c("rgba(220,53,69,0.2)", "rgba(255,193,7,0.2)", "rgba(40,167,69,0.2)")
+        )
+      ) |>
+      formatStyle("PA",
+        background = styleInterval(
+          pa_breaks,
+          c("rgba(40,167,69,0.2)", "rgba(255,193,7,0.2)", "rgba(220,53,69,0.2)")
+        )
+      ) |>
+      formatStyle("PF/G",
+        background = styleInterval(
+          ppg_breaks,
+          c("rgba(220,53,69,0.2)", "rgba(255,193,7,0.2)", "rgba(40,167,69,0.2)")
+        )
+      )
   })
 
   output$wins_by_season_plot <- renderPlotly({
