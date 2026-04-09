@@ -663,93 +663,77 @@ server <- function(input, output, session) {
 
         # Photo shelf with name plaque and stat plaques
         div(
+        # Photo shelf with banners hanging on sides
+        div(
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; flex-direction:column; align-items:center; ",
-            "padding:8px 4px 6px;"
+            "display:flex; align-items:flex-start; justify-content:center; ",
+            "padding:8px 2px 6px;"
           ),
-          # Photo
-          if (!is.null(photo_file)) {
-            div(
-              style = "position:relative; flex-shrink:0;",
-              class = "owner-photo-frame",
+          # Oneseed banners (left side, hanging vertically)
+          div(
+            style = "display:flex; flex-direction:column; align-items:center; justify-content:flex-start; flex:0 0 auto; padding-top:4px;",
+            HTML(oneseed_imgs)
+          ),
+          # Center column: photo + plaques
+          div(
+            style = "display:flex; flex-direction:column; align-items:center; flex:0 0 auto; margin:0 4px;",
+            if (!is.null(photo_file)) {
               div(
-                style = "position:absolute; top:10%; left:10%; width:80%; height:80%; overflow:hidden;",
-                tags$img(src = photo_file,
-                         style = "width:100%; height:100%; object-fit:cover; object-position:top;")
-              ),
-              tags$img(src = "photos/frame.PNG",
-                       style = "position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;")
-            )
-          } else {
+                style = "position:relative; flex-shrink:0;",
+                class = "owner-photo-frame",
+                div(
+                  style = "position:absolute; top:10%; left:10%; width:80%; height:80%; overflow:hidden;",
+                  tags$img(src = photo_file,
+                           style = "width:100%; height:100%; object-fit:cover; object-position:top;")
+                ),
+                tags$img(src = "photos/frame.PNG",
+                         style = "position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;")
+              )
+            } else {
+              div(
+                class = "owner-photo-frame",
+                style = "display:flex; align-items:center; justify-content:center; flex-shrink:0; background:#2a1f18;",
+                tags$span(style = "color:#555; font-size:3rem;", icon("user"))
+              )
+            },
+            # Name plaque
             div(
-              class = "owner-photo-frame",
-              style = "display:flex; align-items:center; justify-content:center; flex-shrink:0; background:#2a1f18;",
-              tags$span(style = "color:#555; font-size:3rem;", icon("user"))
+              style = "width:100%; max-width:160px; margin-top:4px;",
+              build_plaque(NULL, o, name_style, wide = TRUE)
+            ),
+            # Record and Points plaques
+            div(
+              style = "display:flex; justify-content:center; margin-top:4px;",
+              build_plaque("Record", record, wp_style),
+              build_plaque("Points", pf, pf_style)
             )
-          },
-          # Name plaque (same width as photo frame)
-          div(
-            style = "width:100%; max-width:160px; margin-top:4px;",
-            build_plaque(NULL, o, name_style, wide = TRUE)
           ),
-          # Record and Points plaques side by side
+          # Playoff banners (right side, hanging vertically)
           div(
-            style = "display:flex; justify-content:center; margin-top:4px;",
-            build_plaque("Record", record, wp_style),
-            build_plaque("Points", pf, pf_style)
+            style = "display:flex; flex-direction:column; align-items:center; justify-content:flex-start; flex:0 0 auto; padding-top:4px;",
+            HTML(playoff_imgs)
           )
         ),
 
-        # Lombardi / Hunt split shelf
+        # Lombardi / Hunt split shelf with GFFL trophies
         div(
           class = "trophy-shelf",
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-end; padding:4px 4px 6px; overflow:hidden;"
+            "display:flex; align-items:flex-end; padding:4px 4px 6px;"
           ),
           div(
             style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
-            HTML(lombardi_imgs)
+            HTML(lombardi_imgs), HTML(gffl_imgs)
           ),
           div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
           div(
             style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
             HTML(hunt_imgs)
           )
-        ),
-
-        # GFFL trophies (left) | #1 seed banners (right) - split shelf
-        div(
-          class = "banner-shelf",
-          style = paste0(
-            "border-bottom:3px solid rgba(255,255,255,0.15); ",
-            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:center; padding:4px 4px 6px;"
-          ),
-          div(
-            style = "flex:1; display:flex; align-items:center; justify-content:center; flex-wrap:wrap;",
-            HTML(gffl_imgs)
-          ),
-          div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
-          div(
-            style = "flex:1; display:flex; align-items:center; justify-content:center; flex-wrap:wrap;",
-            HTML(oneseed_imgs)
-          )
-        ),
-
-        # Playoff banners shelf (3rd row)
-        div(
-          class = "banner-shelf",
-          style = paste0(
-            "border-bottom:3px solid rgba(255,255,255,0.15); ",
-            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:center; justify-content:center; ",
-            "flex-wrap:wrap; padding:4px 2px; overflow:hidden;"
-          ),
-          HTML(playoff_imgs)
         ),
 
         # Sacko shelf (4th row)
@@ -791,7 +775,7 @@ server <- function(input, output, session) {
         .lombardi-img { height:55px; margin:0 4px; }
         .hunt-img { height:42px; margin:0 2px; }
         .sacko-img { height:60px; width:48px; margin:0 2px; }
-        .banner-img { height:80px; margin:2px; }
+        .banner-img { height:45px; margin:1px; }
         .gffl-img { height:65px; margin:2px; }
 
         .trophy-shelf { height:80px; }
@@ -804,7 +788,7 @@ server <- function(input, output, session) {
           .lombardi-img { height:90px; margin:0 8px; }
           .hunt-img { height:70px; margin:0 5px; }
           .sacko-img { height:90px; width:70px; margin:0 4px; }
-          .banner-img { height:140px; margin:5px; }
+          .banner-img { height:60px; margin:2px; }
           .gffl-img { height:100px; margin:3px; }
 
           .trophy-shelf { height:110px; }
