@@ -431,6 +431,11 @@ server <- function(input, output, session) {
       filter(league_rank == 1) |>
       count(owner, name = "championships")
 
+    # Championship appearances: league_rank 1 or 2 (made the title game)
+    champ_appearances <- rv$standings_data |>
+      filter(league_rank <= 2) |>
+      count(owner, name = "appearances")
+
     # Sackos: worst regular season record (fewest wins, then lowest PF as tiebreaker)
     sackos <- rv$standings_data |>
       group_by(season) |>
@@ -462,6 +467,7 @@ server <- function(input, output, session) {
     build_owner_card <- function(o) {
       stats <- alltime |> filter(Team == o)
       n_champs <- if (o %in% champs$owner) champs$championships[champs$owner == o] else 0
+      n_appear <- if (o %in% champ_appearances$owner) champ_appearances$appearances[champ_appearances$owner == o] else 0
       n_sackos <- if (o %in% sackos$owner) sackos$sackos[sackos$owner == o] else 0
 
       record <- paste0(stats$W, "-", stats$L)
@@ -470,6 +476,13 @@ server <- function(input, output, session) {
       # Championship trophies - use lombardi image
       trophy_html <- if (n_champs > 0) {
         paste(rep("<img src='photos/lombardi.png' height='55' style='margin-right:4px;'>", n_champs), collapse = "")
+      } else {
+        "<span style='color:#999;'>None</span>"
+      }
+
+      # Championship appearances - use Hunt trophy image
+      appear_html <- if (n_appear > 0) {
+        paste(rep("<img src='photos/Hunt.png' height='50' style='margin-right:4px;'>", n_appear), collapse = "")
       } else {
         "<span style='color:#999;'>None</span>"
       }
@@ -523,6 +536,12 @@ server <- function(input, output, session) {
             tags$strong("Championships"),
             div(style = "min-height:40px; display:flex; align-items:center; justify-content:center;",
                 HTML(trophy_html))
+          ),
+          # Championship Appearances
+          div(class = "mb-2",
+            tags$strong("Title Game Appearances"),
+            div(style = "min-height:40px; display:flex; align-items:center; justify-content:center; flex-wrap:wrap;",
+                HTML(appear_html))
           ),
           # Sackos
           div(class = "mb-2",
