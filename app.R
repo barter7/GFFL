@@ -684,15 +684,9 @@ server <- function(input, output, session) {
             "display:flex; align-items:center; justify-content:center; ",
             "padding:8px 4px 6px;"
           ),
-          # Left side: banners + plaques
+          # Left side: plaques
           div(
             style = "flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2px;",
-            # Oneseed then playoff banners
-            div(
-              style = "display:flex; flex-wrap:wrap; justify-content:center; margin-bottom:4px;",
-              HTML(oneseed_imgs), HTML(playoff_imgs)
-            ),
-            # Stat plaques in 2-column grid
             div(
               style = "display:grid; grid-template-columns:1fr 1fr; gap:2px; width:100%;",
               build_plaque("Record", record, wp_style),
@@ -705,9 +699,9 @@ server <- function(input, output, session) {
               build_plaque("Lose Streak", lose_streak_str, get_plaque_style(99))
             )
           ),
-          # Right side: photo + name plaque
+          # Center: photo + name plaque
           div(
-            style = "display:flex; flex-direction:column; align-items:center; flex:0 0 auto; margin-left:4px;",
+            style = "display:flex; flex-direction:column; align-items:center; flex:0 0 auto; margin:0 4px;",
             if (!is.null(photo_file)) {
               div(
                 style = "position:relative; flex-shrink:0;",
@@ -732,6 +726,11 @@ server <- function(input, output, session) {
               style = "width:100%; max-width:160px; margin-top:4px;",
               build_plaque(NULL, o, name_style, wide = TRUE)
             )
+          ),
+          # Right side: banners (oneseed first, then playoffs)
+          div(
+            class = "banner-side",
+            HTML(oneseed_imgs), HTML(playoff_imgs)
           )
         ),
 
