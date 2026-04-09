@@ -745,85 +745,89 @@ server <- function(input, output, session) {
 
       div(
         class = "d-inline-block text-center mb-4",
-        style = "width:48%; min-width:160px; max-width:200px; vertical-align:top; margin:0 1%;",
+        style = "width:48%; min-width:160px; max-width:220px; vertical-align:top; margin:0 1%;",
 
+        # Canton-style alcove
         div(
-          style = "position:relative; width:160px; margin:0 auto;",
+          style = paste0(
+            "width:180px; margin:0 auto; padding:10px 10px 0; ",
+            "background: radial-gradient(ellipse at 50% 20%, #2a2a3e 0%, #0d0d1a 70%); ",
+            "border-radius:8px 8px 0 0; ",
+            "box-shadow: inset 0 10px 30px rgba(255,215,0,0.08), inset 0 -5px 15px rgba(0,0,0,0.5);"
+          ),
 
+          # Bust or fallback
           if (has_bust) {
             tags$img(
               src = bust_file,
               style = paste0(
-                "width:160px; height:200px; margin:0 auto; display:block; ",
-                "object-fit:contain; object-position:center;"
+                "width:150px; margin:0 auto; display:block; ",
+                "filter: drop-shadow(0 4px 15px rgba(255,215,0,0.15));"
+              )
+            )
+          } else if (!is.null(photo_file)) {
+            div(
+              style = paste0(
+                "width:120px; height:150px; margin:0 auto; ",
+                "border-radius:50% 50% 45% 45% / 55% 55% 45% 45%; ",
+                "overflow:hidden; ",
+                "box-shadow: 0 4px 15px rgba(255,215,0,0.15); ",
+                "padding:6px; ",
+                "background: radial-gradient(ellipse at 30% 30%, #d4a84b, #8b6914, #5c4413);"
+              ),
+              tags$img(
+                src = photo_file,
+                style = paste0(
+                  "width:100%; height:100%; ",
+                  "object-fit:cover; object-position:top; ",
+                  "border-radius:50% 50% 40% 40% / 55% 55% 45% 45%; ",
+                  "filter: sepia(0.8) saturate(0.5) brightness(0.85) contrast(1.1);"
+                )
               )
             )
           } else {
             div(
-              style = paste0(
-                "width:140px; height:170px; margin:0 auto; ",
-                "border-radius:50% 50% 45% 45% / 55% 55% 45% 45%; ",
-                "overflow:hidden; ",
-                "background: radial-gradient(ellipse at 30% 30%, #d4a84b, #8b6914, #5c4413); ",
-                "box-shadow: 0 6px 20px rgba(0,0,0,0.5), ",
-                "inset 0 -4px 10px rgba(0,0,0,0.3), ",
-                "inset 0 4px 10px rgba(255,215,0,0.2); ",
-                "padding:8px;"
-              ),
-              if (!is.null(photo_file)) {
-                tags$img(
-                  src = photo_file,
-                  style = paste0(
-                    "width:100%; height:100%; ",
-                    "object-fit:cover; object-position:top; ",
-                    "border-radius:50% 50% 40% 40% / 55% 55% 45% 45%; ",
-                    "filter: sepia(0.8) saturate(0.6) brightness(0.85) contrast(1.1); ",
-                    "mix-blend-mode: luminosity;"
-                  )
-                )
-              } else {
-                div(
-                  style = paste0(
-                    "width:100%; height:100%; display:flex; align-items:center; justify-content:center; ",
-                    "border-radius:50% 50% 40% 40% / 55% 55% 45% 45%; ",
-                    "background: radial-gradient(ellipse at 40% 35%, #c9a84c, #7a5a1e);"
-                  ),
-                  tags$span(style = "color:#5c4413; font-size:3rem; opacity:0.6;",
-                            icon("user"))
-                )
-              }
+              style = "width:120px; height:150px; margin:0 auto; display:flex; align-items:center; justify-content:center;",
+              tags$span(style = "color:#3d3d5c; font-size:4rem;", icon("user"))
             )
-          },
+          }
+        ),
 
-          # Black plaque - Owner name
+        # Pedestal base
+        div(
+          style = paste0(
+            "width:180px; margin:0 auto; ",
+            "background: linear-gradient(180deg, #1a1a1a, #2a2a2a, #1a1a1a); ",
+            "border-radius:0 0 4px 4px; ",
+            "border-top:2px solid #444; ",
+            "padding:8px 6px;"
+          ),
+          # Name plaque
           div(
             style = paste0(
-              "width:160px; margin:8px auto 4px; padding:8px 12px; ",
-              "background:#111; border:2px solid #c9a84c; border-radius:4px; ",
-              "box-shadow: 0 2px 8px rgba(0,0,0,0.5);"
+              "background:#111; border:1px solid #c9a84c; border-radius:3px; ",
+              "padding:5px 8px; margin-bottom:4px;"
             ),
             div(
-              style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:18px; letter-spacing:1px; text-transform:uppercase;",
+              style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:14px; letter-spacing:1px; text-transform:uppercase;",
               owner
             )
           ),
-
-          # Black plaque - Year
+          # Year plaque
           div(
             style = paste0(
-              "width:120px; margin:4px auto 0; padding:6px 10px; ",
-              "background:#111; border:2px solid #c9a84c; border-radius:4px; ",
-              "box-shadow: 0 2px 8px rgba(0,0,0,0.5);"
+              "background:#111; border:1px solid #c9a84c; border-radius:3px; ",
+              "padding:4px 8px;"
             ),
             div(
-              style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:20px; letter-spacing:2px;",
+              style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:16px; letter-spacing:2px;",
               yr
             )
-          ),
+          )
+        ),
 
-          # Championship roster dropdown
-          roster_html
-        )
+        # Championship roster dropdown
+        roster_html
       )
     })
 
