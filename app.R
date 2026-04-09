@@ -438,6 +438,10 @@ server <- function(input, output, session) {
     # Compute stats per owner
     alltime <- compute_alltime_standings(rv$standings_data)
 
+    # Rank owners by win% and total PF for plaque colors
+    winpct_ranked <- alltime |> arrange(desc(`Win%`)) |> mutate(winpct_rank = row_number())
+    pf_ranked <- alltime |> arrange(desc(PF)) |> mutate(pf_rank = row_number())
+
     # Championships: ESPN league_rank == 1 is the playoff champion
     champs <- rv$standings_data |>
       filter(league_rank == 1) |>
@@ -509,6 +513,70 @@ server <- function(input, output, session) {
 
       record <- paste0(stats$W, "-", stats$L)
       pf <- format(round(stats$PF, 0), big.mark = ",")
+
+      # Plaque colors based on ranking
+      wp_rank <- winpct_ranked$winpct_rank[winpct_ranked$Team == o]
+      pf_rank <- pf_ranked$pf_rank[pf_ranked$Team == o]
+
+      get_plaque_style <- function(rank) {
+        if (length(rank) == 0) rank <- 99
+        if (rank <= 3) {
+          # Gold
+          list(
+            bg = "linear-gradient(180deg, #d4a84b, #f0d675, #c9a84c, #a07828)",
+            border = "#8b6914",
+            text = "#3d2b0a",
+            shadow = "rgba(212,168,75,0.3)"
+          )
+        } else if (rank <= 6) {
+          # Silver
+          list(
+            bg = "linear-gradient(180deg, #a8a8a8, #d8d8d8, #b0b0b0, #888888)",
+            border = "#666",
+            text = "#2a2a2a",
+            shadow = "rgba(150,150,150,0.3)"
+          )
+        } else {
+          # Bronze
+          list(
+            bg = "linear-gradient(180deg, #a0714a, #cd8c5c, #b07848, #7a5430)",
+            border = "#5c3a20",
+            text = "#2a1a0a",
+            shadow = "rgba(160,113,74,0.3)"
+          )
+        }
+      }
+
+      wp_style <- get_plaque_style(wp_rank)
+      pf_style <- get_plaque_style(pf_rank)
+
+      build_plaque <- function(label, value, style) {
+        div(
+          style = paste0(
+            "flex:1; margin:2px; padding:3px; ",
+            "background: linear-gradient(135deg, #5c4413, #3d2b1a, #5c4413); ",
+            "border-radius:4px; box-shadow: 0 2px 5px rgba(0,0,0,0.4);"
+          ),
+          div(
+            style = paste0(
+              "background:", style$bg, "; ",
+              "border:1px solid ", style$border, "; ",
+              "border-radius:3px; padding:6px 4px; text-align:center; ",
+              "box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), inset 0 -1px 3px rgba(0,0,0,0.2), ",
+              "0 1px 0 ", style$shadow, ";"
+            ),
+            div(style = paste0(
+              "font-family:Georgia,serif; font-size:9px; text-transform:uppercase; ",
+              "letter-spacing:1px; color:", style$text, "; opacity:0.7;"
+            ), label),
+            div(style = paste0(
+              "font-family:Georgia,serif; font-weight:bold; font-size:14px; ",
+              "color:", style$text, "; ",
+              "text-shadow: 0 1px 0 rgba(255,255,255,0.3), 0 -1px 0 rgba(0,0,0,0.2);"
+            ), value)
+          )
+        )
+      }
 
       lombardi_imgs <- if (n_champs > 0) {
         paste(rep("<img src='photos/lombardi.png' class='trophy-img lombardi-img'>", n_champs), collapse = "")
@@ -595,16 +663,20 @@ server <- function(input, output, session) {
           tags$span(style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:16px; letter-spacing:1px; text-transform:uppercase;", o)
         ),
 
+        # Photo shelf with plaques on left and right
         div(
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-end; justify-content:center; ",
-            "padding:8px 2px 6px;"
+            "display:flex; align-items:center; justify-content:center; ",
+            "padding:8px 4px 6px;"
           ),
+          # Record plaque (left)
+          build_plaque("Record", record, wp_style),
+          # Photo (center)
           if (!is.null(photo_file)) {
             div(
-              style = "position:relative; margin:4px auto;",
+              style = "position:relative; margin:0 4px; flex-shrink:0;",
               class = "owner-photo-frame",
               div(
                 style = "position:absolute; top:10%; left:10%; width:80%; height:80%; overflow:hidden;",
@@ -616,10 +688,13 @@ server <- function(input, output, session) {
             )
           } else {
             div(
-              style = "width:140px; height:170px; display:flex; align-items:center; justify-content:center; margin:4px auto;",
-              tags$span(style = "color:#555; font-size:3.5rem;", icon("user"))
+              class = "owner-photo-frame",
+              style = "display:flex; align-items:center; justify-content:center; margin:0 4px; flex-shrink:0; background:#2a1f18;",
+              tags$span(style = "color:#555; font-size:3rem;", icon("user"))
             )
-          }
+          },
+          # Points plaque (right)
+          build_plaque("Points", pf, pf_style)
         ),
 
         # Lombardi / Hunt split shelf
@@ -684,15 +759,12 @@ server <- function(input, output, session) {
           HTML(sacko_imgs)
         ),
 
+        # Bottom trim
         div(
           style = paste0(
             "background: linear-gradient(90deg, #3d2b1a, #5c4413, #3d2b1a); ",
-            "padding:6px; text-align:center; ",
-            "border-top:2px solid #8b6914;"
-          ),
-          tags$span(style = "color:#d4a84b; font-size:12px;", record),
-          tags$span(style = "color:#8b6914; font-size:12px;", " | "),
-          tags$span(style = "color:#d4a84b; font-size:12px;", paste0("PF: ", pf))
+            "height:8px; border-top:2px solid #8b6914;"
+          )
         )
       )
     }
