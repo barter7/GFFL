@@ -649,8 +649,12 @@ server <- function(input, output, session) {
       # Check for bust image first, then regular photo
       bust_file <- NULL
       photo_file <- NULL
-      if (file.exists(file.path("www", "photos", paste0(owner, "_bust.png")))) {
-        bust_file <- paste0("photos/", owner, "_bust.png")
+      bust_file <- NULL
+      for (bust_ext in c(".png", ".jpg", ".jpeg")) {
+        if (file.exists(file.path("www", "photos", paste0(owner, "_bust", bust_ext)))) {
+          bust_file <- paste0("photos/", owner, "_bust", bust_ext)
+          break
+        }
       }
       for (ext in c(".jpg", ".jpeg", ".png")) {
         if (file.exists(file.path("www", "photos", paste0(owner, ext)))) {
@@ -746,80 +750,96 @@ server <- function(input, output, session) {
         class = "d-inline-block text-center mb-4",
         style = "width:48%; min-width:160px; max-width:220px; vertical-align:top; margin:0 1%;",
 
-        # Canton-style alcove
+        # Elegant Canton alcove with warm spotlight
         div(
           style = paste0(
-            "width:180px; margin:0 auto; padding:10px 10px 0; ",
-            "background: radial-gradient(ellipse at 50% 20%, #2a2a3e 0%, #0d0d1a 70%); ",
-            "border-radius:8px 8px 0 0; ",
-            "box-shadow: inset 0 10px 30px rgba(255,215,0,0.08), inset 0 -5px 15px rgba(0,0,0,0.5);"
+            "width:190px; margin:0 auto; ",
+            "background: radial-gradient(ellipse at 50% 0%, #3a2a1a 0%, #1a1008 40%, #0a0804 100%); ",
+            "border-radius:50% 50% 0 0 / 20% 20% 0 0; ",
+            "padding:20px 10px 0; ",
+            "box-shadow: inset 0 20px 60px rgba(212,168,75,0.12), ",
+            "inset 0 -10px 20px rgba(0,0,0,0.8); ",
+            "border:1px solid #2a1f14; border-bottom:none;"
           ),
 
-          # Bust or fallback
-          if (has_bust) {
-            tags$img(
-              src = bust_file,
-              style = paste0(
-                "width:150px; margin:0 auto; display:block; ",
-                "filter: drop-shadow(0 4px 15px rgba(255,215,0,0.15));"
-              )
-            )
-          } else if (!is.null(photo_file)) {
-            div(
-              style = paste0(
-                "width:120px; height:150px; margin:0 auto; ",
-                "border-radius:50% 50% 45% 45% / 55% 55% 45% 45%; ",
-                "overflow:hidden; ",
-                "box-shadow: 0 4px 15px rgba(255,215,0,0.15); ",
-                "padding:6px; ",
-                "background: radial-gradient(ellipse at 30% 30%, #d4a84b, #8b6914, #5c4413);"
-              ),
+          # Spotlight glow behind bust
+          div(
+            style = paste0(
+              "position:relative; ",
+              "background: radial-gradient(ellipse at 50% 40%, rgba(212,168,75,0.1) 0%, transparent 70%); ",
+              "padding:10px 0;"
+            ),
+
+            if (has_bust) {
               tags$img(
-                src = photo_file,
+                src = bust_file,
                 style = paste0(
-                  "width:100%; height:100%; ",
-                  "object-fit:cover; object-position:top; ",
-                  "border-radius:50% 50% 40% 40% / 55% 55% 45% 45%; ",
-                  "filter: sepia(0.8) saturate(0.5) brightness(0.85) contrast(1.1);"
+                  "width:160px; margin:0 auto; display:block; ",
+                  "filter: drop-shadow(0 5px 20px rgba(212,168,75,0.25)) ",
+                  "drop-shadow(0 2px 6px rgba(0,0,0,0.5));"
                 )
               )
-            )
-          } else {
-            div(
-              style = "width:120px; height:150px; margin:0 auto; display:flex; align-items:center; justify-content:center;",
-              tags$span(style = "color:#3d3d5c; font-size:4rem;", icon("user"))
-            )
-          }
+            } else if (!is.null(photo_file)) {
+              div(
+                style = paste0(
+                  "width:120px; height:150px; margin:0 auto; ",
+                  "border-radius:50% 50% 45% 45% / 55% 55% 45% 45%; ",
+                  "overflow:hidden; padding:5px; ",
+                  "background: radial-gradient(ellipse at 30% 30%, #d4a84b, #8b6914, #5c4413); ",
+                  "box-shadow: 0 5px 20px rgba(212,168,75,0.2);"
+                ),
+                tags$img(
+                  src = photo_file,
+                  style = paste0(
+                    "width:100%; height:100%; ",
+                    "object-fit:cover; object-position:top; ",
+                    "border-radius:50% 50% 40% 40% / 55% 55% 45% 45%; ",
+                    "filter: sepia(0.8) saturate(0.5) brightness(0.85) contrast(1.1);"
+                  )
+                )
+              )
+            } else {
+              div(
+                style = "width:120px; height:150px; margin:0 auto; display:flex; align-items:center; justify-content:center;",
+                tags$span(style = "color:#3d2b1a; font-size:4rem;", icon("user"))
+              )
+            }
+          )
         ),
 
-        # Pedestal base
+        # Marble pedestal with plaques
         div(
           style = paste0(
-            "width:180px; margin:0 auto; ",
-            "background: linear-gradient(180deg, #1a1a1a, #2a2a2a, #1a1a1a); ",
-            "border-radius:0 0 4px 4px; ",
-            "border-top:2px solid #444; ",
-            "padding:8px 6px;"
+            "width:190px; margin:0 auto; ",
+            "background: linear-gradient(180deg, #2a2018, #1a1510 30%, #0f0c08 70%, #1a1510); ",
+            "border:1px solid #2a1f14; border-top:3px solid #8b6914; ",
+            "border-radius:0 0 6px 6px; ",
+            "padding:10px 8px; ",
+            "box-shadow: 0 8px 25px rgba(0,0,0,0.6);"
           ),
           # Name plaque
           div(
             style = paste0(
-              "background:#111; border:1px solid #c9a84c; border-radius:3px; ",
-              "padding:5px 8px; margin-bottom:4px;"
+              "background: linear-gradient(180deg, #151515, #0a0a0a); ",
+              "border:2px solid #c9a84c; border-radius:3px; ",
+              "padding:6px 10px; margin-bottom:5px; ",
+              "box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), 0 1px 0 rgba(201,168,76,0.3);"
             ),
             div(
-              style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:14px; letter-spacing:1px; text-transform:uppercase;",
+              style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:15px; letter-spacing:2px; text-transform:uppercase; text-shadow: 0 1px 2px rgba(0,0,0,0.5);",
               owner
             )
           ),
           # Year plaque
           div(
             style = paste0(
-              "background:#111; border:1px solid #c9a84c; border-radius:3px; ",
-              "padding:4px 8px;"
+              "background: linear-gradient(180deg, #151515, #0a0a0a); ",
+              "border:2px solid #c9a84c; border-radius:3px; ",
+              "padding:5px 10px; ",
+              "box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), 0 1px 0 rgba(201,168,76,0.3);"
             ),
             div(
-              style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:16px; letter-spacing:2px;",
+              style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:18px; letter-spacing:3px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);",
               yr
             )
           )
