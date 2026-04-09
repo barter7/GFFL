@@ -541,14 +541,14 @@ server <- function(input, output, session) {
       worst_season <- owner_seasons |> arrange(h2h_wins, points_for) |> head(1)
       most_pf_season <- owner_seasons |> arrange(desc(points_for)) |> head(1)
 
-      best_record_str <- paste0(best_season$h2h_wins, "-", best_season$h2h_losses, " '", substr(best_season$season, 3, 4))
-      worst_record_str <- paste0(worst_season$h2h_wins, "-", worst_season$h2h_losses, " '", substr(worst_season$season, 3, 4))
-      most_pf_str <- paste0(format(round(most_pf_season$points_for, 0), big.mark = ","), " '", substr(most_pf_season$season, 3, 4))
+      best_record_str <- paste0(best_season$h2h_wins, "-", best_season$h2h_losses)
+      worst_record_str <- paste0(worst_season$h2h_wins, "-", worst_season$h2h_losses)
+      most_pf_str <- format(round(most_pf_season$points_for, 0), big.mark = ",")
 
       # Weekly best
       owner_weeks <- rv$schedule_data |> filter(.data[[name_col_sched]] == o)
       best_week <- owner_weeks |> arrange(desc(franchise_score)) |> head(1)
-      most_pw_str <- if (nrow(best_week) > 0) paste0(round(best_week$franchise_score, 1)) else "N/A"
+      most_pw_str <- if (nrow(best_week) > 0) paste0(round(best_week$franchise_score, 0)) else "N/A"
 
       # Streaks
       owner_games <- owner_weeks |> arrange(season, week)
@@ -763,12 +763,12 @@ server <- function(input, output, session) {
               style = "display:grid; grid-template-columns:1fr 1fr; gap:3px; width:80%;",
               build_plaque("Record", record, wp_style),
               build_plaque("Points", pf, pf_style),
-              build_plaque("Best Rec", best_record_str, get_plaque_style(best_rec_rank)),
-              build_plaque("Worst Rec", worst_record_str, get_plaque_style(worst_rec_rank)),
-              build_plaque("Most Pts (S)", most_pf_str, get_plaque_style(best_pf_rank)),
-              build_plaque("Most Pts (W)", most_pw_str, get_plaque_style(best_wk_rank)),
-              build_plaque("Win Streak", win_streak_str, get_plaque_style(wstreak_rank)),
-              build_plaque("Lose Streak", lose_streak_str, get_plaque_style(lstreak_rank))
+              build_plaque("Best", best_record_str, get_plaque_style(best_rec_rank)),
+              build_plaque("Worst", worst_record_str, get_plaque_style(worst_rec_rank)),
+              build_plaque("Pts (S)", most_pf_str, get_plaque_style(best_pf_rank)),
+              build_plaque("Pts (W)", most_pw_str, get_plaque_style(best_wk_rank)),
+              build_plaque("W Streak", win_streak_str, get_plaque_style(wstreak_rank)),
+              build_plaque("L Streak", lose_streak_str, get_plaque_style(lstreak_rank))
             )
           ),
           # Center: photo + name plaque
@@ -867,7 +867,6 @@ server <- function(input, output, session) {
         .trophy-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
         @media (max-width:768px) { .trophy-grid { grid-template-columns: 1fr; } }
         .photo-shelf-row { display:flex; align-items:center; justify-content:center; }
-        @media (max-width:768px) { .photo-shelf-row { flex-direction:column; } }
 
         /* Mobile sizes */
         .trophy-img { object-fit:contain; }
