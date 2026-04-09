@@ -268,6 +268,57 @@ compute_owner_vs_owner <- function(schedule_data, reg_season_only = TRUE) {
 }
 
 # =============================================================================
+# CHAMPIONSHIP ROSTERS
+# =============================================================================
+
+#' Get the starting roster for each championship team in their title game
+#' @param starters_data Combined starters data from all seasons
+#' @param standings_data Combined standings data (needs league_rank)
+#' @param schedule_data Combined schedule data (to find championship week)
+#' @return Tibble with championship starters per season
+get_championship_rosters <- function(starters_data, standings_data, schedule_data) {
+  if (is.null(starters_data) || nrow(starters_data) == 0) return(NULL)
+
+  # Get champion franchise_id per season
+  champs <- standings_data |>
+    dplyr::filter(league_rank == 1) |>
+    dplyr::select(season, franchise_id, franchise_name)
+
+  # Find the final week (championship week) per season
+  final_weeks <- schedule_data |>
+    dplyr::group_by(season) |>
+    dplyr::summarise(champ_week = max(week, na.rm = TRUE), .groups = "drop")
+
+  champs <- champs |>
+    dplyr::left_join(final_weeks, by = "season")
+
+  # Get starters (not bench/IR) for the champion in the championship week
+  results <- list()
+  for (i in seq_len(nrow(champs))) {
+    ch <- champs[i, ]
+    roster <- starters_data |>
+      dplyr::filter(
+        season == ch$season,
+        franchise_id == ch$franchise_id,
+        week == ch$champ_week,
+        !lineup_slot %in% c("BE", "IR")
+      ) |>
+      dplyr::select(
+        dplyr::any_of(c("season", "week", "franchise_id", "franchise_name",
+                         "player_id", "player_name", "pos", "team",
+                         "player_score", "projected_score", "lineup_slot"))
+      ) |>
+      dplyr::arrange(dplyr::desc(player_score))
+
+    if (nrow(roster) > 0) {
+      results[[length(results) + 1]] <- roster
+    }
+  }
+
+  dplyr::bind_rows(results)
+}
+
+# =============================================================================
 # PLAYER OWNERSHIP METRICS
 # =============================================================================
 
