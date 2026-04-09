@@ -1039,30 +1039,44 @@ server <- function(input, output, session) {
             "padding:10px 8px; ",
             "box-shadow: 0 8px 25px rgba(0,0,0,0.6);"
           ),
-          # Name plaque
+          # Name plaque - metallic gold with black engraved text
           div(
             style = paste0(
-              "background: linear-gradient(180deg, #151515, #0a0a0a); ",
-              "border:2px solid #c9a84c; border-radius:3px; ",
-              "padding:6px 10px; margin-bottom:5px; ",
-              "box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), 0 1px 0 rgba(201,168,76,0.3);"
+              "padding:2px; margin-bottom:5px; ",
+              "background: linear-gradient(135deg, #5c4413, #3d2b1a, #5c4413); ",
+              "border-radius:4px; box-shadow: 0 2px 5px rgba(0,0,0,0.4);"
             ),
             div(
-              style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:15px; letter-spacing:2px; text-transform:uppercase; text-shadow: 0 1px 2px rgba(0,0,0,0.5);",
-              owner
+              style = paste0(
+                "background: linear-gradient(180deg, #d4a84b, #f0d675, #c9a84c, #a07828); ",
+                "border:1px solid #8b6914; border-radius:3px; ",
+                "padding:6px 10px; text-align:center; ",
+                "box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), inset 0 -1px 3px rgba(0,0,0,0.2);"
+              ),
+              div(
+                style = "color:#3d2b0a; font-family:Georgia,serif; font-weight:bold; font-size:15px; letter-spacing:2px; text-transform:uppercase; text-shadow: 0 1px 0 rgba(255,255,255,0.3), 0 -1px 0 rgba(0,0,0,0.2);",
+                owner
+              )
             )
           ),
-          # Year plaque
+          # Year plaque - metallic gold with black engraved text
           div(
             style = paste0(
-              "background: linear-gradient(180deg, #151515, #0a0a0a); ",
-              "border:2px solid #c9a84c; border-radius:3px; ",
-              "padding:5px 10px; ",
-              "box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), 0 1px 0 rgba(201,168,76,0.3);"
+              "padding:2px; ",
+              "background: linear-gradient(135deg, #5c4413, #3d2b1a, #5c4413); ",
+              "border-radius:4px; box-shadow: 0 2px 5px rgba(0,0,0,0.4);"
             ),
             div(
-              style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:18px; letter-spacing:3px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);",
-              yr
+              style = paste0(
+                "background: linear-gradient(180deg, #d4a84b, #f0d675, #c9a84c, #a07828); ",
+                "border:1px solid #8b6914; border-radius:3px; ",
+                "padding:5px 10px; text-align:center; ",
+                "box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), inset 0 -1px 3px rgba(0,0,0,0.2);"
+              ),
+              div(
+                style = "color:#3d2b0a; font-family:Georgia,serif; font-weight:bold; font-size:18px; letter-spacing:3px; text-shadow: 0 1px 0 rgba(255,255,255,0.3), 0 -1px 0 rgba(0,0,0,0.2);",
+                yr
+              )
             )
           )
         ),
