@@ -556,7 +556,7 @@ server <- function(input, output, session) {
 
     tagList(
       layout_column_wrap(
-        width = "250px",
+        width = "160px",
         !!!active_cards
       ),
       if (length(legacy_cards) > 0) {
@@ -565,7 +565,7 @@ server <- function(input, output, session) {
           h4(class = "text-muted text-center mt-4 mb-3",
              icon("clock-rotate-left"), " Legacy Owners"),
           layout_column_wrap(
-            width = "250px",
+            width = "160px",
             !!!legacy_cards
           )
         )
@@ -610,8 +610,8 @@ server <- function(input, output, session) {
       display_file <- if (has_bust) bust_file else photo_file
 
       div(
-        class = "d-inline-block text-center mx-3 mb-4",
-        style = "width:200px; vertical-align:top;",
+        class = "d-inline-block text-center mb-4",
+        style = "width:48%; min-width:160px; max-width:200px; vertical-align:top; margin:0 1%;",
 
         # Bust display
         div(
