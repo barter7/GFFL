@@ -488,23 +488,33 @@ server <- function(input, output, session) {
         card_header(class = "fw-bold fs-6", o),
         card_body(
           style = "padding:8px;",
-          # Owner photo with ornate frame
+          # Owner photo with ornate gold frame
           div(
             style = paste0(
-              "width:140px; height:170px; margin:0 auto 12px; ",
-              "border-image:url('photos/frame.jpeg') 80 fill / 20px; ",
-              "overflow:hidden;"
+              "width:120px; height:150px; margin:0 auto 8px; padding:8px; ",
+              "background: linear-gradient(135deg, #a07828, #c9a84c 15%, #f0d675 30%, #c9a84c 45%, #8b6914 55%, #c9a84c 70%, #f0d675 85%, #a07828); ",
+              "border-radius:3px; ",
+              "box-shadow: 0 3px 10px rgba(0,0,0,0.4), inset 0 1px 3px rgba(255,255,255,0.3); ",
+              "position:relative;"
             ),
-            if (!is.null(photo_file)) {
-              tags$img(src = photo_file,
-                       style = "width:100%; height:100%; object-fit:cover; object-position:top;")
-            } else {
-              div(
-                style = "width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#e9ecef;",
-                tags$span(style = "color:#6c757d; font-size:2.5rem;",
-                          icon("user"))
-              )
-            }
+            div(
+              style = paste0(
+                "width:100%; height:100%; ",
+                "border:2px solid #6b4e1a; ",
+                "box-shadow: inset 0 0 6px rgba(0,0,0,0.5), 0 0 0 1px #d4a84b; ",
+                "overflow:hidden; background:#e9ecef;"
+              ),
+              if (!is.null(photo_file)) {
+                tags$img(src = photo_file,
+                         style = "width:100%; height:100%; object-fit:cover; object-position:top;")
+              } else {
+                div(
+                  style = "width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#e9ecef;",
+                  tags$span(style = "color:#6c757d; font-size:2rem;",
+                            icon("user"))
+                )
+              }
+            )
           ),
           # Championships
           div(class = "mb-2",
@@ -546,18 +556,18 @@ server <- function(input, output, session) {
     legacy_cards <- lapply(legacy_sorted, build_owner_card)
 
     tagList(
-      layout_column_wrap(
-        width = "145px",
-        !!!active_cards
+      div(
+        style = "display:grid; grid-template-columns: repeat(2, 1fr); gap:8px;",
+        active_cards
       ),
       if (length(legacy_cards) > 0) {
         tagList(
           hr(),
           h4(class = "text-muted text-center mt-4 mb-3",
              icon("clock-rotate-left"), " Legacy Owners"),
-          layout_column_wrap(
-            width = "145px",
-            !!!legacy_cards
+          div(
+            style = "display:grid; grid-template-columns: repeat(2, 1fr); gap:8px;",
+            legacy_cards
           )
         )
       }
