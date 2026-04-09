@@ -485,8 +485,9 @@ server <- function(input, output, session) {
 
       card(
         class = "text-center",
-        card_header(class = "fw-bold fs-5", o),
+        card_header(class = "fw-bold fs-6", o),
         card_body(
+          style = "padding:8px;",
           # Owner photo with ornate frame
           div(
             style = paste0(
@@ -546,7 +547,7 @@ server <- function(input, output, session) {
 
     tagList(
       layout_column_wrap(
-        width = "160px",
+        width = "145px",
         !!!active_cards
       ),
       if (length(legacy_cards) > 0) {
@@ -555,7 +556,7 @@ server <- function(input, output, session) {
           h4(class = "text-muted text-center mt-4 mb-3",
              icon("clock-rotate-left"), " Legacy Owners"),
           layout_column_wrap(
-            width = "160px",
+            width = "145px",
             !!!legacy_cards
           )
         )
