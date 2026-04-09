@@ -505,7 +505,7 @@ server <- function(input, output, session) {
           # Owner photo with ornate frame overlay
           div(
             style = paste0(
-              "width:130px; height:160px; margin:0 auto 8px; ",
+              "width:180px; height:220px; margin:0 auto 8px; ",
               "position:relative;"
             ),
             # Photo layer (behind the frame)
