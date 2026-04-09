@@ -268,6 +268,54 @@ compute_owner_vs_owner <- function(schedule_data, reg_season_only = TRUE) {
 }
 
 # =============================================================================
+# PLAYER OWNERSHIP METRICS
+# =============================================================================
+
+#' Compute player ownership metrics per season/owner
+#' @param starters_data Combined starters data (includes bench via lineup_slot)
+#' @param owner_map Owner mapping from build_owner_map()
+#' @return Tibble with one row per player-season-owner with ownership metrics
+compute_player_ownership <- function(starters_data, owner_map = NULL) {
+  if (is.null(starters_data) || nrow(starters_data) == 0) return(NULL)
+
+  # Attach owner names
+  if (!is.null(owner_map) && nrow(owner_map) > 0) {
+    starters_data <- starters_data |>
+      dplyr::left_join(
+        owner_map |> dplyr::select(season, franchise_id, owner),
+        by = c("season", "franchise_id")
+      ) |>
+      dplyr::mutate(owner = ifelse(is.na(owner), franchise_name, owner))
+  } else {
+    starters_data$owner <- starters_data$franchise_name
+  }
+
+  # Number of owners per player per season (computed separately)
+  n_owners <- starters_data |>
+    dplyr::group_by(season, player_id, player_name) |>
+    dplyr::summarise(num_owners = dplyr::n_distinct(franchise_id), .groups = "drop")
+
+  # Main aggregation: per player, per season, per owner
+  player_stats <- starters_data |>
+    dplyr::group_by(season, player_id, player_name, pos, team, franchise_id, owner) |>
+    dplyr::summarise(
+      acquired = min(week, na.rm = TRUE),
+      weeks_owned = dplyr::n_distinct(week),
+      points_owned = round(sum(player_score, na.rm = TRUE), 1),
+      points_started = round(sum(
+        ifelse(!lineup_slot %in% c("BE", "IR"), player_score, 0),
+        na.rm = TRUE
+      ), 1),
+      weeks_started = sum(!lineup_slot %in% c("BE", "IR")),
+      .groups = "drop"
+    ) |>
+    dplyr::left_join(n_owners, by = c("season", "player_id", "player_name")) |>
+    dplyr::arrange(season, owner, dplyr::desc(points_owned))
+
+  player_stats
+}
+
+# =============================================================================
 # RECORDS BOOK
 # =============================================================================
 

@@ -217,6 +217,21 @@ ui <- page_navbar(
         card_header("Most Appearances in Top 25"),
         plotlyOutput("top_appearances_plot", height = "400px")
       )
+    ),
+    layout_columns(
+      col_widths = c(12),
+      card(
+        card_header(
+          class = "d-flex justify-content-between align-items-center",
+          "Player Ownership Stats",
+          div(
+            class = "d-flex gap-2",
+            selectInput("ownership_season", label = NULL, choices = NULL, width = "120px"),
+            selectInput("ownership_owner", label = NULL, choices = NULL, width = "150px")
+          )
+        ),
+        DTOutput("ownership_table")
+      )
     )
   ),
 
@@ -376,6 +391,12 @@ server <- function(input, output, session) {
                           choices = sort(loaded, decreasing = TRUE))
         updateSelectInput(session, "perf_season",
                           choices = c("All-Time", sort(loaded, decreasing = TRUE)))
+        updateSelectInput(session, "ownership_season",
+                          choices = c("All", sort(loaded, decreasing = TRUE)))
+        if (!is.null(rv$all_owners)) {
+          updateSelectInput(session, "ownership_owner",
+                            choices = c("All", sort(rv$all_owners)))
+        }
       }
     })
 
@@ -1071,6 +1092,44 @@ server <- function(input, output, session) {
       labs(x = NULL, y = "Appearances in Top 100 Scores") +
       theme_minimal()
     ggplotly(p, tooltip = c("y"))
+  })
+
+  # Player ownership stats table
+  output$ownership_table <- renderDT({
+    req(rv$starters_data)
+    ownership <- compute_player_ownership(rv$starters_data, rv$owner_map)
+    if (is.null(ownership)) return(NULL)
+
+    df <- ownership
+
+    # Filter by season
+    if (!is.null(input$ownership_season) && input$ownership_season != "All") {
+      df <- df |> filter(season == as.integer(input$ownership_season))
+    }
+
+    # Filter by owner
+    if (!is.null(input$ownership_owner) && input$ownership_owner != "All") {
+      df <- df |> filter(owner == input$ownership_owner)
+    }
+
+    df <- df |>
+      select(
+        Season = season,
+        Player = player_name,
+        Pos = pos,
+        Team = team,
+        Owner = owner,
+        Acquired = acquired,
+        `Weeks Owned` = weeks_owned,
+        `Weeks Started` = weeks_started,
+        `Pts Owned` = points_owned,
+        `Pts Started` = points_started,
+        `# Owners` = num_owners
+      ) |>
+      arrange(desc(`Pts Owned`))
+
+    datatable(df, options = list(pageLength = 25, dom = "ftp"),
+              rownames = FALSE, filter = "top")
   })
 
   # ==========================================================================
