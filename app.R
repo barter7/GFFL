@@ -592,8 +592,12 @@ server <- function(input, output, session) {
       team_name <- trimws(row$franchise_name)
       record <- paste0(row$h2h_wins, "-", row$h2h_losses)
 
-      # Find owner photo
+      # Check for bust image first, then regular photo
+      bust_file <- NULL
       photo_file <- NULL
+      if (file.exists(file.path("www", "photos", paste0(owner, "_bust.png")))) {
+        bust_file <- paste0("photos/", owner, "_bust.png")
+      }
       for (ext in c(".jpg", ".jpeg", ".png")) {
         if (file.exists(file.path("www", "photos", paste0(owner, ext)))) {
           photo_file <- paste0("photos/", owner, ext)
@@ -601,51 +605,64 @@ server <- function(input, output, session) {
         }
       }
 
+      # Use bust image if available (no CSS filter needed), otherwise CSS bronze effect
+      has_bust <- !is.null(bust_file)
+      display_file <- if (has_bust) bust_file else photo_file
+
       div(
         class = "d-inline-block text-center mx-3 mb-4",
         style = "width:200px; vertical-align:top;",
 
-        # Bronze bust pedestal
+        # Bust display
         div(
-          style = paste0(
-            "position:relative; width:160px; margin:0 auto; "
-          ),
+          style = "position:relative; width:160px; margin:0 auto;",
 
-          # Bust photo with bronze effect
-          div(
-            style = paste0(
-              "width:140px; height:170px; margin:0 auto; ",
-              "border-radius:50% 50% 45% 45% / 55% 55% 45% 45%; ",
-              "overflow:hidden; ",
-              "background: radial-gradient(ellipse at 30% 30%, #d4a84b, #8b6914, #5c4413); ",
-              "box-shadow: 0 6px 20px rgba(0,0,0,0.5), ",
-              "inset 0 -4px 10px rgba(0,0,0,0.3), ",
-              "inset 0 4px 10px rgba(255,215,0,0.2); ",
-              "padding:8px;"
-            ),
-            if (!is.null(photo_file)) {
-              tags$img(
-                src = photo_file,
-                style = paste0(
-                  "width:100%; height:100%; ",
-                  "object-fit:cover; object-position:top; ",
-                  "border-radius:50% 50% 40% 40% / 55% 55% 45% 45%; ",
-                  "filter: sepia(0.8) saturate(0.6) brightness(0.85) contrast(1.1); ",
-                  "mix-blend-mode: luminosity;"
+          if (has_bust) {
+            # Real bust image - display as-is, no frame needed
+            tags$img(
+              src = bust_file,
+              style = paste0(
+                "width:160px; height:200px; margin:0 auto; display:block; ",
+                "object-fit:contain; object-position:center;"
+              )
+            )
+          } else {
+            # CSS bronze effect on regular photo
+            div(
+              style = paste0(
+                "width:140px; height:170px; margin:0 auto; ",
+                "border-radius:50% 50% 45% 45% / 55% 55% 45% 45%; ",
+                "overflow:hidden; ",
+                "background: radial-gradient(ellipse at 30% 30%, #d4a84b, #8b6914, #5c4413); ",
+                "box-shadow: 0 6px 20px rgba(0,0,0,0.5), ",
+                "inset 0 -4px 10px rgba(0,0,0,0.3), ",
+                "inset 0 4px 10px rgba(255,215,0,0.2); ",
+                "padding:8px;"
+              ),
+              if (!is.null(photo_file)) {
+                tags$img(
+                  src = photo_file,
+                  style = paste0(
+                    "width:100%; height:100%; ",
+                    "object-fit:cover; object-position:top; ",
+                    "border-radius:50% 50% 40% 40% / 55% 55% 45% 45%; ",
+                    "filter: sepia(0.8) saturate(0.6) brightness(0.85) contrast(1.1); ",
+                    "mix-blend-mode: luminosity;"
+                  )
                 )
-              )
-            } else {
-              div(
-                style = paste0(
-                  "width:100%; height:100%; display:flex; align-items:center; justify-content:center; ",
-                  "border-radius:50% 50% 40% 40% / 55% 55% 45% 45%; ",
-                  "background: radial-gradient(ellipse at 40% 35%, #c9a84c, #7a5a1e);"
-                ),
-                tags$span(style = "color:#5c4413; font-size:3rem; opacity:0.6;",
-                          icon("user"))
-              )
-            }
-          ),
+              } else {
+                div(
+                  style = paste0(
+                    "width:100%; height:100%; display:flex; align-items:center; justify-content:center; ",
+                    "border-radius:50% 50% 40% 40% / 55% 55% 45% 45%; ",
+                    "background: radial-gradient(ellipse at 40% 35%, #c9a84c, #7a5a1e);"
+                  ),
+                  tags$span(style = "color:#5c4413; font-size:3rem; opacity:0.6;",
+                            icon("user"))
+                )
+              }
+            )
+          },
 
           # Bronze nameplate base
           div(
