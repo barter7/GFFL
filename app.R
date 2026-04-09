@@ -664,30 +664,29 @@ server <- function(input, output, session) {
             )
           },
 
-          # Bronze nameplate base
+          # Black plaque with gold text - Owner name
           div(
             style = paste0(
-              "width:170px; margin:-5px auto 0; padding:10px 8px 8px; ",
-              "background: linear-gradient(180deg, #b8932b, #d4a84b 30%, #c9984a 70%, #8b6914); ",
-              "border-radius:0 0 8px 8px; ",
-              "box-shadow: 0 4px 12px rgba(0,0,0,0.4); ",
-              "border-top:2px solid #5c4413;"
+              "width:160px; margin:8px auto 4px; padding:8px 12px; ",
+              "background:#111; border:2px solid #c9a84c; border-radius:4px; ",
+              "box-shadow: 0 2px 8px rgba(0,0,0,0.5);"
             ),
             div(
-              style = "color:#3d2b0a; font-family:Georgia,serif; font-weight:bold; font-size:16px; line-height:1.2;",
+              style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:18px; letter-spacing:1px; text-transform:uppercase;",
               owner
+            )
+          ),
+
+          # Black plaque with gold text - Year
+          div(
+            style = paste0(
+              "width:120px; margin:4px auto 0; padding:6px 10px; ",
+              "background:#111; border:2px solid #c9a84c; border-radius:4px; ",
+              "box-shadow: 0 2px 8px rgba(0,0,0,0.5);"
             ),
             div(
-              style = "color:#5c4413; font-family:Georgia,serif; font-size:22px; font-weight:bold; margin:2px 0;",
+              style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:20px; letter-spacing:2px;",
               yr
-            ),
-            div(
-              style = "color:#3d2b0a; font-size:11px; font-style:italic;",
-              paste0('"', team_name, '"')
-            ),
-            div(
-              style = "color:#5c4413; font-size:11px; margin-top:2px;",
-              record
             )
           )
         )
