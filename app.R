@@ -507,11 +507,11 @@ server <- function(input, output, session) {
         }
       }
 
-      # Glass shelf style
+      # Glass shelf style - always show all 3 trophy shelves for uniform height
       shelf_style <- paste0(
         "border-bottom:3px solid rgba(255,255,255,0.15); ",
         "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-        "min-height:50px; display:flex; align-items:flex-end; justify-content:center; ",
+        "height:75px; display:flex; align-items:flex-end; justify-content:center; ",
         "flex-wrap:wrap; padding:4px 2px 6px;"
       )
 
@@ -536,18 +536,23 @@ server <- function(input, output, session) {
         div(
           style = paste0(
             "background: linear-gradient(90deg, #3d2b1a, #5c4413, #3d2b1a); ",
-            "padding:6px; text-align:center; ",
+            "padding:8px; text-align:center; ",
             "border-bottom:2px solid #8b6914;"
           ),
-          tags$span(style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:15px; letter-spacing:1px; text-transform:uppercase;", o)
+          tags$span(style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:16px; letter-spacing:1px; text-transform:uppercase;", o)
         ),
 
-        # Owner photo on top shelf
+        # Owner photo on top shelf - BIGGER
         div(
-          style = shelf_style,
+          style = paste0(
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "display:flex; align-items:flex-end; justify-content:center; ",
+            "padding:8px 2px 6px;"
+          ),
           if (!is.null(photo_file)) {
             div(
-              style = "position:relative; width:100px; height:120px; margin:4px auto;",
+              style = "position:relative; width:160px; height:190px; margin:4px auto;",
               div(
                 style = "position:absolute; top:10%; left:10%; width:80%; height:80%; overflow:hidden;",
                 tags$img(src = photo_file,
@@ -558,26 +563,20 @@ server <- function(input, output, session) {
             )
           } else {
             div(
-              style = "width:80px; height:100px; display:flex; align-items:center; justify-content:center; margin:4px auto;",
-              tags$span(style = "color:#555; font-size:2.5rem;", icon("user"))
+              style = "width:140px; height:170px; display:flex; align-items:center; justify-content:center; margin:4px auto;",
+              tags$span(style = "color:#555; font-size:3.5rem;", icon("user"))
             )
           }
         ),
 
-        # Championship shelf (Lombardis)
-        if (nchar(lombardi_imgs) > 0) {
-          div(style = shelf_style, HTML(lombardi_imgs))
-        },
+        # Championship shelf (always shown)
+        div(style = shelf_style, HTML(lombardi_imgs)),
 
-        # Title game shelf (Hunt trophies)
-        if (nchar(hunt_imgs) > 0) {
-          div(style = shelf_style, HTML(hunt_imgs))
-        },
+        # Title game shelf (always shown)
+        div(style = shelf_style, HTML(hunt_imgs)),
 
-        # Sacko shelf
-        if (nchar(sacko_imgs) > 0) {
-          div(style = shelf_style, HTML(sacko_imgs))
-        },
+        # Sacko shelf (always shown)
+        div(style = shelf_style, HTML(sacko_imgs)),
 
         # Stats on bottom plaque
         div(
@@ -600,18 +599,18 @@ server <- function(input, output, session) {
     legacy_cards <- lapply(legacy_sorted, build_owner_card)
 
     div(
-      style = "background: linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%); padding:16px; border-radius:12px;",
+      style = "background:#e8e0d4; padding:20px; border-radius:12px;",
       div(
-        style = "display:grid; grid-template-columns: repeat(2, 1fr); gap:8px;",
+        style = "display:grid; grid-template-columns: repeat(2, 1fr); gap:16px;",
         active_cards
       ),
       if (length(legacy_cards) > 0) {
         tagList(
-          tags$hr(style = "border-color:#333;"),
-          h4(style = "color:#888; text-align:center; margin-top:16px; margin-bottom:12px;",
+          tags$hr(style = "border-color:#aaa;"),
+          h4(style = "color:#666; text-align:center; margin-top:16px; margin-bottom:12px;",
              icon("clock-rotate-left"), " Legacy Owners"),
           div(
-            style = "display:grid; grid-template-columns: repeat(2, 1fr); gap:8px;",
+            style = "display:grid; grid-template-columns: repeat(2, 1fr); gap:16px;",
             legacy_cards
           )
         )
