@@ -497,11 +497,11 @@ server <- function(input, output, session) {
       } else ""
 
       hunt_imgs <- if (n_appear > 0) {
-        paste(rep("<img src='photos/Hunt.png' style='height:42px; object-fit:contain; margin:0 3px;'>", n_appear), collapse = "")
+        paste(rep("<img src='photos/Hunt.png' style='height:42px; object-fit:contain; margin:0 2px;'>", n_appear), collapse = "")
       } else ""
 
       sacko_imgs <- if (n_sackos > 0 && file.exists("www/photos/sacko-trophy.png")) {
-        paste(rep("<img src='photos/sacko-trophy.png' style='height:55px; width:38px; object-fit:contain; margin:0 1px;'>", n_sackos), collapse = "")
+        paste(rep("<img src='photos/sacko-trophy.png' style='height:65px; width:50px; object-fit:contain; margin:0 2px;'>", n_sackos), collapse = "")
       } else ""
 
       playoff_imgs <- ""
@@ -509,7 +509,7 @@ server <- function(input, output, session) {
         banners <- sapply(playoff_years, function(yr) {
           for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
             f <- paste0("www/photos/playoffs_", yr, ext)
-            if (file.exists(f)) return(paste0("<img src='photos/playoffs_", yr, ext, "' style='height:50px; object-fit:contain; margin:2px;'>"))
+            if (file.exists(f)) return(paste0("<img src='photos/playoffs_", yr, ext, "' style='height:70px; object-fit:contain; margin:3px;'>"))
           }
           return("")
         })
@@ -531,7 +531,7 @@ server <- function(input, output, session) {
         "border-bottom:3px solid rgba(255,255,255,0.15); ",
         "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
         "min-height:70px; display:flex; align-items:flex-end; justify-content:center; ",
-        "flex-wrap:nowrap; padding:4px 2px 6px; overflow:hidden;"
+        "flex-wrap:wrap; padding:4px 2px 6px;"
       )
 
       div(
@@ -591,12 +591,12 @@ server <- function(input, output, session) {
             "min-height:70px; display:flex; align-items:flex-end; padding:4px 4px 6px;"
           ),
           div(
-            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap;",
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
             HTML(lombardi_imgs)
           ),
           div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
           div(
-            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap;",
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
             HTML(hunt_imgs)
           )
         ),
@@ -608,8 +608,8 @@ server <- function(input, output, session) {
             style = paste0(
               "border-bottom:3px solid rgba(255,255,255,0.15); ",
               "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-              "min-height:60px; display:flex; align-items:center; justify-content:center; ",
-              "flex-wrap:wrap; padding:4px 2px;"
+              "min-height:80px; display:flex; align-items:center; justify-content:center; ",
+              "flex-wrap:wrap; padding:6px 2px;"
             ),
             HTML(playoff_imgs)
           )
