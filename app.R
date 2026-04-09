@@ -32,14 +32,6 @@ ui <- page_navbar(
     secondary = "#D50A0A",
     "navbar-bg" = "#013369"
   ),
-  sidebar = sidebar(
-    width = 280,
-    title = "GFFL",
-    uiOutput("league_info_panel"),
-    hr(),
-    actionButton("reload_data", "Reload Data", class = "btn-outline-primary w-100",
-                 icon = icon("rotate"))
-  ),
 
   # --- Tab Panels ---
 
@@ -71,17 +63,6 @@ ui <- page_navbar(
       card(
         card_header("All-Time Standings"),
         DTOutput("alltime_standings_table")
-      )
-    ),
-    layout_columns(
-      col_widths = c(6, 6),
-      card(
-        card_header("Wins by Season"),
-        plotlyOutput("wins_by_season_plot", height = "450px")
-      ),
-      card(
-        card_header("Points For by Season"),
-        plotlyOutput("points_by_season_plot", height = "450px")
       )
     )
   ),
@@ -489,14 +470,19 @@ server <- function(input, output, session) {
     active_owners <- setdiff(owners, legacy_owners)
 
     # Build owner stats for sorting
+    playoff_counts <- playoff_data |> count(owner, name = "playoff_apps")
     owner_stats <- data.frame(owner = owners, stringsAsFactors = FALSE) |>
       left_join(champs, by = "owner") |>
+      left_join(champ_appearances, by = "owner") |>
+      left_join(playoff_counts, by = "owner") |>
       left_join(sackos, by = "owner") |>
       mutate(
         championships = ifelse(is.na(championships), 0, championships),
+        appearances = ifelse(is.na(appearances), 0, appearances),
+        playoff_apps = ifelse(is.na(playoff_apps), 0, playoff_apps),
         sackos = ifelse(is.na(sackos), 0, sackos)
       ) |>
-      arrange(desc(championships), sackos)
+      arrange(desc(championships), desc(appearances), desc(playoff_apps))
 
     active_sorted <- owner_stats |> filter(owner %in% active_owners) |> pull(owner)
     legacy_sorted <- owner_stats |> filter(owner %in% legacy_owners) |> pull(owner)
@@ -1094,7 +1080,15 @@ server <- function(input, output, session) {
     alltime <- compute_alltime_standings(rv$standings_data)
     datatable(
       alltime,
-      options = list(pageLength = 20, dom = "t", order = list(list(2, "desc"))),
+      options = list(
+        pageLength = 20,
+        dom = "t",
+        order = list(list(2, "desc")),
+        columnDefs = list(
+          list(width = "80px", targets = 0),
+          list(className = "dt-center", targets = 1:7)
+        )
+      ),
       rownames = FALSE
     ) |>
       formatPercentage("Win%", digits = 1) |>
