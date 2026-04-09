@@ -744,7 +744,13 @@ server <- function(input, output, session) {
           ),
           div(
             style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
-            HTML(gffl_imgs), HTML(sacko_imgs)
+            HTML(gffl_imgs)
+          ),
+          div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
+          div(
+            style = paste0("flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
+                           if (n_sackos > 3) " flex:2;" else ""),
+            HTML(sacko_imgs)
           )
         ),
 
