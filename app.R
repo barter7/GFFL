@@ -423,6 +423,40 @@ server <- function(input, output, session) {
     winpct_ranked <- alltime |> arrange(desc(`Win%`)) |> mutate(winpct_rank = row_number())
     pf_ranked <- alltime |> arrange(desc(PF)) |> mutate(pf_rank = row_number())
 
+    # Per-owner best/worst stats for ranking
+    owner_best_records <- rv$standings_data |>
+      group_by(owner) |>
+      summarise(best_wins = max(h2h_wins), .groups = "drop") |>
+      arrange(desc(best_wins)) |> mutate(best_rec_rank = row_number())
+
+    owner_worst_records <- rv$standings_data |>
+      group_by(owner) |>
+      summarise(worst_wins = min(h2h_wins), .groups = "drop") |>
+      arrange(worst_wins) |> mutate(worst_rec_rank = row_number())
+
+    owner_best_pf_season <- rv$standings_data |>
+      group_by(owner) |>
+      summarise(best_pf = max(points_for), .groups = "drop") |>
+      arrange(desc(best_pf)) |> mutate(best_pf_rank = row_number())
+
+    name_col_sched <- if ("team_owner" %in% names(rv$schedule_data)) "team_owner" else "franchise_name"
+    owner_best_week <- rv$schedule_data |>
+      group_by(!!sym(name_col_sched)) |>
+      summarise(best_week = max(franchise_score, na.rm = TRUE), .groups = "drop") |>
+      arrange(desc(best_week)) |> mutate(best_wk_rank = row_number())
+
+    owner_win_streaks <- rv$schedule_data |>
+      arrange(!!sym(name_col_sched), season, week) |>
+      group_by(!!sym(name_col_sched)) |>
+      summarise(max_w = {s<-0;m<-0;for(r in result){if(!is.na(r)&&r=="W"){s<-s+1;m<-max(m,s)}else{s<-0}};m}, .groups = "drop") |>
+      arrange(desc(max_w)) |> mutate(wstreak_rank = row_number())
+
+    owner_lose_streaks <- rv$schedule_data |>
+      arrange(!!sym(name_col_sched), season, week) |>
+      group_by(!!sym(name_col_sched)) |>
+      summarise(max_l = {s<-0;m<-0;for(r in result){if(!is.na(r)&&r=="L"){s<-s+1;m<-max(m,s)}else{s<-0}};m}, .groups = "drop") |>
+      arrange(desc(max_l)) |> mutate(lstreak_rank = row_number())
+
     # Championships: ESPN league_rank == 1 is the playoff champion
     champs <- rv$standings_data |>
       filter(league_rank == 1) |>
@@ -506,17 +540,16 @@ server <- function(input, output, session) {
       worst_season <- owner_seasons |> arrange(h2h_wins, points_for) |> head(1)
       most_pf_season <- owner_seasons |> arrange(desc(points_for)) |> head(1)
 
-      best_record_str <- paste0(best_season$h2h_wins, "-", best_season$h2h_losses, " (", best_season$season, ")")
-      worst_record_str <- paste0(worst_season$h2h_wins, "-", worst_season$h2h_losses, " (", worst_season$season, ")")
-      most_pf_str <- paste0(format(round(most_pf_season$points_for, 0), big.mark = ","), " (", most_pf_season$season, ")")
+      best_record_str <- paste0(best_season$h2h_wins, "-", best_season$h2h_losses, " '", substr(best_season$season, 3, 4))
+      worst_record_str <- paste0(worst_season$h2h_wins, "-", worst_season$h2h_losses, " '", substr(worst_season$season, 3, 4))
+      most_pf_str <- paste0(format(round(most_pf_season$points_for, 0), big.mark = ","), " '", substr(most_pf_season$season, 3, 4))
 
-      # Weekly best from schedule data
-      name_col <- if ("team_owner" %in% names(rv$schedule_data)) "team_owner" else "franchise_name"
-      owner_weeks <- rv$schedule_data |> filter(.data[[name_col]] == o)
+      # Weekly best
+      owner_weeks <- rv$schedule_data |> filter(.data[[name_col_sched]] == o)
       best_week <- owner_weeks |> arrange(desc(franchise_score)) |> head(1)
-      most_pw_str <- if (nrow(best_week) > 0) paste0(round(best_week$franchise_score, 1), " (", best_week$season, " W", best_week$week, ")") else "N/A"
+      most_pw_str <- if (nrow(best_week) > 0) paste0(round(best_week$franchise_score, 1)) else "N/A"
 
-      # Win/loss streaks
+      # Streaks
       owner_games <- owner_weeks |> arrange(season, week)
       calc_streak <- function(result_val) {
         max_s <- 0; cur <- 0
@@ -528,6 +561,18 @@ server <- function(input, output, session) {
       }
       win_streak_str <- as.character(calc_streak("W"))
       lose_streak_str <- as.character(calc_streak("L"))
+
+      # Get ranks for each stat
+      get_rank <- function(df, col, val) {
+        r <- df[[col]][df[[1]] == val]
+        if (length(r) == 0) 99 else r
+      }
+      best_rec_rank <- get_rank(owner_best_records, "best_rec_rank", o)
+      worst_rec_rank <- get_rank(owner_worst_records, "worst_rec_rank", o)
+      best_pf_rank <- get_rank(owner_best_pf_season, "best_pf_rank", o)
+      best_wk_rank <- get_rank(owner_best_week, "best_wk_rank", o)
+      wstreak_rank <- get_rank(owner_win_streaks, "wstreak_rank", o)
+      lstreak_rank <- get_rank(owner_lose_streaks, "lstreak_rank", o)
 
       # Plaque colors based on ranking
       wp_rank <- winpct_ranked$winpct_rank[winpct_ranked$Team == o]
@@ -685,15 +730,15 @@ server <- function(input, output, session) {
           div(
             style = "flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2px;",
             div(
-              style = "display:grid; grid-template-columns:1fr 1fr; gap:2px; width:100%;",
+              style = "display:grid; grid-template-columns:1fr 1fr; gap:4px; width:90%;",
               build_plaque("Record", record, wp_style),
               build_plaque("Points", pf, pf_style),
-              build_plaque("Best Record", best_record_str, get_plaque_style(99)),
-              build_plaque("Worst Record", worst_record_str, get_plaque_style(99)),
-              build_plaque("Most Pts (S)", most_pf_str, get_plaque_style(99)),
-              build_plaque("Most Pts (W)", most_pw_str, get_plaque_style(99)),
-              build_plaque("Win Streak", win_streak_str, get_plaque_style(99)),
-              build_plaque("Lose Streak", lose_streak_str, get_plaque_style(99))
+              build_plaque("Best Rec", best_record_str, get_plaque_style(best_rec_rank)),
+              build_plaque("Worst Rec", worst_record_str, get_plaque_style(worst_rec_rank)),
+              build_plaque("Most Pts (S)", most_pf_str, get_plaque_style(best_pf_rank)),
+              build_plaque("Most Pts (W)", most_pw_str, get_plaque_style(best_wk_rank)),
+              build_plaque("Win Streak", win_streak_str, get_plaque_style(wstreak_rank)),
+              build_plaque("Lose Streak", lose_streak_str, get_plaque_style(lstreak_rank))
             )
           ),
           # Center: photo + name plaque
