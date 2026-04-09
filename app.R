@@ -612,29 +612,26 @@ server <- function(input, output, session) {
         paste(rep("<img src='photos/sacko-trophy.png' class='trophy-img sacko-img'>", n_sackos), collapse = "")
       } else ""
 
-      playoff_imgs <- ""
-      if (length(playoff_years) > 0) {
-        banners <- sapply(playoff_years, function(yr) {
-          for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
-            f <- paste0("www/photos/playoffs_", yr, ext)
-            if (file.exists(f)) return(paste0("<img src='photos/playoffs_", yr, ext, "' class='trophy-img banner-img'>"))
+      # Combined banners: oneseed replaces playoff for that year, chronological
+      all_banner_years <- sort(unique(c(playoff_years, oneseed_years)))
+      combined_banners <- ""
+      if (length(all_banner_years) > 0) {
+        banner_list <- sapply(all_banner_years, function(yr) {
+          # If #1 seed that year, show oneseed; otherwise show playoff
+          if (yr %in% oneseed_years) {
+            for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
+              f <- paste0("www/photos/oneseed_", yr, ext)
+              if (file.exists(f)) return(paste0("<img src='photos/oneseed_", yr, ext, "' class='trophy-img banner-img'>"))
+            }
+          } else {
+            for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
+              f <- paste0("www/photos/playoffs_", yr, ext)
+              if (file.exists(f)) return(paste0("<img src='photos/playoffs_", yr, ext, "' class='trophy-img banner-img'>"))
+            }
           }
           return("")
         })
-        playoff_imgs <- paste(banners, collapse = "")
-      }
-
-      # #1 seed banners
-      oneseed_imgs <- ""
-      if (length(oneseed_years) > 0) {
-        banners <- sapply(oneseed_years, function(yr) {
-          for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
-            f <- paste0("www/photos/oneseed_", yr, ext)
-            if (file.exists(f)) return(paste0("<img src='photos/oneseed_", yr, ext, "' class='trophy-img banner-img'>"))
-          }
-          return("")
-        })
-        oneseed_imgs <- paste(banners, collapse = "")
+        combined_banners <- paste(banner_list, collapse = "")
       }
 
       # GFFL trophy (most PF) - single image repeated per year won, slightly smaller
@@ -730,7 +727,7 @@ server <- function(input, output, session) {
           # Right side: banners (oneseed first, then playoffs)
           div(
             class = "banner-side",
-            HTML(oneseed_imgs), HTML(playoff_imgs)
+            HTML(combined_banners)
           )
         ),
 
