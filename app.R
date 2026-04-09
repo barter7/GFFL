@@ -456,6 +456,12 @@ server <- function(input, output, session) {
       ungroup() |>
       count(owner, name = "sackos")
 
+    # Playoff appearances: league_rank <= 4 (top 4 make playoffs)
+    playoff_data <- rv$standings_data |>
+      filter(league_rank <= 4) |>
+      select(season, owner) |>
+      arrange(owner, season)
+
     owners <- sort(unique(rv$standings_data$owner))
 
     # Legacy owners (no longer in the league)
@@ -481,27 +487,38 @@ server <- function(input, output, session) {
       n_champs <- if (o %in% champs$owner) champs$championships[champs$owner == o] else 0
       n_appear <- if (o %in% champ_appearances$owner) champ_appearances$appearances[champ_appearances$owner == o] else 0
       n_sackos <- if (o %in% sackos$owner) sackos$sackos[sackos$owner == o] else 0
+      playoff_years <- playoff_data |> filter(owner == o) |> pull(season) |> sort()
 
       record <- paste0(stats$W, "-", stats$L)
       pf <- format(round(stats$PF, 0), big.mark = ",")
 
-      # Trophy images (no borders - sitting on shelves)
       lombardi_imgs <- if (n_champs > 0) {
-        paste(rep("<img src='photos/lombardi.png' style='height:60px; object-fit:contain; margin:0 10px;'>", n_champs), collapse = "")
+        paste(rep("<img src='photos/lombardi.png' style='height:55px; object-fit:contain; margin:0 6px;'>", n_champs), collapse = "")
       } else ""
 
       hunt_imgs <- if (n_appear > 0) {
-        paste(rep("<img src='photos/Hunt.png' style='height:55px; object-fit:contain; margin:0 3px;'>", n_appear), collapse = "")
+        paste(rep("<img src='photos/Hunt.png' style='height:42px; object-fit:contain; margin:0 3px;'>", n_appear), collapse = "")
       } else ""
 
       sacko_imgs <- if (n_sackos > 0 && file.exists("www/photos/sacko-trophy.png")) {
-        paste(rep("<img src='photos/sacko-trophy.png' style='height:70px; width:60px; object-fit:contain; margin:0 8px;'>", n_sackos), collapse = "")
+        paste(rep("<img src='photos/sacko-trophy.png' style='height:55px; width:38px; object-fit:contain; margin:0 1px;'>", n_sackos), collapse = "")
       } else ""
 
-      # Check for owner photo - try headshot first, then lowercase name, then capitalized
+      playoff_imgs <- ""
+      if (length(playoff_years) > 0) {
+        banners <- sapply(playoff_years, function(yr) {
+          for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
+            f <- paste0("www/photos/playoffs_", yr, ext)
+            if (file.exists(f)) return(paste0("<img src='photos/playoffs_", yr, ext, "' style='height:50px; object-fit:contain; margin:2px;'>"))
+          }
+          return("")
+        })
+        playoff_imgs <- paste(banners, collapse = "")
+      }
+
       photo_file <- NULL
       for (name_variant in c(paste0(tolower(o), "_headshot"), tolower(o), o)) {
-        for (ext in c(".png", ".jpg", ".jpeg")) {
+        for (ext in c(".png", ".jpg", ".jpeg", ".PNG")) {
           if (file.exists(file.path("www", "photos", paste0(name_variant, ext)))) {
             photo_file <- paste0("photos/", name_variant, ext)
             break
@@ -510,15 +527,13 @@ server <- function(input, output, session) {
         if (!is.null(photo_file)) break
       }
 
-      # Glass shelf style - always show all 3 trophy shelves for uniform height
       shelf_style <- paste0(
         "border-bottom:3px solid rgba(255,255,255,0.15); ",
         "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-        "height:75px; display:flex; align-items:flex-end; justify-content:center; ",
-        "flex-wrap:wrap; padding:4px 2px 6px;"
+        "min-height:70px; display:flex; align-items:flex-end; justify-content:center; ",
+        "flex-wrap:nowrap; padding:4px 2px 6px; overflow:hidden;"
       )
 
-      # Build the trophy case
       div(
         style = paste0(
           "background: linear-gradient(180deg, #1a1210 0%, #2a1f18 30%, #1a1210 100%); ",
@@ -528,14 +543,12 @@ server <- function(input, output, session) {
           "overflow:hidden; position:relative;"
         ),
 
-        # Glass reflection effect
         div(style = paste0(
           "position:absolute; top:0; left:0; right:0; bottom:0; ",
           "background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 50%, rgba(255,255,255,0.03) 100%); ",
           "pointer-events:none; z-index:1;"
         )),
 
-        # Owner nameplate at top
         div(
           style = paste0(
             "background: linear-gradient(90deg, #3d2b1a, #5c4413, #3d2b1a); ",
@@ -545,7 +558,6 @@ server <- function(input, output, session) {
           tags$span(style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:16px; letter-spacing:1px; text-transform:uppercase;", o)
         ),
 
-        # Owner photo on top shelf - BIGGER
         div(
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
@@ -572,16 +584,37 @@ server <- function(input, output, session) {
           }
         ),
 
-        # Championship shelf (always shown)
-        div(style = shelf_style, HTML(lombardi_imgs)),
+        div(
+          style = paste0(
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "min-height:70px; display:flex; align-items:flex-end; padding:4px 4px 6px;"
+          ),
+          div(
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap;",
+            HTML(lombardi_imgs)
+          ),
+          div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
+          div(
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap;",
+            HTML(hunt_imgs)
+          )
+        ),
 
-        # Title game shelf (always shown)
-        div(style = shelf_style, HTML(hunt_imgs)),
-
-        # Sacko shelf (always shown)
         div(style = shelf_style, HTML(sacko_imgs)),
 
-        # Stats on bottom plaque
+        if (nchar(playoff_imgs) > 0) {
+          div(
+            style = paste0(
+              "border-bottom:3px solid rgba(255,255,255,0.15); ",
+              "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+              "min-height:60px; display:flex; align-items:center; justify-content:center; ",
+              "flex-wrap:wrap; padding:4px 2px;"
+            ),
+            HTML(playoff_imgs)
+          )
+        },
+
         div(
           style = paste0(
             "background: linear-gradient(90deg, #3d2b1a, #5c4413, #3d2b1a); ",
@@ -651,15 +684,18 @@ server <- function(input, output, session) {
       team_name <- trimws(row$franchise_name)
       record <- paste0(row$h2h_wins, "-", row$h2h_losses)
 
-      # Check for bust image (try lowercase and capitalized)
+      # Check for bust image (bust2 first, then bust, lowercase and capitalized)
       bust_file <- NULL
       photo_file <- NULL
-      for (name_variant in c(tolower(owner), owner)) {
-        for (bust_ext in c(".png", ".jpg", ".jpeg")) {
-          if (file.exists(file.path("www", "photos", paste0(name_variant, "_bust", bust_ext)))) {
-            bust_file <- paste0("photos/", name_variant, "_bust", bust_ext)
-            break
+      for (bust_suffix in c("_bust2", "_bust")) {
+        for (name_variant in c(tolower(owner), owner)) {
+          for (bust_ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
+            if (file.exists(file.path("www", "photos", paste0(name_variant, bust_suffix, bust_ext)))) {
+              bust_file <- paste0("photos/", name_variant, bust_suffix, bust_ext)
+              break
+            }
           }
+          if (!is.null(bust_file)) break
         }
         if (!is.null(bust_file)) break
       }
