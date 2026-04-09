@@ -493,15 +493,15 @@ server <- function(input, output, session) {
       pf <- format(round(stats$PF, 0), big.mark = ",")
 
       lombardi_imgs <- if (n_champs > 0) {
-        paste(rep("<img src='photos/lombardi.png' style='height:55px; object-fit:contain; margin:0 6px;'>", n_champs), collapse = "")
+        paste(rep("<img src='photos/lombardi.png' class='trophy-img lombardi-img'>", n_champs), collapse = "")
       } else ""
 
       hunt_imgs <- if (n_appear > 0) {
-        paste(rep("<img src='photos/Hunt.png' style='height:42px; object-fit:contain; margin:0 2px;'>", n_appear), collapse = "")
+        paste(rep("<img src='photos/Hunt.png' class='trophy-img hunt-img'>", n_appear), collapse = "")
       } else ""
 
       sacko_imgs <- if (n_sackos > 0 && file.exists("www/photos/sacko-trophy.png")) {
-        paste(rep("<img src='photos/sacko-trophy.png' style='height:65px; width:50px; object-fit:contain; margin:0 2px;'>", n_sackos), collapse = "")
+        paste(rep("<img src='photos/sacko-trophy.png' class='trophy-img sacko-img'>", n_sackos), collapse = "")
       } else ""
 
       playoff_imgs <- ""
@@ -509,7 +509,7 @@ server <- function(input, output, session) {
         banners <- sapply(playoff_years, function(yr) {
           for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
             f <- paste0("www/photos/playoffs_", yr, ext)
-            if (file.exists(f)) return(paste0("<img src='photos/playoffs_", yr, ext, "' style='height:70px; object-fit:contain; margin:3px;'>"))
+            if (file.exists(f)) return(paste0("<img src='photos/playoffs_", yr, ext, "' class='trophy-img banner-img'>"))
           }
           return("")
         })
@@ -601,19 +601,19 @@ server <- function(input, output, session) {
           )
         ),
 
-        div(style = shelf_style, HTML(sacko_imgs)),
+        # Playoff banners shelf (2nd row)
+        div(
+          style = paste0(
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "min-height:80px; display:flex; align-items:center; justify-content:center; ",
+            "flex-wrap:wrap; padding:6px 2px;"
+          ),
+          HTML(playoff_imgs)
+        ),
 
-        if (nchar(playoff_imgs) > 0) {
-          div(
-            style = paste0(
-              "border-bottom:3px solid rgba(255,255,255,0.15); ",
-              "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-              "min-height:80px; display:flex; align-items:center; justify-content:center; ",
-              "flex-wrap:wrap; padding:6px 2px;"
-            ),
-            HTML(playoff_imgs)
-          )
-        },
+        # Sacko shelf (3rd row)
+        div(style = shelf_style, HTML(sacko_imgs)),
 
         div(
           style = paste0(
@@ -636,8 +636,25 @@ server <- function(input, output, session) {
 
     div(
       style = "background:#e8e0d4; padding:20px; border-radius:12px;",
-      tags$style(".trophy-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
-                  @media (max-width:768px) { .trophy-grid { grid-template-columns: 1fr; } }"),
+      tags$style("
+        .trophy-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
+        @media (max-width:768px) { .trophy-grid { grid-template-columns: 1fr; } }
+
+        /* Mobile sizes */
+        .trophy-img { object-fit:contain; }
+        .lombardi-img { height:55px; margin:0 4px; }
+        .hunt-img { height:42px; margin:0 2px; }
+        .sacko-img { height:60px; width:48px; margin:0 2px; }
+        .banner-img { height:90px; margin:3px; }
+
+        /* Desktop sizes - much bigger */
+        @media (min-width:769px) {
+          .lombardi-img { height:90px; margin:0 8px; }
+          .hunt-img { height:70px; margin:0 5px; }
+          .sacko-img { height:90px; width:70px; margin:0 4px; }
+          .banner-img { height:120px; margin:5px; }
+        }
+      "),
       div(
         class = "trophy-grid",
         active_cards
