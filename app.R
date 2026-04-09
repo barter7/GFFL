@@ -487,7 +487,7 @@ server <- function(input, output, session) {
 
       # Trophy images (no borders - sitting on shelves)
       lombardi_imgs <- if (n_champs > 0) {
-        paste(rep("<img src='photos/lombardi.png' style='height:60px; object-fit:contain; margin:0 3px;'>", n_champs), collapse = "")
+        paste(rep("<img src='photos/lombardi.png' style='height:60px; object-fit:contain; margin:0 10px;'>", n_champs), collapse = "")
       } else ""
 
       hunt_imgs <- if (n_appear > 0) {
@@ -495,7 +495,7 @@ server <- function(input, output, session) {
       } else ""
 
       sacko_imgs <- if (n_sackos > 0 && file.exists("www/photos/sacko-trophy.png")) {
-        paste(rep("<img src='photos/sacko-trophy.png' style='height:55px; width:45px; object-fit:contain; margin:0 3px;'>", n_sackos), collapse = "")
+        paste(rep("<img src='photos/sacko-trophy.png' style='height:70px; width:60px; object-fit:contain; margin:0 8px;'>", n_sackos), collapse = "")
       } else ""
 
       # Check for owner photo
