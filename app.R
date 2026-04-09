@@ -671,7 +671,7 @@ server <- function(input, output, session) {
           ),
           # Oneseed banners (left, 2 per row wrapping down)
           div(
-            style = "display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start; width:calc(50% - 80px); max-width:120px;",
+            class = "banner-side",
             HTML(oneseed_imgs)
           ),
           # Center column: photo + plaques
@@ -710,7 +710,7 @@ server <- function(input, output, session) {
           ),
           # Playoff banners (right, 2 per row wrapping down)
           div(
-            style = "display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start; width:calc(50% - 80px); max-width:120px;",
+            class = "banner-side",
             HTML(playoff_imgs)
           )
         ),
@@ -734,15 +734,20 @@ server <- function(input, output, session) {
           )
         ),
 
-        # GFFL trophies shelf
+        # GFFL (left) | empty (right) split shelf
         div(
           class = "trophy-shelf",
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; padding:4px 4px 6px;"
+            "display:flex; align-items:flex-end; padding:4px 4px 6px;"
           ),
-          HTML(gffl_imgs)
+          div(
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
+            HTML(gffl_imgs)
+          ),
+          div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
+          div(style = "flex:1;")
         ),
 
         # Sacko shelf (4th row)
@@ -782,10 +787,11 @@ server <- function(input, output, session) {
         /* Mobile sizes */
         .trophy-img { object-fit:contain; }
         .lombardi-img { height:55px; margin:0 12px; }
-        .hunt-img { height:42px; margin:0 2px; }
+        .hunt-img { height:42px; margin:0 4px; }
         .sacko-img { height:60px; width:48px; margin:0 2px; }
         .banner-img { height:55px; margin:2px; }
-        .gffl-img { height:55px; margin:2px; }
+        .gffl-img { height:60px; margin:0 6px; }
+        .banner-side { display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start; width:120px; }
 
         .trophy-shelf { height:80px; }
         .banner-shelf { height:80px; }
@@ -795,10 +801,11 @@ server <- function(input, output, session) {
         /* Desktop sizes - much bigger */
         @media (min-width:769px) {
           .lombardi-img { height:90px; margin:0 15px; }
-          .hunt-img { height:70px; margin:0 5px; }
+          .hunt-img { height:70px; margin:0 10px; }
           .sacko-img { height:90px; width:70px; margin:0 4px; }
-          .banner-img { height:80px; margin:3px; }
-          .gffl-img { height:80px; margin:3px; }
+          .banner-img { height:90px; margin:3px; }
+          .gffl-img { height:90px; margin:0 8px; }
+          .banner-side { width:200px; }
 
           .trophy-shelf { height:110px; }
           .banner-shelf { height:110px; }
