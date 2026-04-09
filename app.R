@@ -646,33 +646,59 @@ server <- function(input, output, session) {
         border = "#8b6914", text = "#3d2b0a", shadow = "rgba(212,168,75,0.3)"
       )
 
-      lombardi_imgs <- if (n_champs > 0) {
-        paste(rep("<img src='photos/lombardi.png' class='trophy-img lombardi-img'>", n_champs), collapse = "")
+      # Helper to get season info for tooltip
+      get_season_tooltip <- function(yr, prefix = "") {
+        s <- owner_seasons |> filter(season == yr)
+        if (nrow(s) == 0) return("")
+        rec <- paste0(s$h2h_wins, "-", s$h2h_losses)
+        pos <- paste0("#", s$league_rank)
+        paste0(prefix, yr, " | ", rec, " | ", pos)
+      }
+
+      # Championship trophies with tooltips
+      champ_years <- rv$standings_data |> filter(owner == o, league_rank == 1) |> pull(season) |> sort()
+      lombardi_imgs <- if (length(champ_years) > 0) {
+        paste(sapply(champ_years, function(yr) {
+          tip <- get_season_tooltip(yr, "Champion ")
+          paste0("<img src='photos/lombardi.png' class='trophy-img lombardi-img' title='", tip, "'>")
+        }), collapse = "")
       } else ""
 
-      hunt_imgs <- if (n_appear > 0) {
-        paste(rep("<img src='photos/Hunt.png' class='trophy-img hunt-img'>", n_appear), collapse = "")
+      # Hunt trophies (title game appearances) with tooltips
+      appear_years <- rv$standings_data |> filter(owner == o, league_rank <= 2) |> pull(season) |> sort()
+      hunt_imgs <- if (length(appear_years) > 0) {
+        paste(sapply(appear_years, function(yr) {
+          tip <- get_season_tooltip(yr, "Title Game ")
+          paste0("<img src='photos/Hunt.png' class='trophy-img hunt-img' title='", tip, "'>")
+        }), collapse = "")
       } else ""
 
-      sacko_imgs <- if (n_sackos > 0 && file.exists("www/photos/sacko-trophy.png")) {
-        paste(rep("<img src='photos/sacko-trophy.png' class='trophy-img sacko-img'>", n_sackos), collapse = "")
+      # Sacko trophies with tooltips
+      sacko_years <- rv$standings_data |>
+        group_by(season) |> arrange(h2h_wins, points_for) |> slice_head(n = 1) |>
+        ungroup() |> filter(owner == o) |> pull(season) |> sort()
+      sacko_imgs <- if (length(sacko_years) > 0 && file.exists("www/photos/sacko-trophy.png")) {
+        paste(sapply(sacko_years, function(yr) {
+          tip <- get_season_tooltip(yr, "Sacko ")
+          paste0("<img src='photos/sacko-trophy.png' class='trophy-img sacko-img' title='", tip, "'>")
+        }), collapse = "")
       } else ""
 
-      # Combined banners: oneseed replaces playoff for that year, chronological
+      # Combined banners with tooltips
       all_banner_years <- sort(unique(c(playoff_years, oneseed_years)))
       combined_banners <- ""
       if (length(all_banner_years) > 0) {
         banner_list <- sapply(all_banner_years, function(yr) {
-          # If #1 seed that year, show oneseed; otherwise show playoff
+          tip <- get_season_tooltip(yr, if (yr %in% oneseed_years) "#1 Seed " else "Playoffs ")
           if (yr %in% oneseed_years) {
             for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
               f <- paste0("www/photos/oneseed_", yr, ext)
-              if (file.exists(f)) return(paste0("<img src='photos/oneseed_", yr, ext, "' class='trophy-img banner-img'>"))
+              if (file.exists(f)) return(paste0("<img src='photos/oneseed_", yr, ext, "' class='trophy-img banner-img' title='", tip, "'>"))
             }
           } else {
             for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
               f <- paste0("www/photos/playoffs_", yr, ext)
-              if (file.exists(f)) return(paste0("<img src='photos/playoffs_", yr, ext, "' class='trophy-img banner-img'>"))
+              if (file.exists(f)) return(paste0("<img src='photos/playoffs_", yr, ext, "' class='trophy-img banner-img' title='", tip, "'>"))
             }
           }
           return("")
@@ -680,10 +706,13 @@ server <- function(input, output, session) {
         combined_banners <- paste(banner_list, collapse = "")
       }
 
-      # GFFL trophy (most PF) - single image repeated per year won, slightly smaller
+      # GFFL trophies with tooltips
       gffl_imgs <- ""
       if (length(gffl_pf_years) > 0) {
-        gffl_imgs <- paste(rep("<img src='photos/GFFL.png' class='trophy-img gffl-img'>", length(gffl_pf_years)), collapse = "")
+        gffl_imgs <- paste(sapply(gffl_pf_years, function(yr) {
+          tip <- get_season_tooltip(yr, "Most PF ")
+          paste0("<img src='photos/GFFL.png' class='trophy-img gffl-img' title='", tip, "'>")
+        }), collapse = "")
       }
 
       photo_file <- NULL
