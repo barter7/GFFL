@@ -719,12 +719,12 @@ server <- function(input, output, session) {
           "pointer-events:none; z-index:1;"
         )),
 
-        # Photo shelf: plaques+banners left, photo right
+        # Photo shelf: plaques left, photo center, banners right
         div(
+          class = "photo-shelf-row",
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:center; justify-content:center; ",
             "padding:8px 4px 6px;"
           ),
           # Left side: plaques
@@ -837,6 +837,8 @@ server <- function(input, output, session) {
       tags$style("
         .trophy-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
         @media (max-width:768px) { .trophy-grid { grid-template-columns: 1fr; } }
+        .photo-shelf-row { display:flex; align-items:center; justify-content:center; }
+        @media (max-width:768px) { .photo-shelf-row { flex-direction:column; } }
 
         /* Mobile sizes */
         .trophy-img { object-fit:contain; }
