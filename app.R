@@ -500,6 +500,35 @@ server <- function(input, output, session) {
       record <- paste0(stats$W, "-", stats$L)
       pf <- format(round(stats$PF, 0), big.mark = ",")
 
+      # Per-owner season stats
+      owner_seasons <- rv$standings_data |> filter(owner == o)
+      best_season <- owner_seasons |> arrange(desc(h2h_wins), desc(points_for)) |> head(1)
+      worst_season <- owner_seasons |> arrange(h2h_wins, points_for) |> head(1)
+      most_pf_season <- owner_seasons |> arrange(desc(points_for)) |> head(1)
+
+      best_record_str <- paste0(best_season$h2h_wins, "-", best_season$h2h_losses, " (", best_season$season, ")")
+      worst_record_str <- paste0(worst_season$h2h_wins, "-", worst_season$h2h_losses, " (", worst_season$season, ")")
+      most_pf_str <- paste0(format(round(most_pf_season$points_for, 0), big.mark = ","), " (", most_pf_season$season, ")")
+
+      # Weekly best from schedule data
+      name_col <- if ("team_owner" %in% names(rv$schedule_data)) "team_owner" else "franchise_name"
+      owner_weeks <- rv$schedule_data |> filter(.data[[name_col]] == o)
+      best_week <- owner_weeks |> arrange(desc(franchise_score)) |> head(1)
+      most_pw_str <- if (nrow(best_week) > 0) paste0(round(best_week$franchise_score, 1), " (", best_week$season, " W", best_week$week, ")") else "N/A"
+
+      # Win/loss streaks
+      owner_games <- owner_weeks |> arrange(season, week)
+      calc_streak <- function(result_val) {
+        max_s <- 0; cur <- 0
+        for (r in owner_games$result) {
+          if (!is.na(r) && r == result_val) { cur <- cur + 1; max_s <- max(max_s, cur) }
+          else { cur <- 0 }
+        }
+        max_s
+      }
+      win_streak_str <- as.character(calc_streak("W"))
+      lose_streak_str <- as.character(calc_streak("L"))
+
       # Plaque colors based on ranking
       wp_rank <- winpct_ranked$winpct_rank[winpct_ranked$Team == o]
       pf_rank <- pf_ranked$pf_rank[pf_ranked$Team == o]
@@ -647,22 +676,38 @@ server <- function(input, output, session) {
           "pointer-events:none; z-index:1;"
         )),
 
-        # Photo with banners on each side (2 wide, wrapping down)
+        # Photo shelf: plaques+banners left, photo right
         div(
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-start; justify-content:center; ",
-            "padding:8px 2px 6px;"
+            "display:flex; align-items:center; justify-content:center; ",
+            "padding:8px 4px 6px;"
           ),
-          # Oneseed banners (left, 2 per row wrapping down)
+          # Left side: banners + plaques
           div(
-            class = "banner-side",
-            HTML(oneseed_imgs)
+            style = "flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2px;",
+            # Oneseed then playoff banners
+            div(
+              style = "display:flex; flex-wrap:wrap; justify-content:center; margin-bottom:4px;",
+              HTML(oneseed_imgs), HTML(playoff_imgs)
+            ),
+            # Stat plaques in 2-column grid
+            div(
+              style = "display:grid; grid-template-columns:1fr 1fr; gap:2px; width:100%;",
+              build_plaque("Record", record, wp_style),
+              build_plaque("Points", pf, pf_style),
+              build_plaque("Best Record", best_record_str, get_plaque_style(99)),
+              build_plaque("Worst Record", worst_record_str, get_plaque_style(99)),
+              build_plaque("Most Pts (S)", most_pf_str, get_plaque_style(99)),
+              build_plaque("Most Pts (W)", most_pw_str, get_plaque_style(99)),
+              build_plaque("Win Streak", win_streak_str, get_plaque_style(99)),
+              build_plaque("Lose Streak", lose_streak_str, get_plaque_style(99))
+            )
           ),
-          # Center column: photo + plaques
+          # Right side: photo + name plaque
           div(
-            style = "display:flex; flex-direction:column; align-items:center; flex:0 0 auto; margin:0 4px;",
+            style = "display:flex; flex-direction:column; align-items:center; flex:0 0 auto; margin-left:4px;",
             if (!is.null(photo_file)) {
               div(
                 style = "position:relative; flex-shrink:0;",
@@ -686,18 +731,7 @@ server <- function(input, output, session) {
             div(
               style = "width:100%; max-width:160px; margin-top:4px;",
               build_plaque(NULL, o, name_style, wide = TRUE)
-            ),
-            # Record and Points plaques
-            div(
-              style = "display:flex; justify-content:center; margin-top:4px;",
-              build_plaque("Record", record, wp_style),
-              build_plaque("Points", pf, pf_style)
             )
-          ),
-          # Playoff banners (right, 2 per row wrapping down)
-          div(
-            class = "banner-side",
-            HTML(playoff_imgs)
           )
         ),
 
