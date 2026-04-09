@@ -250,6 +250,18 @@ ui <- page_navbar(
     )
   ),
 
+  # RECAP PHOTOS
+  nav_panel(
+    title = "Recap Photos",
+    icon = icon("images"),
+    div(
+      class = "text-center my-3",
+      h2(style = "color:#013369; font-family:Georgia,serif;", "GFFL Through The Years"),
+      tags$hr(style = "border-color:#013369; width:200px; margin:0 auto;")
+    ),
+    uiOutput("recap_gallery")
+  ),
+
   # RECORDS
   nav_panel(
     title = "Records",
@@ -1246,6 +1258,55 @@ server <- function(input, output, session) {
              PF = points_for, PA = points_against)
     datatable(df, options = list(pageLength = 20, dom = "t"), rownames = FALSE) |>
       formatRound(c("PF", "PA"), 1)
+  })
+
+  # ==========================================================================
+  # RECAP PHOTOS TAB
+  # ==========================================================================
+
+  output$recap_gallery <- renderUI({
+    # Find all images in www/recaps/
+    recap_files <- list.files("www/recaps", pattern = "\\.(jpg|jpeg|png|gif|JPG|JPEG|PNG|GIF)$",
+                              full.names = FALSE)
+    recap_files <- setdiff(recap_files, "README.txt")
+
+    if (length(recap_files) == 0) {
+      return(h4(class = "text-muted text-center", "No recap photos uploaded yet."))
+    }
+
+    # Shuffle for a fun collage feel
+    set.seed(42)
+    recap_files <- sample(recap_files)
+
+    # Build masonry-style collage using CSS columns
+    photo_tags <- lapply(recap_files, function(f) {
+      div(
+        style = "break-inside:avoid; margin-bottom:8px;",
+        tags$img(
+          src = paste0("recaps/", f),
+          style = paste0(
+            "width:100%; border-radius:6px; ",
+            "box-shadow: 0 2px 8px rgba(0,0,0,0.3); ",
+            "cursor:pointer; transition: transform 0.2s;"
+          ),
+          onmouseover = "this.style.transform='scale(1.03)'",
+          onmouseout = "this.style.transform='scale(1)'"
+        )
+      )
+    })
+
+    div(
+      style = paste0(
+        "column-count:3; column-gap:8px; padding:12px; ",
+        "background:#1a1a2e; border-radius:12px;"
+      ),
+      # CSS override for mobile: 2 columns
+      tags$style(".recap-collage { column-count:3; }
+                  @media (max-width:768px) { .recap-collage { column-count:2; } }"),
+      div(class = "recap-collage",
+          style = "column-gap:8px;",
+          photo_tags)
+    )
   })
 
   # ==========================================================================
