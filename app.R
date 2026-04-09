@@ -661,7 +661,7 @@ server <- function(input, output, session) {
           "pointer-events:none; z-index:1;"
         )),
 
-        # Photo shelf with banners hanging on sides
+        # Photo with banners on each side (2 wide, wrapping down)
         div(
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
@@ -669,9 +669,9 @@ server <- function(input, output, session) {
             "display:flex; align-items:flex-start; justify-content:center; ",
             "padding:8px 2px 6px;"
           ),
-          # Oneseed banners (left side, hanging vertically)
+          # Oneseed banners (left, 2 per row wrapping down)
           div(
-            style = "display:flex; flex-direction:column; align-items:center; justify-content:flex-start; flex:0 0 auto; padding-top:4px;",
+            style = "display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start; width:calc(50% - 80px); max-width:120px;",
             HTML(oneseed_imgs)
           ),
           # Center column: photo + plaques
@@ -708,14 +708,14 @@ server <- function(input, output, session) {
               build_plaque("Points", pf, pf_style)
             )
           ),
-          # Playoff banners (right side, hanging vertically)
+          # Playoff banners (right, 2 per row wrapping down)
           div(
-            style = "display:flex; flex-direction:column; align-items:center; justify-content:flex-start; flex:0 0 auto; padding-top:4px;",
+            style = "display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start; width:calc(50% - 80px); max-width:120px;",
             HTML(playoff_imgs)
           )
         ),
 
-        # Lombardi / Hunt split shelf with GFFL trophies
+        # Lombardi / Hunt split shelf
         div(
           class = "trophy-shelf",
           style = paste0(
@@ -725,13 +725,24 @@ server <- function(input, output, session) {
           ),
           div(
             style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
-            HTML(lombardi_imgs), HTML(gffl_imgs)
+            HTML(lombardi_imgs)
           ),
           div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
           div(
             style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
             HTML(hunt_imgs)
           )
+        ),
+
+        # GFFL trophies shelf
+        div(
+          class = "trophy-shelf",
+          style = paste0(
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; padding:4px 4px 6px;"
+          ),
+          HTML(gffl_imgs)
         ),
 
         # Sacko shelf (4th row)
@@ -770,11 +781,11 @@ server <- function(input, output, session) {
 
         /* Mobile sizes */
         .trophy-img { object-fit:contain; }
-        .lombardi-img { height:55px; margin:0 4px; }
+        .lombardi-img { height:55px; margin:0 12px; }
         .hunt-img { height:42px; margin:0 2px; }
         .sacko-img { height:60px; width:48px; margin:0 2px; }
-        .banner-img { height:45px; margin:1px; }
-        .gffl-img { height:65px; margin:2px; }
+        .banner-img { height:55px; margin:2px; }
+        .gffl-img { height:55px; margin:2px; }
 
         .trophy-shelf { height:80px; }
         .banner-shelf { height:80px; }
@@ -783,11 +794,11 @@ server <- function(input, output, session) {
 
         /* Desktop sizes - much bigger */
         @media (min-width:769px) {
-          .lombardi-img { height:90px; margin:0 8px; }
+          .lombardi-img { height:90px; margin:0 15px; }
           .hunt-img { height:70px; margin:0 5px; }
           .sacko-img { height:90px; width:70px; margin:0 4px; }
-          .banner-img { height:60px; margin:2px; }
-          .gffl-img { height:100px; margin:3px; }
+          .banner-img { height:80px; margin:3px; }
+          .gffl-img { height:80px; margin:3px; }
 
           .trophy-shelf { height:110px; }
           .banner-shelf { height:110px; }
