@@ -432,7 +432,7 @@ server <- function(input, output, session) {
     owner_worst_records <- rv$standings_data |>
       group_by(owner) |>
       summarise(worst_wins = min(h2h_wins), .groups = "drop") |>
-      arrange(worst_wins) |> mutate(worst_rec_rank = row_number())
+      arrange(desc(worst_wins)) |> mutate(worst_rec_rank = row_number())
 
     owner_best_pf_season <- rv$standings_data |>
       group_by(owner) |>
@@ -455,7 +455,7 @@ server <- function(input, output, session) {
       arrange(!!sym(name_col_sched), season, week) |>
       group_by(!!sym(name_col_sched)) |>
       summarise(max_l = {s<-0;m<-0;for(r in result){if(!is.na(r)&&r=="L"){s<-s+1;m<-max(m,s)}else{s<-0}};m}, .groups = "drop") |>
-      arrange(desc(max_l)) |> mutate(lstreak_rank = row_number())
+      arrange(max_l) |> mutate(lstreak_rank = row_number())
 
     # Championships: ESPN league_rank == 1 is the playoff champion
     champs <- rv$standings_data |>
@@ -613,25 +613,25 @@ server <- function(input, output, session) {
       build_plaque <- function(label, value, style, wide = FALSE) {
         div(
           style = paste0(
-            "display:inline-block; padding:2px; margin:2px; ",
+            "display:inline-block; padding:1px; margin:1px; ",
             if (wide) "width:100%; " else "",
             "background: linear-gradient(135deg, #5c4413, #3d2b1a, #5c4413); ",
-            "border-radius:4px; box-shadow: 0 2px 5px rgba(0,0,0,0.4);"
+            "border-radius:3px; box-shadow: 0 2px 4px rgba(0,0,0,0.4);"
           ),
           div(
             style = paste0(
               "background:", style$bg, "; ",
               "border:1px solid ", style$border, "; ",
-              "border-radius:3px; padding:4px 8px; text-align:center; ",
+              "border-radius:2px; padding:2px 4px; text-align:center; ",
               "box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), inset 0 -1px 3px rgba(0,0,0,0.2), ",
               "0 1px 0 ", style$shadow, ";"
             ),
             if (!is.null(label)) div(style = paste0(
-              "font-family:Georgia,serif; font-size:8px; text-transform:uppercase; ",
-              "letter-spacing:1px; color:", style$text, "; opacity:0.7;"
+              "font-family:Georgia,serif; font-size:7px; text-transform:uppercase; ",
+              "letter-spacing:0.5px; color:", style$text, "; opacity:0.7;"
             ), label),
             div(style = paste0(
-              "font-family:Georgia,serif; font-weight:bold; font-size:13px; ",
+              "font-family:Georgia,serif; font-weight:bold; font-size:11px; ",
               "color:", style$text, "; white-space:nowrap; ",
               "text-shadow: 0 1px 0 rgba(255,255,255,0.3), 0 -1px 0 rgba(0,0,0,0.2);"
             ), value)
@@ -728,9 +728,9 @@ server <- function(input, output, session) {
           ),
           # Left side: plaques
           div(
-            style = "flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2px;",
+            style = "flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1px; min-width:0;",
             div(
-              style = "display:grid; grid-template-columns:1fr 1fr; gap:4px; width:90%;",
+              style = "display:grid; grid-template-columns:1fr 1fr; gap:3px; width:80%;",
               build_plaque("Record", record, wp_style),
               build_plaque("Points", pf, pf_style),
               build_plaque("Best Rec", best_record_str, get_plaque_style(best_rec_rank)),
