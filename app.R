@@ -547,17 +547,10 @@ server <- function(input, output, session) {
         oneseed_imgs <- paste(banners, collapse = "")
       }
 
-      # GFFL trophy (most PF)
+      # GFFL trophy (most PF) - single image repeated per year won
       gffl_imgs <- ""
       if (length(gffl_pf_years) > 0) {
-        banners <- sapply(gffl_pf_years, function(yr) {
-          for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
-            f <- paste0("www/photos/GFFL_", yr, ext)
-            if (file.exists(f)) return(paste0("<img src='photos/GFFL_", yr, ext, "' class='trophy-img banner-img'>"))
-          }
-          return("")
-        })
-        gffl_imgs <- paste(banners, collapse = "")
+        gffl_imgs <- paste(rep("<img src='photos/GFFL.png' class='trophy-img banner-img'>", length(gffl_pf_years)), collapse = "")
       }
 
       photo_file <- NULL
