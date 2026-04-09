@@ -584,11 +584,13 @@ server <- function(input, output, session) {
           }
         ),
 
+        # Lombardi / Hunt split shelf
         div(
+          class = "trophy-shelf",
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "min-height:70px; display:flex; align-items:flex-end; padding:4px 4px 6px;"
+            "display:flex; align-items:flex-end; padding:4px 4px 6px; overflow:hidden;"
           ),
           div(
             style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
@@ -603,17 +605,27 @@ server <- function(input, output, session) {
 
         # Playoff banners shelf (2nd row)
         div(
+          class = "banner-shelf",
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "min-height:80px; display:flex; align-items:center; justify-content:center; ",
-            "flex-wrap:wrap; padding:6px 2px;"
+            "display:flex; align-items:center; justify-content:center; ",
+            "flex-wrap:wrap; padding:4px 2px; overflow:hidden;"
           ),
           HTML(playoff_imgs)
         ),
 
         # Sacko shelf (3rd row)
-        div(style = shelf_style, HTML(sacko_imgs)),
+        div(
+          class = "sacko-shelf",
+          style = paste0(
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "display:flex; align-items:flex-end; justify-content:center; ",
+            "flex-wrap:wrap; padding:4px 2px 6px; overflow:hidden;"
+          ),
+          HTML(sacko_imgs)
+        ),
 
         div(
           style = paste0(
@@ -645,7 +657,11 @@ server <- function(input, output, session) {
         .lombardi-img { height:55px; margin:0 4px; }
         .hunt-img { height:42px; margin:0 2px; }
         .sacko-img { height:60px; width:48px; margin:0 2px; }
-        .banner-img { height:90px; margin:3px; }
+        .banner-img { height:70px; margin:2px; }
+
+        .trophy-shelf { height:80px; }
+        .banner-shelf { height:100px; }
+        .sacko-shelf { height:80px; }
 
         /* Desktop sizes - much bigger */
         @media (min-width:769px) {
@@ -653,6 +669,10 @@ server <- function(input, output, session) {
           .hunt-img { height:70px; margin:0 5px; }
           .sacko-img { height:90px; width:70px; margin:0 4px; }
           .banner-img { height:120px; margin:5px; }
+
+          .trophy-shelf { height:110px; }
+          .banner-shelf { height:150px; }
+          .sacko-shelf { height:110px; }
         }
       "),
       div(
