@@ -498,13 +498,16 @@ server <- function(input, output, session) {
         paste(rep("<img src='photos/sacko-trophy.png' style='height:70px; width:60px; object-fit:contain; margin:0 8px;'>", n_sackos), collapse = "")
       } else ""
 
-      # Check for owner photo
+      # Check for owner photo - try headshot first, then lowercase name, then capitalized
       photo_file <- NULL
-      for (ext in c(".jpg", ".jpeg", ".png")) {
-        if (file.exists(file.path("www", "photos", paste0(o, ext)))) {
-          photo_file <- paste0("photos/", o, ext)
-          break
+      for (name_variant in c(paste0(tolower(o), "_headshot"), tolower(o), o)) {
+        for (ext in c(".png", ".jpg", ".jpeg")) {
+          if (file.exists(file.path("www", "photos", paste0(name_variant, ext)))) {
+            photo_file <- paste0("photos/", name_variant, ext)
+            break
+          }
         }
+        if (!is.null(photo_file)) break
       }
 
       # Glass shelf style - always show all 3 trophy shelves for uniform height
@@ -648,21 +651,27 @@ server <- function(input, output, session) {
       team_name <- trimws(row$franchise_name)
       record <- paste0(row$h2h_wins, "-", row$h2h_losses)
 
-      # Check for bust image first, then regular photo
+      # Check for bust image (try lowercase and capitalized)
       bust_file <- NULL
       photo_file <- NULL
-      bust_file <- NULL
-      for (bust_ext in c(".png", ".jpg", ".jpeg")) {
-        if (file.exists(file.path("www", "photos", paste0(owner, "_bust", bust_ext)))) {
-          bust_file <- paste0("photos/", owner, "_bust", bust_ext)
-          break
+      for (name_variant in c(tolower(owner), owner)) {
+        for (bust_ext in c(".png", ".jpg", ".jpeg")) {
+          if (file.exists(file.path("www", "photos", paste0(name_variant, "_bust", bust_ext)))) {
+            bust_file <- paste0("photos/", name_variant, "_bust", bust_ext)
+            break
+          }
         }
+        if (!is.null(bust_file)) break
       }
-      for (ext in c(".jpg", ".jpeg", ".png")) {
-        if (file.exists(file.path("www", "photos", paste0(owner, ext)))) {
-          photo_file <- paste0("photos/", owner, ext)
-          break
+      # Check for regular photo (headshot first, then name)
+      for (name_variant in c(paste0(tolower(owner), "_headshot"), tolower(owner), owner)) {
+        for (ext in c(".png", ".jpg", ".jpeg")) {
+          if (file.exists(file.path("www", "photos", paste0(name_variant, ext)))) {
+            photo_file <- paste0("photos/", name_variant, ext)
+            break
+          }
         }
+        if (!is.null(photo_file)) break
       }
 
       has_bust <- !is.null(bust_file)
