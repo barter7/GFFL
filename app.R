@@ -549,7 +549,7 @@ server <- function(input, output, session) {
             tags$strong(style = "color:#cd7f32;", "Sackos"),
             div(style = "min-height:40px; display:flex; align-items:center; justify-content:center; gap:2px;",
               if (n_sackos > 0 && file.exists("www/photos/sacko-trophy.png")) {
-                HTML(paste(rep("<img src='photos/sacko-trophy.png' height='55' style='margin-right:4px; border:2px solid white; border-radius:4px; padding:2px; background:rgba(255,255,255,0.1);'>", n_sackos), collapse = ""))
+                HTML(paste(rep("<img src='photos/sacko-trophy.png' style='height:55px; width:45px; object-fit:contain; margin-right:4px; border:2px solid white; border-radius:4px; padding:2px; background:rgba(255,255,255,0.1);'>", n_sackos), collapse = ""))
               } else if (n_sackos > 0) {
                 tags$span(class = "text-danger fw-bold", n_sackos)
               } else {
