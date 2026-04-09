@@ -661,8 +661,6 @@ server <- function(input, output, session) {
           "pointer-events:none; z-index:1;"
         )),
 
-        # Photo shelf with name plaque and stat plaques
-        div(
         # Photo shelf with banners hanging on sides
         div(
           style = paste0(
