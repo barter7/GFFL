@@ -462,6 +462,22 @@ server <- function(input, output, session) {
       select(season, owner) |>
       arrange(owner, season)
 
+    # #1 seed: best regular season record (wins desc, PF tiebreaker)
+    oneseed_data <- rv$standings_data |>
+      group_by(season) |>
+      arrange(desc(h2h_wins), desc(points_for)) |>
+      slice_head(n = 1) |>
+      ungroup() |>
+      select(season, owner)
+
+    # GFFL trophy: most regular season points for
+    gffl_pf_data <- rv$standings_data |>
+      group_by(season) |>
+      arrange(desc(points_for)) |>
+      slice_head(n = 1) |>
+      ungroup() |>
+      select(season, owner)
+
     owners <- sort(unique(rv$standings_data$owner))
 
     # Legacy owners (no longer in the league)
@@ -488,6 +504,8 @@ server <- function(input, output, session) {
       n_appear <- if (o %in% champ_appearances$owner) champ_appearances$appearances[champ_appearances$owner == o] else 0
       n_sackos <- if (o %in% sackos$owner) sackos$sackos[sackos$owner == o] else 0
       playoff_years <- playoff_data |> filter(owner == o) |> pull(season) |> sort()
+      oneseed_years <- oneseed_data |> filter(owner == o) |> pull(season) |> sort()
+      gffl_pf_years <- gffl_pf_data |> filter(owner == o) |> pull(season) |> sort()
 
       record <- paste0(stats$W, "-", stats$L)
       pf <- format(round(stats$PF, 0), big.mark = ",")
@@ -514,6 +532,32 @@ server <- function(input, output, session) {
           return("")
         })
         playoff_imgs <- paste(banners, collapse = "")
+      }
+
+      # #1 seed banners
+      oneseed_imgs <- ""
+      if (length(oneseed_years) > 0) {
+        banners <- sapply(oneseed_years, function(yr) {
+          for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
+            f <- paste0("www/photos/oneseed_", yr, ext)
+            if (file.exists(f)) return(paste0("<img src='photos/oneseed_", yr, ext, "' class='trophy-img banner-img'>"))
+          }
+          return("")
+        })
+        oneseed_imgs <- paste(banners, collapse = "")
+      }
+
+      # GFFL trophy (most PF)
+      gffl_imgs <- ""
+      if (length(gffl_pf_years) > 0) {
+        banners <- sapply(gffl_pf_years, function(yr) {
+          for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
+            f <- paste0("www/photos/GFFL_", yr, ext)
+            if (file.exists(f)) return(paste0("<img src='photos/GFFL_", yr, ext, "' class='trophy-img banner-img'>"))
+          }
+          return("")
+        })
+        gffl_imgs <- paste(banners, collapse = "")
       }
 
       photo_file <- NULL
@@ -603,7 +647,19 @@ server <- function(input, output, session) {
           )
         ),
 
-        # Playoff banners shelf (2nd row)
+        # #1 seed and GFFL banners shelf (2nd row)
+        div(
+          class = "banner-shelf",
+          style = paste0(
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "display:flex; align-items:center; justify-content:center; ",
+            "flex-wrap:wrap; padding:4px 2px; overflow:hidden;"
+          ),
+          HTML(oneseed_imgs), HTML(gffl_imgs)
+        ),
+
+        # Playoff banners shelf (3rd row)
         div(
           class = "banner-shelf",
           style = paste0(
@@ -615,7 +671,7 @@ server <- function(input, output, session) {
           HTML(playoff_imgs)
         ),
 
-        # Sacko shelf (3rd row)
+        # Sacko shelf (4th row)
         div(
           class = "sacko-shelf",
           style = paste0(
