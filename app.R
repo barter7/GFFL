@@ -475,7 +475,7 @@ server <- function(input, output, session) {
     active_sorted <- owner_stats |> filter(owner %in% active_owners) |> pull(owner)
     legacy_sorted <- owner_stats |> filter(owner %in% legacy_owners) |> pull(owner)
 
-    # Function to build a card for one owner
+    # Function to build a trophy case for one owner
     build_owner_card <- function(o) {
       stats <- alltime |> filter(Team == o)
       n_champs <- if (o %in% champs$owner) champs$championships[champs$owner == o] else 0
@@ -485,21 +485,20 @@ server <- function(input, output, session) {
       record <- paste0(stats$W, "-", stats$L)
       pf <- format(round(stats$PF, 0), big.mark = ",")
 
-      # Championship trophies - use lombardi image
-      trophy_html <- if (n_champs > 0) {
-        paste(rep("<img src='photos/lombardi.png' style='height:70px; width:60px; object-fit:contain; object-position:center; margin:2px; border:2px solid white; border-radius:4px; padding:3px; background:rgba(255,255,255,0.1);'>", n_champs), collapse = "")
-      } else {
-        "<span style='color:#999;'>None</span>"
-      }
+      # Trophy images (no borders - sitting on shelves)
+      lombardi_imgs <- if (n_champs > 0) {
+        paste(rep("<img src='photos/lombardi.png' style='height:60px; object-fit:contain; margin:0 3px;'>", n_champs), collapse = "")
+      } else ""
 
-      # Championship appearances - use Hunt trophy image
-      appear_html <- if (n_appear > 0) {
-        paste(rep("<img src='photos/Hunt.png' style='height:70px; width:60px; object-fit:contain; object-position:center; margin:2px; border:2px solid white; border-radius:4px; padding:3px; background:rgba(255,255,255,0.1);'>", n_appear), collapse = "")
-      } else {
-        "<span style='color:#999;'>None</span>"
-      }
+      hunt_imgs <- if (n_appear > 0) {
+        paste(rep("<img src='photos/Hunt.png' style='height:55px; object-fit:contain; margin:0 3px;'>", n_appear), collapse = "")
+      } else ""
 
-      # Check for owner photo (www/photos/Name.jpg or .png)
+      sacko_imgs <- if (n_sackos > 0 && file.exists("www/photos/sacko-trophy.png")) {
+        paste(rep("<img src='photos/sacko-trophy.png' style='height:55px; width:45px; object-fit:contain; margin:0 3px;'>", n_sackos), collapse = "")
+      } else ""
+
+      # Check for owner photo
       photo_file <- NULL
       for (ext in c(".jpg", ".jpeg", ".png")) {
         if (file.exists(file.path("www", "photos", paste0(o, ext)))) {
@@ -508,77 +507,88 @@ server <- function(input, output, session) {
         }
       }
 
-      card(
-        class = "text-center",
-        style = "background:#1a1a2e; border:1px solid #333;",
-        card_header(class = "fw-bold fs-6", style = "background:#0f3460; color:#d4a84b; border-bottom:1px solid #c9a84c;", o),
-        card_body(
-          style = "padding:8px; color:#e0e0e0;",
-          # Owner photo with ornate frame overlay
-          div(
-            style = paste0(
-              "width:180px; height:220px; margin:0 auto 8px; ",
-              "position:relative;"
-            ),
-            # Photo layer (behind the frame)
+      # Glass shelf style
+      shelf_style <- paste0(
+        "border-bottom:3px solid rgba(255,255,255,0.15); ",
+        "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+        "min-height:50px; display:flex; align-items:flex-end; justify-content:center; ",
+        "flex-wrap:wrap; padding:4px 2px 6px;"
+      )
+
+      # Build the trophy case
+      div(
+        style = paste0(
+          "background: linear-gradient(180deg, #1a1210 0%, #2a1f18 30%, #1a1210 100%); ",
+          "border:3px solid #3d2b1a; ",
+          "border-radius:6px; ",
+          "box-shadow: inset 0 0 30px rgba(0,0,0,0.5), 0 4px 15px rgba(0,0,0,0.5); ",
+          "overflow:hidden; position:relative;"
+        ),
+
+        # Glass reflection effect
+        div(style = paste0(
+          "position:absolute; top:0; left:0; right:0; bottom:0; ",
+          "background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 50%, rgba(255,255,255,0.03) 100%); ",
+          "pointer-events:none; z-index:1;"
+        )),
+
+        # Owner nameplate at top
+        div(
+          style = paste0(
+            "background: linear-gradient(90deg, #3d2b1a, #5c4413, #3d2b1a); ",
+            "padding:6px; text-align:center; ",
+            "border-bottom:2px solid #8b6914;"
+          ),
+          tags$span(style = "color:#d4a84b; font-family:Georgia,serif; font-weight:bold; font-size:15px; letter-spacing:1px; text-transform:uppercase;", o)
+        ),
+
+        # Owner photo on top shelf
+        div(
+          style = shelf_style,
+          if (!is.null(photo_file)) {
             div(
-              style = paste0(
-                "position:absolute; top:10%; left:10%; width:80%; height:80%; ",
-                "overflow:hidden; background:#e9ecef;"
-              ),
-              if (!is.null(photo_file)) {
+              style = "position:relative; width:100px; height:120px; margin:4px auto;",
+              div(
+                style = "position:absolute; top:10%; left:10%; width:80%; height:80%; overflow:hidden;",
                 tags$img(src = photo_file,
                          style = "width:100%; height:100%; object-fit:cover; object-position:top;")
-              } else {
-                div(
-                  style = "width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#e9ecef;",
-                  tags$span(style = "color:#6c757d; font-size:2rem;",
-                            icon("user"))
-                )
-              }
-            ),
-            # Frame overlay (on top, transparent center shows photo through)
-            tags$img(src = "photos/frame.PNG",
-                     style = paste0(
-                       "position:absolute; top:0; left:0; width:100%; height:100%; ",
-                       "pointer-events:none;"
-                     ))
-          ),
-          # Championships
-          div(class = "mb-2",
-            tags$strong(style = "color:#d4a84b;", "Championships"),
-            div(style = "min-height:40px; display:flex; align-items:center; justify-content:center; flex-wrap:wrap;",
-                HTML(trophy_html))
-          ),
-          # Championship Appearances
-          div(class = "mb-2",
-            tags$strong(style = "color:#c0c0c0;", "Title Game Appearances"),
-            div(style = "min-height:40px; display:flex; align-items:center; justify-content:center; flex-wrap:wrap;",
-                HTML(appear_html))
-          ),
-          # Sackos
-          div(class = "mb-2",
-            tags$strong(style = "color:#cd7f32;", "Sackos"),
-            div(style = "min-height:40px; display:flex; align-items:center; justify-content:center; gap:2px;",
-              if (n_sackos > 0 && file.exists("www/photos/sacko-trophy.png")) {
-                HTML(paste(rep("<img src='photos/sacko-trophy.png' style='height:70px; width:60px; object-fit:contain; object-position:center; margin:2px; border:2px solid white; border-radius:4px; padding:3px; background:rgba(255,255,255,0.1);'>", n_sackos), collapse = ""))
-              } else if (n_sackos > 0) {
-                tags$span(class = "text-danger fw-bold", n_sackos)
-              } else {
-                tags$span(style = "color:#999;", "None")
-              }
+              ),
+              tags$img(src = "photos/frame.PNG",
+                       style = "position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;")
             )
+          } else {
+            div(
+              style = "width:80px; height:100px; display:flex; align-items:center; justify-content:center; margin:4px auto;",
+              tags$span(style = "color:#555; font-size:2.5rem;", icon("user"))
+            )
+          }
+        ),
+
+        # Championship shelf (Lombardis)
+        if (nchar(lombardi_imgs) > 0) {
+          div(style = shelf_style, HTML(lombardi_imgs))
+        },
+
+        # Title game shelf (Hunt trophies)
+        if (nchar(hunt_imgs) > 0) {
+          div(style = shelf_style, HTML(hunt_imgs))
+        },
+
+        # Sacko shelf
+        if (nchar(sacko_imgs) > 0) {
+          div(style = shelf_style, HTML(sacko_imgs))
+        },
+
+        # Stats on bottom plaque
+        div(
+          style = paste0(
+            "background: linear-gradient(90deg, #3d2b1a, #5c4413, #3d2b1a); ",
+            "padding:6px; text-align:center; ",
+            "border-top:2px solid #8b6914;"
           ),
-          # All-Time Record
-          div(class = "mb-2",
-            tags$strong(style = "color:#aaa;", "All-Time Record: "),
-            tags$span(style = "color:#fff;", record)
-          ),
-          # Points For
-          div(class = "mb-1",
-            tags$strong(style = "color:#aaa;", "Points For: "),
-            tags$span(style = "color:#fff;", pf)
-          )
+          tags$span(style = "color:#d4a84b; font-size:12px;", record),
+          tags$span(style = "color:#8b6914; font-size:12px;", " | "),
+          tags$span(style = "color:#d4a84b; font-size:12px;", paste0("PF: ", pf))
         )
       )
     }
