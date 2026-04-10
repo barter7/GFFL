@@ -377,6 +377,126 @@ compute_records_book <- function(standings_data, schedule_data) {
   name_col_std <- if ("owner" %in% names(standings_data)) "owner" else "franchise_name"
   name_col_sch <- if ("team_owner" %in% names(schedule_data)) "team_owner" else "franchise_name"
 
+  # Helper to format tied holders as comma-separated list
+  add_record <- function(records, label, df, value_fn, season_fn = NULL) {
+    if (nrow(df) == 0) return(records)
+    holders <- paste(df[[name_col_std]], collapse = ", ")
+    val <- value_fn(df[1, ])
+    seasons <- if (is.null(season_fn)) paste(unique(df$season), collapse = ", ") else season_fn(df)
+    c(records, list(data.frame(
+      Record = label, Holder = holders, Value = val, Season = seasons
+    )))
+  }
+
+  # Compute season-level PF rankings (1 = highest PF in that season)
+  pf_ranked_seasons <- standings_data |>
+    dplyr::group_by(season) |>
+    dplyr::mutate(pf_season_rank = rank(-points_for, ties.method = "min")) |>
+    dplyr::ungroup()
+
+  # Compute PF/G and PA/G per season
+  pfg_season <- standings_data |>
+    dplyr::mutate(
+      games = h2h_wins + h2h_losses + dplyr::coalesce(h2h_ties, 0L),
+      pfg = points_for / games,
+      pag = points_against / games,
+      winpct = h2h_wins / games
+    )
+
+  # === PLAYOFF/MISS RECORDS ===
+  # Worst record (win%) to make playoffs (league_rank <= 4)
+  playoff_teams <- pfg_season |> dplyr::filter(league_rank <= 4)
+  if (nrow(playoff_teams) > 0) {
+    min_wp <- min(playoff_teams$winpct, na.rm = TRUE)
+    df <- playoff_teams |> dplyr::filter(winpct == min_wp)
+    records <- add_record(records, "Worst Record to Make Playoffs", df,
+      function(r) sprintf("%d-%d (%.1f%%)", r$h2h_wins, r$h2h_losses, r$winpct * 100))
+  }
+
+  # Fewest PF to make playoffs
+  if (nrow(playoff_teams) > 0) {
+    min_pf <- min(playoff_teams$points_for, na.rm = TRUE)
+    df <- playoff_teams |> dplyr::filter(points_for == min_pf)
+    records <- add_record(records, "Fewest PF to Make Playoffs", df,
+      function(r) format(round(r$points_for, 1), nsmall = 1))
+  }
+
+  # Lowest PF ranking to make playoffs (highest pf_season_rank value)
+  pf_playoff_ranks <- pf_ranked_seasons |> dplyr::filter(league_rank <= 4)
+  if (nrow(pf_playoff_ranks) > 0) {
+    worst_rank <- max(pf_playoff_ranks$pf_season_rank, na.rm = TRUE)
+    df <- pf_playoff_ranks |> dplyr::filter(pf_season_rank == worst_rank)
+    records <- add_record(records, "Lowest PF Rank to Make Playoffs", df,
+      function(r) paste0("#", r$pf_season_rank, " in PF"))
+  }
+
+  # Best record (win%) to miss playoffs (league_rank > 4)
+  miss_teams <- pfg_season |> dplyr::filter(league_rank > 4)
+  if (nrow(miss_teams) > 0) {
+    max_wp <- max(miss_teams$winpct, na.rm = TRUE)
+    df <- miss_teams |> dplyr::filter(winpct == max_wp)
+    records <- add_record(records, "Best Record to Miss Playoffs", df,
+      function(r) sprintf("%d-%d (%.1f%%)", r$h2h_wins, r$h2h_losses, r$winpct * 100))
+  }
+
+  # Most PF to miss playoffs
+  if (nrow(miss_teams) > 0) {
+    max_pf <- max(miss_teams$points_for, na.rm = TRUE)
+    df <- miss_teams |> dplyr::filter(points_for == max_pf)
+    records <- add_record(records, "Most PF to Miss Playoffs", df,
+      function(r) format(round(r$points_for, 1), nsmall = 1))
+  }
+
+  # Best PF ranking to miss playoffs (lowest pf_season_rank value)
+  pf_miss_ranks <- pf_ranked_seasons |> dplyr::filter(league_rank > 4)
+  if (nrow(pf_miss_ranks) > 0) {
+    best_rank <- min(pf_miss_ranks$pf_season_rank, na.rm = TRUE)
+    df <- pf_miss_ranks |> dplyr::filter(pf_season_rank == best_rank)
+    records <- add_record(records, "Best PF Rank to Miss Playoffs", df,
+      function(r) paste0("#", r$pf_season_rank, " in PF"))
+  }
+
+  # Worst record to win championship (league_rank == 1)
+  champ_teams <- pfg_season |> dplyr::filter(league_rank == 1)
+  if (nrow(champ_teams) > 0) {
+    min_wp_c <- min(champ_teams$winpct, na.rm = TRUE)
+    df <- champ_teams |> dplyr::filter(winpct == min_wp_c)
+    records <- add_record(records, "Worst Record to Win Championship", df,
+      function(r) sprintf("%d-%d (%.1f%%)", r$h2h_wins, r$h2h_losses, r$winpct * 100))
+  }
+
+  # Fewest PF to win championship
+  if (nrow(champ_teams) > 0) {
+    min_pf_c <- min(champ_teams$points_for, na.rm = TRUE)
+    df <- champ_teams |> dplyr::filter(points_for == min_pf_c)
+    records <- add_record(records, "Fewest PF to Win Championship", df,
+      function(r) format(round(r$points_for, 1), nsmall = 1))
+  }
+
+  # Highest PF/G in a season
+  max_pfg <- max(pfg_season$pfg, na.rm = TRUE)
+  df <- pfg_season |> dplyr::filter(pfg == max_pfg)
+  records <- add_record(records, "Highest PF/G (Season)", df,
+    function(r) format(round(r$pfg, 2), nsmall = 2))
+
+  # Lowest PF/G in a season
+  min_pfg <- min(pfg_season$pfg, na.rm = TRUE)
+  df <- pfg_season |> dplyr::filter(pfg == min_pfg)
+  records <- add_record(records, "Lowest PF/G (Season)", df,
+    function(r) format(round(r$pfg, 2), nsmall = 2))
+
+  # Highest PA/G in a season
+  max_pag <- max(pfg_season$pag, na.rm = TRUE)
+  df <- pfg_season |> dplyr::filter(pag == max_pag)
+  records <- add_record(records, "Highest PA/G (Season)", df,
+    function(r) format(round(r$pag, 2), nsmall = 2))
+
+  # Lowest PA/G in a season
+  min_pag <- min(pfg_season$pag, na.rm = TRUE)
+  df <- pfg_season |> dplyr::filter(pag == min_pag)
+  records <- add_record(records, "Lowest PA/G (Season)", df,
+    function(r) format(round(r$pag, 2), nsmall = 2))
+
   # Filter to regular season if game_type exists
   reg_schedule <- if ("game_type" %in% names(schedule_data)) {
     schedule_data |> dplyr::filter(game_type == "Regular Season")
