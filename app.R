@@ -715,6 +715,36 @@ server <- function(input, output, session) {
         }), collapse = "")
       }
 
+      # MVP trophies (goes to #1 seed each year) - uses oneseed images as placeholder
+      mvp_imgs <- ""
+      if (length(oneseed_years) > 0) {
+        mvp_list <- sapply(oneseed_years, function(yr) {
+          tip <- get_season_tooltip(yr, "MVP ")
+          # Try mvp_ files first, fall back to oneseed_ as placeholder
+          for (prefix in c("mvp_", "oneseed_")) {
+            for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
+              f <- paste0("www/photos/", prefix, yr, ext)
+              if (file.exists(f)) return(paste0("<img src='photos/", prefix, yr, ext, "' class='trophy-img mvp-img' title='", tip, "'>"))
+            }
+          }
+          return("")
+        })
+        mvp_imgs <- paste(mvp_list, collapse = "")
+      }
+
+      # Jersey image lookup
+      jersey_file <- NULL
+      for (name_variant in c(tolower(o), o)) {
+        for (ext in c(".png", ".jpg", ".jpeg", ".PNG")) {
+          f <- file.path("www", "photos", paste0(name_variant, "_jersey", ext))
+          if (file.exists(f)) {
+            jersey_file <- paste0("photos/", name_variant, "_jersey", ext)
+            break
+          }
+        }
+        if (!is.null(jersey_file)) break
+      }
+
       photo_file <- NULL
       for (name_variant in c(paste0(tolower(o), "_headshot"), tolower(o), o)) {
         for (ext in c(".png", ".jpg", ".jpeg", ".PNG")) {
@@ -748,32 +778,17 @@ server <- function(input, output, session) {
           "pointer-events:none; z-index:1;"
         )),
 
-        # Photo shelf: plaques left, photo center, banners right
+        # Top shelf: photo+nameplate (left) | jersey (right)
         div(
           class = "photo-shelf-row",
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "padding:8px 4px 6px;"
+            "padding:10px 6px 8px;"
           ),
-          # Left side: plaques centered
+          # Left: photo + name plaque
           div(
-            style = "flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1px; min-width:0;",
-            div(
-              style = "display:grid; grid-template-columns:1fr 1fr; gap:3px;",
-              build_plaque("Record", record, wp_style),
-              build_plaque("Points", pf, pf_style),
-              build_plaque("Best", best_record_str, get_plaque_style(best_rec_rank)),
-              build_plaque("Worst", worst_record_str, get_plaque_style(worst_rec_rank)),
-              build_plaque("Pts (S)", most_pf_str, get_plaque_style(best_pf_rank)),
-              build_plaque("Pts (W)", most_pw_str, get_plaque_style(best_wk_rank)),
-              build_plaque("W Streak", win_streak_str, get_plaque_style(wstreak_rank)),
-              build_plaque("L Streak", lose_streak_str, get_plaque_style(lstreak_rank))
-            )
-          ),
-          # Center: photo + name plaque
-          div(
-            style = "display:flex; flex-direction:column; align-items:center; flex:0 0 auto; margin:0 4px;",
+            style = "flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;",
             if (!is.null(photo_file)) {
               div(
                 style = "position:relative; flex-shrink:0;",
@@ -793,16 +808,24 @@ server <- function(input, output, session) {
                 tags$span(style = "color:#555; font-size:3rem;", icon("user"))
               )
             },
-            # Name plaque
             div(
-              style = "width:100%; max-width:160px; margin-top:4px;",
+              style = "width:100%; max-width:140px; margin-top:4px;",
               build_plaque(NULL, o, name_style, wide = TRUE)
             )
           ),
-          # Right side: banners (oneseed first, then playoffs)
+          # Right: jersey
           div(
-            class = "banner-side",
-            HTML(combined_banners)
+            style = "flex:1; display:flex; align-items:center; justify-content:center;",
+            if (!is.null(jersey_file)) {
+              tags$img(src = jersey_file, class = "jersey-img")
+            } else {
+              div(
+                style = "color:#555; font-size:11px; text-align:center; font-style:italic;",
+                "Jersey",
+                tags$br(),
+                "coming soon"
+              )
+            }
           )
         ),
 
@@ -825,32 +848,61 @@ server <- function(input, output, session) {
           )
         ),
 
-        # GFFL (left) | Sackos (right) split shelf
+        # MVP (left) | GFFL (right) split shelf
         div(
           class = "trophy-shelf",
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-end; padding:4px 4px 6px; overflow:hidden;"
+            "display:flex; align-items:flex-end; padding:4px 4px 6px;"
           ),
           div(
-            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; overflow:hidden;",
-            HTML(gffl_imgs)
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
+            HTML(mvp_imgs)
           ),
           div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
           div(
-            style = paste0("display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden;",
-                           if (n_sackos > 3) " flex:2;" else " flex:1;"),
-            HTML(sacko_imgs)
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
+            HTML(gffl_imgs)
           )
         ),
 
-        # Bottom trim
+        # Playoff banners shelf (full width, no divider)
         div(
+          class = "banner-shelf",
           style = paste0(
-            "background: linear-gradient(90deg, #3d2b1a, #5c4413, #3d2b1a); ",
-            "height:8px; border-top:2px solid #8b6914;"
-          )
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "display:flex; align-items:center; justify-content:center; flex-wrap:wrap; padding:4px 4px;"
+          ),
+          HTML(combined_banners)
+        ),
+
+        # Sackos shelf (full width)
+        div(
+          class = "sacko-shelf",
+          style = paste0(
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; padding:4px 4px 6px;"
+          ),
+          HTML(sacko_imgs)
+        ),
+
+        # Plaques shelf (bottom, full width)
+        div(
+          class = "plaque-shelf",
+          style = paste0(
+            "background: linear-gradient(180deg, #1a1210 0%, #2a1f18 50%, #1a1210 100%); ",
+            "display:flex; align-items:center; justify-content:space-around; flex-wrap:wrap; ",
+            "padding:6px 4px; border-top:2px solid #8b6914;"
+          ),
+          build_plaque("Record", record, wp_style),
+          build_plaque("Points", pf, pf_style),
+          build_plaque("Best", best_record_str, get_plaque_style(best_rec_rank)),
+          build_plaque("Pts (S)", most_pf_str, get_plaque_style(best_pf_rank)),
+          build_plaque("Pts (W)", most_pw_str, get_plaque_style(best_wk_rank)),
+          build_plaque("W Streak", win_streak_str, get_plaque_style(wstreak_rank))
         )
       )
     }
@@ -864,37 +916,40 @@ server <- function(input, output, session) {
     div(
       style = "background:#e8e0d4; padding:20px; border-radius:12px;",
       tags$style("
-        .trophy-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
-        @media (max-width:768px) { .trophy-grid { grid-template-columns: 1fr; } }
-        .photo-shelf-row { display:flex; align-items:center; justify-content:center; }
+        .trophy-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
+        @media (max-width:768px) { .trophy-grid { grid-template-columns: repeat(2, 1fr); gap:8px; } }
+        .photo-shelf-row { display:flex; align-items:center; justify-content:space-around; }
 
         /* Mobile sizes */
         .trophy-img { object-fit:contain; }
-        .lombardi-img { height:55px; margin:0 12px; }
-        .hunt-img { height:42px; margin:0 4px; }
-        .sacko-img { height:45px; width:36px; margin:0 1px; }
-        .banner-img { height:65px; margin:2px; }
-        .gffl-img { height:55px; margin:0 6px; }
-        .banner-side { display:flex; flex-wrap:wrap; justify-content:center; align-content:center; flex:1; overflow:visible; }
+        .lombardi-img { height:45px; margin:0 8px; }
+        .hunt-img { height:38px; margin:0 4px; }
+        .sacko-img { height:40px; width:32px; margin:0 1px; }
+        .banner-img { height:50px; margin:2px; }
+        .gffl-img { height:45px; margin:0 5px; }
+        .mvp-img { height:45px; margin:0 5px; }
+        .jersey-img { max-width:100%; max-height:150px; object-fit:contain; }
 
-        .trophy-shelf { height:80px; }
-        .banner-shelf { height:80px; }
-        .sacko-shelf { height:80px; }
-        .owner-photo-frame { width:130px; height:155px; }
+        .trophy-shelf { height:65px; }
+        .banner-shelf { height:65px; }
+        .sacko-shelf { height:65px; }
+        .plaque-shelf { min-height:40px; padding:4px; }
+        .owner-photo-frame { width:110px; height:130px; }
 
-        /* Desktop sizes - much bigger */
+        /* Desktop sizes */
         @media (min-width:769px) {
-          .lombardi-img { height:90px; margin:0 15px; }
-          .hunt-img { height:70px; margin:0 10px; }
-          .sacko-img { height:90px; width:70px; margin:0 4px; }
-          .banner-img { height:100px; margin:3px; }
-          .gffl-img { height:90px; margin:0 8px; }
-          .banner-side { flex:1; }
+          .lombardi-img { height:65px; margin:0 10px; }
+          .hunt-img { height:55px; margin:0 8px; }
+          .sacko-img { height:65px; width:50px; margin:0 3px; }
+          .banner-img { height:75px; margin:3px; }
+          .gffl-img { height:65px; margin:0 6px; }
+          .mvp-img { height:65px; margin:0 6px; }
+          .jersey-img { max-height:180px; }
 
-          .trophy-shelf { height:110px; }
-          .banner-shelf { height:110px; }
-          .sacko-shelf { height:110px; }
-          .owner-photo-frame { width:160px; height:190px; }
+          .trophy-shelf { height:90px; }
+          .banner-shelf { height:95px; }
+          .sacko-shelf { height:90px; }
+          .owner-photo-frame { width:140px; height:170px; }
         }
       "),
       div(
