@@ -1090,10 +1090,33 @@ server <- function(input, output, session) {
             total_pts <- round(sum(player_starts$player_score, na.rm = TRUE), 0)
             champ_game_pts <- round(sum(player_starts$player_score[player_starts$week == champ_week], na.rm = TRUE), 0)
 
+            headshot_url <- NULL
+            if (!is.null(rv$player_ids)) {
+              match_row <- rv$player_ids |>
+                filter(tolower(name) == tolower(d$player_name)) |>
+                head(1)
+              if (nrow(match_row) > 0 && "espn_id" %in% names(match_row) && !is.na(match_row$espn_id)) {
+                headshot_url <- paste0("https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/",
+                                       match_row$espn_id, ".png&w=96&h=70&cb=1")
+              }
+            }
+
             tags$tr(
               tags$td(
-                style = "color:#8b6914; font-size:9px; padding:3px; width:28px;",
+                style = "color:#8b6914; font-size:9px; padding:3px; width:22px;",
                 paste0("R", d$round)
+              ),
+              tags$td(
+                style = "width:36px; padding:3px;",
+                if (!is.null(headshot_url)) {
+                  tags$img(src = headshot_url,
+                           style = paste0(
+                             "width:28px; height:28px; border-radius:50%; object-fit:cover; ",
+                             "filter: sepia(0.7) saturate(0.5) brightness(0.9) contrast(1.1); ",
+                             "border:2px solid #8b6914;"
+                           ),
+                           onerror = "this.style.display='none'")
+                }
               ),
               tags$td(
                 style = "color:#d4a84b; font-size:10px; text-align:left; padding:3px;",
@@ -1136,6 +1159,7 @@ server <- function(input, output, session) {
                     tags$tr(
                       style = "border-bottom:1px solid #c9a84c;",
                       tags$th(style = "color:#8b6914; font-size:8px; padding:2px; text-align:left;", "Rd"),
+                      tags$th(style = "color:#8b6914; font-size:8px; padding:2px; text-align:left;", ""),
                       tags$th(style = "color:#8b6914; font-size:8px; padding:2px; text-align:left;", "Player"),
                       tags$th(style = "color:#8b6914; font-size:8px; padding:2px; text-align:center;", "Wks"),
                       tags$th(style = "color:#8b6914; font-size:8px; padding:2px; text-align:right;", "Pts"),
