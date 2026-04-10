@@ -715,21 +715,13 @@ server <- function(input, output, session) {
         }), collapse = "")
       }
 
-      # MVP trophies (goes to #1 seed each year) - uses oneseed images as placeholder
+      # MVP trophies (goes to #1 seed each year) - single mvp.png repeated per year
       mvp_imgs <- ""
       if (length(oneseed_years) > 0) {
-        mvp_list <- sapply(oneseed_years, function(yr) {
+        mvp_imgs <- paste(sapply(oneseed_years, function(yr) {
           tip <- get_season_tooltip(yr, "MVP ")
-          # Try mvp_ files first, fall back to oneseed_ as placeholder
-          for (prefix in c("mvp_", "oneseed_")) {
-            for (ext in c(".PNG", ".png", ".jpg", ".jpeg")) {
-              f <- paste0("www/photos/", prefix, yr, ext)
-              if (file.exists(f)) return(paste0("<img src='photos/", prefix, yr, ext, "' class='trophy-img mvp-img' title='", tip, "'>"))
-            }
-          }
-          return("")
-        })
-        mvp_imgs <- paste(mvp_list, collapse = "")
+          paste0("<img src='photos/mvp.png' class='trophy-img mvp-img' title='", tip, "'>")
+        }), collapse = "")
       }
 
       # Jersey image lookup
