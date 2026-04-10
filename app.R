@@ -677,10 +677,10 @@ server <- function(input, output, session) {
       sacko_years <- rv$standings_data |>
         group_by(season) |> arrange(h2h_wins, points_for) |> slice_head(n = 1) |>
         ungroup() |> filter(owner == o) |> pull(season) |> sort()
-      sacko_imgs <- if (length(sacko_years) > 0 && file.exists("www/photos/sacko-trophy.png")) {
+      sacko_imgs <- if (length(sacko_years) > 0 && file.exists("www/photos/sacko.png")) {
         paste(sapply(sacko_years, function(yr) {
           tip <- get_season_tooltip(yr, "Sacko ")
-          paste0("<img src='photos/sacko-trophy.png' class='trophy-img sacko-img' title='", tip, "'>")
+          paste0("<img src='photos/sacko.png' class='trophy-img sacko-img' title='", tip, "'>")
         }), collapse = "")
       } else ""
 
