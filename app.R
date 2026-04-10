@@ -756,11 +756,11 @@ server <- function(input, output, session) {
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
             "padding:8px 4px 6px;"
           ),
-          # Left side: plaques
+          # Left side: plaques centered
           div(
             style = "flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1px; min-width:0;",
             div(
-              style = "display:grid; grid-template-columns:1fr 1fr; gap:3px; width:80%;",
+              style = "display:grid; grid-template-columns:1fr 1fr; gap:3px;",
               build_plaque("Record", record, wp_style),
               build_plaque("Points", pf, pf_style),
               build_plaque("Best", best_record_str, get_plaque_style(best_rec_rank)),
@@ -873,7 +873,7 @@ server <- function(input, output, session) {
         .lombardi-img { height:55px; margin:0 12px; }
         .hunt-img { height:42px; margin:0 4px; }
         .sacko-img { height:45px; width:36px; margin:0 1px; }
-        .banner-img { height:45px; margin:1px; }
+        .banner-img { height:65px; margin:2px; }
         .gffl-img { height:55px; margin:0 6px; }
         .banner-side { display:flex; flex-wrap:wrap; justify-content:center; align-content:center; flex:1; overflow:visible; }
 
