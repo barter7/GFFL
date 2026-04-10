@@ -581,9 +581,10 @@ server <- function(input, output, session) {
 
       build_plaque <- function(label, value, style, wide = FALSE) {
         div(
+          class = if (wide) "plaque-wide" else "plaque-stat",
           style = paste0(
-            "display:inline-block; padding:2px; margin:2px; ",
-            if (wide) "width:100%; " else "",
+            "padding:2px; margin:1px; min-width:0; ",
+            if (wide) "width:100%; display:inline-block; " else "display:inline-block; ",
             "background: linear-gradient(135deg, #5c4413, #3d2b1a, #5c4413); ",
             "border-radius:4px; box-shadow: 0 2px 5px rgba(0,0,0,0.4);"
           ),
@@ -591,19 +592,23 @@ server <- function(input, output, session) {
             style = paste0(
               "background:", style$bg, "; ",
               "border:1px solid ", style$border, "; ",
-              "border-radius:3px; padding:5px 9px; text-align:center; ",
+              "border-radius:3px; padding:4px 6px; text-align:center; min-width:0; ",
               "box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), inset 0 -1px 3px rgba(0,0,0,0.2), ",
               "0 1px 0 ", style$shadow, ";"
             ),
-            if (!is.null(label)) div(style = paste0(
-              "font-family:Georgia,serif; font-size:9px; text-transform:uppercase; ",
-              "letter-spacing:0.5px; color:", style$text, "; opacity:0.75;"
-            ), label),
-            div(style = paste0(
-              "font-family:Georgia,serif; font-weight:bold; font-size:14px; ",
-              "color:", style$text, "; white-space:nowrap; ",
-              "text-shadow: 0 1px 0 rgba(255,255,255,0.3), 0 -1px 0 rgba(0,0,0,0.2);"
-            ), value)
+            if (!is.null(label)) div(
+              class = "plaque-label",
+              style = paste0(
+                "font-family:Georgia,serif; text-transform:uppercase; ",
+                "letter-spacing:0.5px; color:", style$text, "; opacity:0.75;"
+              ), label),
+            div(
+              class = "plaque-value",
+              style = paste0(
+                "font-family:Georgia,serif; font-weight:bold; ",
+                "color:", style$text, "; white-space:nowrap; ",
+                "text-shadow: 0 1px 0 rgba(255,255,255,0.3), 0 -1px 0 rgba(0,0,0,0.2);"
+              ), value)
           )
         )
       }
@@ -849,13 +854,13 @@ server <- function(input, output, session) {
           HTML(sacko_imgs)
         ),
 
-        # Plaques shelf (bottom, full width)
+        # Plaques shelf (bottom, full width - always 6 in one row)
         div(
           class = "plaque-shelf",
           style = paste0(
             "background: linear-gradient(180deg, #1a1210 0%, #2a1f18 50%, #1a1210 100%); ",
-            "display:flex; align-items:center; justify-content:space-around; flex-wrap:wrap; ",
-            "padding:6px 4px; border-top:2px solid #8b6914;"
+            "display:flex; align-items:center; justify-content:space-around; flex-wrap:nowrap; ",
+            "padding:6px 2px; border-top:2px solid #8b6914; overflow:hidden;"
           ),
           build_plaque("Record", record, wp_style),
           build_plaque("Points", pf, pf_style),
@@ -896,6 +901,12 @@ server <- function(input, output, session) {
         .plaque-shelf { min-height:40px; padding:4px; }
         .owner-photo-frame { width:110px; height:130px; }
 
+        /* Plaques scale to fit */
+        .plaque-stat { flex:1 1 0; min-width:0; }
+        .plaque-stat > div { padding:3px 3px !important; }
+        .plaque-label { font-size:7px; }
+        .plaque-value { font-size:11px; }
+
         /* Desktop sizes */
         @media (min-width:769px) {
           .lombardi-img { height:65px; margin:0 10px; }
@@ -910,6 +921,10 @@ server <- function(input, output, session) {
           .banner-shelf { height:95px; }
           .sacko-shelf { height:90px; }
           .owner-photo-frame { width:140px; height:170px; }
+
+          .plaque-stat > div { padding:5px 6px !important; }
+          .plaque-label { font-size:9px; }
+          .plaque-value { font-size:14px; }
         }
       "),
       div(
