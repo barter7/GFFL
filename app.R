@@ -1029,12 +1029,12 @@ server <- function(input, output, session) {
               ),
               tags$td(
                 style = "color:#d4a84b; font-weight:bold; font-size:12px; text-align:right; padding:3px;",
-                round(p$player_score, 1)
+                round(p$player_score, 0)
               )
             )
           })
 
-          total_score <- round(sum(roster$player_score, na.rm = TRUE), 1)
+          total_score <- round(sum(roster$player_score, na.rm = TRUE), 0)
 
           roster_html <- div(
             style = "margin-top:6px;",
@@ -1087,8 +1087,8 @@ server <- function(input, output, session) {
             d <- champ_draft[j, ]
             player_starts <- owner_starters |> filter(player_name == d$player_name)
             weeks_started <- nrow(player_starts)
-            total_pts <- round(sum(player_starts$player_score, na.rm = TRUE), 1)
-            champ_game_pts <- round(sum(player_starts$player_score[player_starts$week == champ_week], na.rm = TRUE), 1)
+            total_pts <- round(sum(player_starts$player_score, na.rm = TRUE), 0)
+            champ_game_pts <- round(sum(player_starts$player_score[player_starts$week == champ_week], na.rm = TRUE), 0)
 
             tags$tr(
               tags$td(
@@ -1271,8 +1271,11 @@ server <- function(input, output, session) {
     })
 
     div(
-      class = "text-center",
-      style = "padding:20px; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); border-radius:12px; min-height:400px;",
+      style = paste0(
+        "padding:20px; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); ",
+        "border-radius:12px; min-height:400px; ",
+        "display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-start; gap:16px;"
+      ),
       bust_cards
     )
   })
