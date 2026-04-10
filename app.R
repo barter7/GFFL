@@ -1067,6 +1067,89 @@ server <- function(input, output, session) {
         }
       }
 
+      # Draft results dropdown
+      draft_html <- NULL
+      champ_fid <- row$franchise_id
+      if (!is.null(rv$draft_data) && !is.null(rv$starters_data)) {
+        champ_draft <- rv$draft_data |>
+          filter(season == yr, franchise_id == champ_fid) |>
+          arrange(round, pick)
+
+        if (nrow(champ_draft) > 0) {
+          # Compute starter stats per drafted player
+          owner_starters <- rv$starters_data |>
+            filter(season == yr, franchise_id == champ_fid,
+                   !lineup_slot %in% c("BE", "IR"))
+
+          champ_week <- max(rv$schedule_data |> filter(season == yr) |> pull(week), na.rm = TRUE)
+
+          draft_rows <- lapply(seq_len(nrow(champ_draft)), function(j) {
+            d <- champ_draft[j, ]
+            player_starts <- owner_starters |> filter(player_name == d$player_name)
+            weeks_started <- nrow(player_starts)
+            total_pts <- round(sum(player_starts$player_score, na.rm = TRUE), 1)
+            champ_game_pts <- round(sum(player_starts$player_score[player_starts$week == champ_week], na.rm = TRUE), 1)
+
+            tags$tr(
+              tags$td(
+                style = "color:#8b6914; font-size:9px; padding:3px; width:28px;",
+                paste0("R", d$round)
+              ),
+              tags$td(
+                style = "color:#d4a84b; font-size:10px; text-align:left; padding:3px;",
+                tags$span(style = "font-weight:bold;", d$player_name),
+                tags$br(),
+                tags$span(style = "color:#8b6914; font-size:8px;",
+                          paste0(d$pos, " - ", d$team))
+              ),
+              tags$td(
+                style = "color:#d4a84b; font-size:10px; text-align:center; padding:3px;",
+                weeks_started
+              ),
+              tags$td(
+                style = "color:#d4a84b; font-size:10px; text-align:right; padding:3px;",
+                total_pts
+              ),
+              tags$td(
+                style = "color:#d4a84b; font-size:10px; text-align:right; padding:3px;",
+                if (champ_game_pts > 0) champ_game_pts else "-"
+              )
+            )
+          })
+
+          draft_html <- div(
+            style = "margin-top:4px;",
+            tags$details(
+              style = "cursor:pointer;",
+              tags$summary(
+                style = "color:#d4a84b; font-family:Georgia,serif; font-size:11px; text-align:center; list-style:none; padding:4px;",
+                tags$span(style = "border-bottom:1px solid #c9a84c;", "View Draft")
+              ),
+              div(
+                style = paste0(
+                  "margin-top:4px; padding:4px; background:#0a0a1a; ",
+                  "border:1px solid #c9a84c; border-radius:4px;"
+                ),
+                tags$table(
+                  style = "width:100%; border-collapse:collapse;",
+                  tags$thead(
+                    tags$tr(
+                      style = "border-bottom:1px solid #c9a84c;",
+                      tags$th(style = "color:#8b6914; font-size:8px; padding:2px; text-align:left;", "Rd"),
+                      tags$th(style = "color:#8b6914; font-size:8px; padding:2px; text-align:left;", "Player"),
+                      tags$th(style = "color:#8b6914; font-size:8px; padding:2px; text-align:center;", "Wks"),
+                      tags$th(style = "color:#8b6914; font-size:8px; padding:2px; text-align:right;", "Pts"),
+                      tags$th(style = "color:#8b6914; font-size:8px; padding:2px; text-align:right;", "Chp")
+                    )
+                  ),
+                  tags$tbody(draft_rows)
+                )
+              )
+            )
+          )
+        }
+      }
+
       div(
         class = "d-inline-block text-center mb-4",
         style = "width:48%; min-width:160px; max-width:220px; vertical-align:top; margin:0 1%;",
@@ -1181,7 +1264,9 @@ server <- function(input, output, session) {
         ),
 
         # Championship roster dropdown
-        roster_html
+        roster_html,
+        # Draft results dropdown
+        draft_html
       )
     })
 
