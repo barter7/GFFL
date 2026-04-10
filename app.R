@@ -248,44 +248,12 @@ ui <- page_navbar(
   nav_panel(
     title = "Records",
     icon = icon("medal"),
-    layout_columns(
-      col_widths = c(6, 6),
-      card(
-        card_header("All-Time Win Percentage Leaders"),
-        plotlyOutput("win_pct_plot", height = "400px")
-      ),
-      card(
-        card_header("All-Time Points Per Game Leaders"),
-        plotlyOutput("ppg_plot", height = "400px")
-      )
+    tags$head(
+      tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap")
     ),
-    layout_columns(
-      col_widths = c(4, 4, 4),
-      value_box(
-        title = "Most All-Time Wins",
-        value = textOutput("record_most_wins"),
-        theme = "primary",
-        showcase = icon("crown")
-      ),
-      value_box(
-        title = "Highest Single-Week Score",
-        value = textOutput("record_high_score"),
-        theme = "success",
-        showcase = icon("arrow-up")
-      ),
-      value_box(
-        title = "Longest Win Streak",
-        value = textOutput("record_win_streak"),
-        theme = "warning",
-        showcase = icon("fire")
-      )
-    ),
-    layout_columns(
-      col_widths = c(12),
-      card(
-        card_header("All-Time Records Book"),
-        DTOutput("records_table")
-      )
+    div(
+      class = "record-book",
+      uiOutput("records_book")
     )
   ),
 
@@ -1749,55 +1717,124 @@ server <- function(input, output, session) {
   })
 
   # ==========================================================================
-  # RECORDS TAB
+  # RECORDS TAB - Old Book Style
   # ==========================================================================
 
-  output$win_pct_plot <- renderPlotly({
-    req(rv$standings_data)
-    alltime <- compute_alltime_standings(rv$standings_data) |> arrange(desc(`Win%`))
-    alltime$Team <- factor(alltime$Team, levels = rev(alltime$Team))
-
-    p <- ggplot(alltime, aes(x = Team, y = `Win%`, fill = Team)) +
-      geom_col(show.legend = FALSE) + coord_flip() +
-      scale_y_continuous(labels = percent) +
-      labs(x = NULL, y = "Win %") + theme_minimal()
-    ggplotly(p, tooltip = c("y"))
-  })
-
-  output$ppg_plot <- renderPlotly({
-    req(rv$standings_data)
-    alltime <- compute_alltime_standings(rv$standings_data) |> arrange(desc(`PF/G`))
-    alltime$Team <- factor(alltime$Team, levels = rev(alltime$Team))
-
-    p <- ggplot(alltime, aes(x = Team, y = `PF/G`, fill = Team)) +
-      geom_col(show.legend = FALSE) + coord_flip() +
-      labs(x = NULL, y = "Points Per Game") + theme_minimal()
-    ggplotly(p, tooltip = c("y"))
-  })
-
-  output$record_most_wins <- renderText({
-    req(rv$standings_data)
-    alltime <- compute_alltime_standings(rv$standings_data)
-    top <- alltime |> arrange(desc(W)) |> head(1)
-    paste0(top$Team, " (", top$W, ")")
-  })
-
-  output$record_high_score <- renderText({
-    req(rv$schedule_data)
-    top <- rv$schedule_data |> arrange(desc(franchise_score)) |> head(1)
-    paste0(top$team_owner, " (", round(top$franchise_score, 1), ")")
-  })
-
-  output$record_win_streak <- renderText({
-    req(rv$schedule_data)
-    streak <- compute_longest_streak(rv$schedule_data)
-    paste0(streak$team, " (", streak$streak, ")")
-  })
-
-  output$records_table <- renderDT({
+  output$records_book <- renderUI({
     req(rv$standings_data, rv$schedule_data)
     records <- compute_records_book(rv$standings_data, rv$schedule_data)
-    datatable(records, options = list(pageLength = 20, dom = "t"), rownames = FALSE)
+
+    # Build record entries styled like an old book
+    entries <- lapply(seq_len(nrow(records)), function(i) {
+      r <- records[i, ]
+      div(
+        class = "record-entry",
+        div(class = "record-title", r$Record),
+        div(class = "record-holder",
+          tags$span(class = "record-value", r$Value),
+          tags$span(class = "record-by", " — "),
+          tags$span(class = "record-name", r$Holder),
+          tags$span(class = "record-season", paste0(" (", r$Season, ")"))
+        ),
+        tags$hr(class = "record-divider")
+      )
+    })
+
+    tagList(
+      tags$style("
+        .record-book {
+          background: #f4e8d0;
+          background-image:
+            radial-gradient(ellipse at top, rgba(139,105,20,0.12), transparent 60%),
+            radial-gradient(ellipse at bottom, rgba(139,105,20,0.15), transparent 60%),
+            repeating-linear-gradient(0deg, transparent 0px, transparent 28px, rgba(139,105,20,0.08) 28px, rgba(139,105,20,0.08) 29px);
+          padding: 40px 30px;
+          min-height: 80vh;
+          border: 8px double #5c3a10;
+          box-shadow: inset 0 0 80px rgba(92,58,16,0.2), 0 10px 40px rgba(0,0,0,0.3);
+          border-radius: 4px;
+          position: relative;
+        }
+        .record-book::before, .record-book::after {
+          content: '';
+          position: absolute;
+          top: 20px;
+          bottom: 20px;
+          width: 1px;
+          background: rgba(92,58,16,0.3);
+        }
+        .record-book::before { left: 12px; }
+        .record-book::after { right: 12px; }
+        .record-book h1 {
+          font-family: 'IM Fell English', Georgia, serif;
+          font-size: 42px;
+          text-align: center;
+          color: #3d2a10;
+          text-shadow: 1px 1px 0 rgba(255,255,255,0.4), 2px 2px 4px rgba(0,0,0,0.2);
+          letter-spacing: 4px;
+          margin: 0 0 10px;
+          font-weight: normal;
+        }
+        .record-book .subtitle {
+          font-family: 'Cormorant Garamond', Georgia, serif;
+          font-style: italic;
+          text-align: center;
+          color: #5c3a10;
+          font-size: 18px;
+          margin-bottom: 30px;
+          letter-spacing: 2px;
+        }
+        .record-book .fleuron {
+          text-align: center;
+          color: #8b6914;
+          font-size: 24px;
+          margin: 15px 0;
+          letter-spacing: 20px;
+        }
+        .record-entry {
+          margin: 18px 0;
+          padding: 0 20px;
+        }
+        .record-title {
+          font-family: 'IM Fell English', Georgia, serif;
+          font-size: 20px;
+          color: #3d2a10;
+          font-weight: bold;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+          margin-bottom: 4px;
+        }
+        .record-holder {
+          font-family: 'Cormorant Garamond', Georgia, serif;
+          font-size: 18px;
+          color: #2a1a08;
+          padding-left: 24px;
+        }
+        .record-value {
+          font-weight: 600;
+          font-size: 20px;
+          color: #3d2a10;
+        }
+        .record-name {
+          font-style: italic;
+          color: #5c3a10;
+        }
+        .record-season {
+          font-size: 15px;
+          color: #8b6914;
+        }
+        .record-divider {
+          border: none;
+          border-top: 1px dashed rgba(92,58,16,0.3);
+          margin: 8px 0 0;
+        }
+      "),
+      h1("The GFFL Records Book"),
+      div(class = "subtitle", "A Chronicle of Glorious Deeds & Dreadful Follies"),
+      div(class = "fleuron", HTML("&#10086; &#10086; &#10086;")),
+      entries,
+      div(class = "fleuron", HTML("&#10086; &#10086; &#10086;"))
+    )
   })
 }
 
