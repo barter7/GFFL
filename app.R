@@ -614,25 +614,25 @@ server <- function(input, output, session) {
       build_plaque <- function(label, value, style, wide = FALSE) {
         div(
           style = paste0(
-            "display:inline-block; padding:1px; margin:1px; ",
+            "display:inline-block; padding:2px; margin:2px; ",
             if (wide) "width:100%; " else "",
             "background: linear-gradient(135deg, #5c4413, #3d2b1a, #5c4413); ",
-            "border-radius:3px; box-shadow: 0 2px 4px rgba(0,0,0,0.4);"
+            "border-radius:4px; box-shadow: 0 2px 5px rgba(0,0,0,0.4);"
           ),
           div(
             style = paste0(
               "background:", style$bg, "; ",
               "border:1px solid ", style$border, "; ",
-              "border-radius:2px; padding:2px 4px; text-align:center; ",
+              "border-radius:3px; padding:5px 9px; text-align:center; ",
               "box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), inset 0 -1px 3px rgba(0,0,0,0.2), ",
               "0 1px 0 ", style$shadow, ";"
             ),
             if (!is.null(label)) div(style = paste0(
-              "font-family:Georgia,serif; font-size:7px; text-transform:uppercase; ",
-              "letter-spacing:0.5px; color:", style$text, "; opacity:0.7;"
+              "font-family:Georgia,serif; font-size:9px; text-transform:uppercase; ",
+              "letter-spacing:0.5px; color:", style$text, "; opacity:0.75;"
             ), label),
             div(style = paste0(
-              "font-family:Georgia,serif; font-weight:bold; font-size:11px; ",
+              "font-family:Georgia,serif; font-weight:bold; font-size:14px; ",
               "color:", style$text, "; white-space:nowrap; ",
               "text-shadow: 0 1px 0 rgba(255,255,255,0.3), 0 -1px 0 rgba(0,0,0,0.2);"
             ), value)
@@ -917,7 +917,7 @@ server <- function(input, output, session) {
       style = "background:#e8e0d4; padding:20px; border-radius:12px;",
       tags$style("
         .trophy-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
-        @media (max-width:768px) { .trophy-grid { grid-template-columns: repeat(2, 1fr); gap:8px; } }
+        @media (max-width:768px) { .trophy-grid { grid-template-columns: 1fr; gap:12px; } }
         .photo-shelf-row { display:flex; align-items:center; justify-content:space-around; }
 
         /* Mobile sizes */
