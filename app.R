@@ -630,6 +630,8 @@ server <- function(input, output, session) {
 
       # Championship trophies with tooltips
       champ_years <- rv$standings_data |> filter(owner == o, league_rank == 1) |> pull(season) |> sort()
+      # Add pre-data championships
+      if (o == "Connor") champ_years <- sort(unique(c(2016, champ_years)))
       lombardi_imgs <- if (length(champ_years) > 0) {
         paste(sapply(champ_years, function(yr) {
           tip <- get_season_tooltip(yr, "Champion ")
