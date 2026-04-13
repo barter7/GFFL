@@ -244,6 +244,21 @@ ui <- page_navbar(
     uiOutput("recap_gallery")
   ),
 
+  # COMMISSIONER OF THE YEAR
+  nav_panel(
+    title = "Commissioner",
+    icon = icon("gavel"),
+    div(
+      style = paste0(
+        "background: linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%); ",
+        "padding:30px 20px; border-radius:12px; text-align:center; min-height:80vh;"
+      ),
+      h2(style = "color:#d4a84b; font-family:Georgia,serif; letter-spacing:3px; margin-bottom:5px;", "COMMISSIONER OF THE YEAR"),
+      tags$hr(style = "border-color:#8b6914; width:200px; margin:0 auto 30px;"),
+      uiOutput("commish_gallery")
+    )
+  ),
+
   # RECORDS
   nav_panel(
     title = "Records",
@@ -1842,6 +1857,80 @@ server <- function(input, output, session) {
       div(class = "recap-collage",
           style = "column-gap:8px;",
           photo_tags)
+    )
+  })
+
+  # ==========================================================================
+  # COMMISSIONER OF THE YEAR TAB
+  # ==========================================================================
+
+  output$commish_gallery <- renderUI({
+    commissioners <- data.frame(
+      year = 2016:2025,
+      name = c(rep("Harry", 9), "Tom"),
+      stringsAsFactors = FALSE
+    )
+
+    cards <- lapply(seq_len(nrow(commissioners)), function(i) {
+      yr <- commissioners$year[i]
+      name <- commissioners$name[i]
+
+      # Find headshot
+      photo_file <- NULL
+      for (name_variant in c(paste0(tolower(name), "_headshot"), tolower(name), name)) {
+        for (ext in c(".png", ".jpg", ".jpeg", ".PNG")) {
+          if (file.exists(file.path("www", "photos", paste0(name_variant, ext)))) {
+            photo_file <- paste0("photos/", name_variant, ext)
+            break
+          }
+        }
+        if (!is.null(photo_file)) break
+      }
+
+      div(
+        style = "display:inline-block; text-align:center; margin:10px; vertical-align:top; width:140px;",
+        # Photo
+        if (!is.null(photo_file)) {
+          div(
+            style = "position:relative; width:120px; height:140px; margin:0 auto;",
+            div(
+              style = "position:absolute; top:10%; left:10%; width:80%; height:80%; overflow:hidden;",
+              tags$img(src = photo_file,
+                       style = "width:100%; height:100%; object-fit:cover; object-position:top;")
+            ),
+            tags$img(src = "photos/frame.PNG",
+                     style = "position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;")
+          )
+        } else {
+          div(
+            style = "width:120px; height:140px; margin:0 auto; display:flex; align-items:center; justify-content:center; background:#2a1f18; border-radius:4px;",
+            tags$span(style = "color:#555; font-size:2.5rem;", icon("user"))
+          )
+        },
+        # Gold name plaque
+        div(
+          style = paste0(
+            "margin-top:6px; padding:2px; ",
+            "background: linear-gradient(135deg, #5c4413, #3d2b1a, #5c4413); ",
+            "border-radius:4px;"
+          ),
+          div(
+            style = paste0(
+              "background: linear-gradient(180deg, #d4a84b, #f0d675, #c9a84c, #a07828); ",
+              "border:1px solid #8b6914; border-radius:3px; padding:4px 8px; text-align:center;"
+            ),
+            div(style = "color:#3d2b0a; font-family:Georgia,serif; font-weight:bold; font-size:13px; text-transform:uppercase; text-shadow: 0 1px 0 rgba(255,255,255,0.3);",
+                name),
+            div(style = "color:#3d2b0a; font-family:Georgia,serif; font-weight:bold; font-size:16px; text-shadow: 0 1px 0 rgba(255,255,255,0.3);",
+                yr)
+          )
+        )
+      )
+    })
+
+    div(
+      style = "display:flex; flex-wrap:wrap; justify-content:center; gap:10px;",
+      cards
     )
   })
 
