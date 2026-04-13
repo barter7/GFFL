@@ -667,6 +667,8 @@ server <- function(input, output, session) {
       sacko_years <- rv$standings_data |>
         group_by(season) |> arrange(h2h_wins, points_for) |> slice_head(n = 1) |>
         ungroup() |> filter(owner == o) |> pull(season) |> sort()
+      # Add pre-data sackos
+      if (o == "Kerley") sacko_years <- sort(unique(c(2016, sacko_years)))
       sacko_imgs <- if (length(sacko_years) > 0 && file.exists("www/photos/sacko.png")) {
         paste(sapply(sacko_years, function(yr) {
           tip <- get_season_tooltip(yr, "Sacko ")
@@ -909,7 +911,7 @@ server <- function(input, output, session) {
         .sacko-img { height:40px; width:32px; margin:0 1px; }
         .banner-img { height:50px; margin:2px; }
         .gffl-img { height:45px; margin:0 5px; }
-        .mvp-img { height:38px; margin:0 2px; }
+        .mvp-img { height:30px; margin:0 2px; }
         .jersey-img { max-width:100%; max-height:150px; object-fit:contain; }
 
         .trophy-shelf { height:65px; }
@@ -931,7 +933,7 @@ server <- function(input, output, session) {
           .sacko-img { height:65px; width:50px; margin:0 3px; }
           .banner-img { height:75px; margin:3px; }
           .gffl-img { height:65px; margin:0 6px; }
-          .mvp-img { height:55px; margin:0 4px; }
+          .mvp-img { height:42px; margin:0 3px; }
           .jersey-img { max-height:180px; }
 
           .trophy-shelf { height:90px; }
