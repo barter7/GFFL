@@ -633,7 +633,7 @@ server <- function(input, output, session) {
       lombardi_imgs <- if (length(champ_years) > 0) {
         paste(sapply(champ_years, function(yr) {
           tip <- get_season_tooltip(yr, "Champion ")
-          paste0("<img src='photos/lombardi.png' class='trophy-img lombardi-img' title='", tip, "'>")
+          paste0("<img src='photos/champion_ring.png' class='trophy-img lombardi-img' title='", tip, "'>")
         }), collapse = "")
       } else ""
 
