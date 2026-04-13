@@ -867,7 +867,7 @@ server <- function(input, output, session) {
           build_plaque("Best", best_record_str, get_plaque_style(best_rec_rank)),
           build_plaque("Pts (S)", most_pf_str, get_plaque_style(best_pf_rank)),
           build_plaque("Pts (W)", most_pw_str, get_plaque_style(best_wk_rank)),
-          build_plaque("W Streak", win_streak_str, get_plaque_style(wstreak_rank))
+          build_plaque("Streak", win_streak_str, get_plaque_style(wstreak_rank))
         )
       )
     }
@@ -887,7 +887,7 @@ server <- function(input, output, session) {
 
         /* Mobile sizes */
         .trophy-img { object-fit:contain; }
-        .lombardi-img { height:45px; margin:0 8px; }
+        .lombardi-img { height:35px; margin:0 3px; }
         .hunt-img { height:38px; margin:0 4px; }
         .sacko-img { height:40px; width:32px; margin:0 1px; }
         .banner-img { height:50px; margin:2px; }
@@ -909,7 +909,7 @@ server <- function(input, output, session) {
 
         /* Desktop sizes */
         @media (min-width:769px) {
-          .lombardi-img { height:65px; margin:0 10px; }
+          .lombardi-img { height:50px; margin:0 5px; }
           .hunt-img { height:55px; margin:0 8px; }
           .sacko-img { height:65px; width:50px; margin:0 3px; }
           .banner-img { height:75px; margin:3px; }
