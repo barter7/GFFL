@@ -35,6 +35,62 @@ ui <- page_navbar(
 
   # --- Tab Panels ---
 
+  # HOME / TITLE PAGE
+  nav_panel(
+    title = "Home",
+    icon = icon("house"),
+    tags$head(
+      tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Bebas+Neue&display=swap")
+    ),
+    div(
+      style = paste0(
+        "min-height:85vh; display:flex; flex-direction:column; align-items:center; justify-content:center; ",
+        "background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a14 70%, #000 100%); ",
+        "padding:40px 20px; border-radius:12px; text-align:center; position:relative; overflow:hidden;"
+      ),
+      # Subtle gold pattern overlay
+      div(style = paste0(
+        "position:absolute; inset:0; ",
+        "background: radial-gradient(ellipse at top, rgba(212,168,75,0.08), transparent 60%), ",
+        "radial-gradient(ellipse at bottom, rgba(212,168,75,0.05), transparent 60%); ",
+        "pointer-events:none;"
+      )),
+      # Top decorative line
+      div(style = "height:3px; width:70%; max-width:800px; background:linear-gradient(90deg, transparent, #c9a84c 20%, #f0d675 50%, #c9a84c 80%, transparent); margin-bottom:30px; z-index:2;"),
+      # Main title
+      h1(style = paste0(
+        "font-family:'Cinzel',Georgia,serif; font-weight:900; ",
+        "color:#d4a84b; letter-spacing:8px; ",
+        "text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 0 30px rgba(212,168,75,0.4), 0 0 60px rgba(212,168,75,0.2); ",
+        "font-size:clamp(32px, 8vw, 80px); line-height:1.1; margin:0; z-index:2; position:relative;"
+      ), "GROUPIES"),
+      h1(style = paste0(
+        "font-family:'Cinzel',Georgia,serif; font-weight:900; ",
+        "color:#f0d675; letter-spacing:10px; ",
+        "text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 0 30px rgba(212,168,75,0.4), 0 0 60px rgba(212,168,75,0.2); ",
+        "font-size:clamp(40px, 10vw, 100px); line-height:1.1; margin:10px 0; z-index:2; position:relative;"
+      ), "FANTASY"),
+      h1(style = paste0(
+        "font-family:'Cinzel',Georgia,serif; font-weight:900; ",
+        "color:#d4a84b; letter-spacing:8px; ",
+        "text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 0 30px rgba(212,168,75,0.4), 0 0 60px rgba(212,168,75,0.2); ",
+        "font-size:clamp(32px, 8vw, 80px); line-height:1.1; margin:0; z-index:2; position:relative;"
+      ), "FUCKBOI"),
+      h1(style = paste0(
+        "font-family:'Cinzel',Georgia,serif; font-weight:900; ",
+        "color:#d4a84b; letter-spacing:12px; ",
+        "text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 0 30px rgba(212,168,75,0.4), 0 0 60px rgba(212,168,75,0.2); ",
+        "font-size:clamp(28px, 7vw, 70px); line-height:1.1; margin:10px 0 0; z-index:2; position:relative;"
+      ), "LEAGUE"),
+      # Bottom decorative line
+      div(style = "height:3px; width:70%; max-width:800px; background:linear-gradient(90deg, transparent, #c9a84c 20%, #f0d675 50%, #c9a84c 80%, transparent); margin-top:30px; z-index:2;"),
+      div(style = paste0(
+        "color:#8b6914; font-family:Georgia,serif; font-style:italic; ",
+        "letter-spacing:4px; margin-top:20px; font-size:clamp(12px, 2vw, 18px); z-index:2; position:relative;"
+      ), "EST. 2016")
+    )
+  ),
+
   # TROPHY ROOM
   nav_panel(
     title = "Trophy Room",
@@ -1147,30 +1203,29 @@ server <- function(input, output, session) {
         @media (max-width:768px) { .trophy-grid { grid-template-columns: 1fr; gap:12px; } }
         .photo-shelf-row { display:flex; align-items:center; justify-content:space-around; }
 
-        /* Background shelf labels - subtle engraved look */
+        /* Background shelf labels - subtle engraved look at top of shelf */
         .shelf-label {
           position:absolute;
-          top:50%;
-          transform:translateY(-50%);
+          top:2px;
           font-family:Georgia,serif;
           font-weight:bold;
-          letter-spacing:3px;
-          color:rgba(180,180,190,0.18);
-          text-shadow: 0 1px 0 rgba(255,255,255,0.08), 0 -1px 0 rgba(0,0,0,0.5);
+          letter-spacing:2px;
+          color:rgba(100,100,110,0.25);
+          text-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 -1px 0 rgba(0,0,0,0.5);
           text-transform:uppercase;
           pointer-events:none;
           z-index:1;
           white-space:nowrap;
           overflow:hidden;
           text-overflow:clip;
-          font-size:14px;
+          font-size:9px;
         }
-        .shelf-label-left { left:0; right:50%; text-align:center; padding:0 4px; }
-        .shelf-label-right { right:0; left:50%; text-align:center; padding:0 4px; }
-        .shelf-label-full { left:0; right:0; text-align:center; padding:0 4px; }
+        .shelf-label-left { left:2px; right:50%; text-align:center; padding:0 2px; }
+        .shelf-label-right { right:2px; left:50%; text-align:center; padding:0 2px; }
+        .shelf-label-full { left:0; right:0; text-align:center; padding:0 2px; }
 
         @media (min-width:769px) {
-          .shelf-label { font-size:18px; letter-spacing:5px; }
+          .shelf-label { font-size:12px; letter-spacing:3px; }
         }
 
         /* Mobile sizes */
