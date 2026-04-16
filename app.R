@@ -902,6 +902,44 @@ server <- function(input, output, session) {
     # Ghost card - for owners without ESPN data (Sean, Kenny, Xing Wei)
     # fill_all = TRUE fills every shelf with fill_image (for Honorary owners)
     build_ghost_card <- function(o, fill_all = FALSE, fill_image = NULL) {
+      # Define plaque helpers locally (they're scoped inside build_owner_card)
+      build_plaque <- function(label, value, style, wide = FALSE) {
+        div(
+          class = if (wide) "plaque-wide" else "plaque-stat",
+          style = paste0(
+            "padding:2px; margin:1px; min-width:0; ",
+            if (wide) "width:100%; display:inline-block; " else "display:inline-block; ",
+            "background: linear-gradient(135deg, #5c4413, #3d2b1a, #5c4413); ",
+            "border-radius:4px; box-shadow: 0 2px 5px rgba(0,0,0,0.4);"
+          ),
+          div(
+            style = paste0(
+              "background:", style$bg, "; ",
+              "border:1px solid ", style$border, "; ",
+              "border-radius:3px; padding:4px 6px; text-align:center; min-width:0; ",
+              "box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), inset 0 -1px 3px rgba(0,0,0,0.2), ",
+              "0 1px 0 ", style$shadow, ";"
+            ),
+            if (!is.null(label)) div(
+              class = "plaque-label",
+              style = paste0(
+                "font-family:Georgia,serif; text-transform:uppercase; ",
+                "letter-spacing:0.5px; color:", style$text, "; opacity:0.75;"
+              ), label),
+            div(
+              class = "plaque-value",
+              style = paste0(
+                "font-family:Georgia,serif; font-weight:bold; ",
+                "color:", style$text, "; white-space:nowrap; ",
+                "text-shadow: 0 1px 0 rgba(255,255,255,0.3), 0 -1px 0 rgba(0,0,0,0.2);"
+              ), value)
+          )
+        )
+      }
+      name_style <- list(
+        bg = "linear-gradient(180deg, #d4a84b, #f0d675, #c9a84c, #a07828)",
+        border = "#8b6914", text = "#3d2b0a", shadow = "rgba(212,168,75,0.3)"
+      )
       bronze_style <- list(
         bg = "linear-gradient(180deg, #a0714a, #cd8c5c, #b07848, #7a5430)",
         border = "#5c3a20", text = "#2a1a0a", shadow = "rgba(160,113,74,0.3)"
