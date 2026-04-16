@@ -123,11 +123,18 @@ ui <- page_navbar(
       card(
         card_header(
           class = "d-flex justify-content-between align-items-center",
-          "Draft Results",
+          "Draft Board",
           div(
             selectInput("draft_season", label = NULL, choices = NULL, width = "120px")
           )
         ),
+        div(style = "overflow-x:auto;", uiOutput("draft_grid"))
+      )
+    ),
+    layout_columns(
+      col_widths = c(12),
+      card(
+        card_header("Draft Results (List)"),
         DTOutput("draft_table")
       )
     ),
@@ -342,6 +349,7 @@ server <- function(input, output, session) {
     draft_data = NULL,
     starters_data = NULL,
     player_ids = NULL,
+    player_stats = NULL,
     owner_map = NULL,
     all_owners = NULL,
     seasons_loaded = NULL
@@ -361,6 +369,9 @@ server <- function(input, output, session) {
       }
       if (file.exists("data/player_ids.rds")) {
         rv$player_ids <- readRDS("data/player_ids.rds")
+      }
+      if (file.exists("data/player_stats.rds")) {
+        rv$player_stats <- readRDS("data/player_stats.rds")
       }
       rv$seasons_loaded <- sort(unique(rv$standings_data$season))
 
@@ -1922,6 +1933,99 @@ server <- function(input, output, session) {
   # ==========================================================================
   # DRAFTS TAB
   # ==========================================================================
+
+  # Draft Grid
+  output$draft_grid <- renderUI({
+    req(rv$draft_data, input$draft_season)
+    yr <- as.integer(input$draft_season)
+
+    draft <- rv$draft_data |> filter(season == yr)
+    if (nrow(draft) == 0) return(h5(class = "text-muted text-center", "No draft data."))
+
+    # Attach owner names
+    if (!is.null(rv$owner_map)) {
+      draft <- draft |>
+        left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
+        mutate(owner = ifelse(is.na(owner), franchise_name, owner))
+    }
+
+    # Get season points from starters data (rostered pts)
+    season_pts <- NULL
+    if (!is.null(rv$starters_data)) {
+      season_pts <- rv$starters_data |>
+        filter(season == yr) |>
+        group_by(player_name, pos) |>
+        summarise(total_pts = round(sum(player_score, na.rm = TRUE), 0), .groups = "drop")
+    }
+
+    # Compute position rank among all drafted players
+    if (!is.null(season_pts)) {
+      draft <- draft |>
+        left_join(season_pts, by = c("player_name", "pos")) |>
+        mutate(total_pts = ifelse(is.na(total_pts), 0, total_pts)) |>
+        group_by(pos) |>
+        mutate(pos_rank = rank(-total_pts, ties.method = "min")) |>
+        ungroup()
+    }
+
+    # Get unique owners in draft order
+    owners <- draft |>
+      filter(round == 1) |>
+      arrange(pick) |>
+      pull(owner) |>
+      unique()
+
+    max_round <- max(draft$round, na.rm = TRUE)
+
+    # Color by position
+    pos_colors <- c(QB = "#FF6B6B", RB = "#4ECDC4", WR = "#45B7D1",
+                    TE = "#FFA07A", K = "#C9C9C9", DST = "#A0A0A0")
+
+    # Build header row
+    header_cells <- c(
+      list(tags$th(style = "padding:4px 6px; background:#222; color:#fff; font-size:11px; position:sticky; left:0; z-index:3;", "RD")),
+      lapply(owners, function(o) {
+        tags$th(style = "padding:4px 6px; background:#013369; color:#fff; font-size:10px; text-align:center; min-width:100px; white-space:nowrap;", o)
+      })
+    )
+
+    # Build rows by round
+    body_rows <- lapply(1:max_round, function(rd) {
+      cells <- list(
+        tags$td(style = "padding:4px 6px; font-weight:bold; background:#f0f0f0; font-size:12px; position:sticky; left:0; z-index:2;", paste0("RD ", rd))
+      )
+      for (o in owners) {
+        pick <- draft |> filter(round == rd, owner == o)
+        if (nrow(pick) > 0) {
+          p <- pick[1, ]
+          bg <- ifelse(p$pos %in% names(pos_colors), pos_colors[p$pos], "#eee")
+          pts_text <- if (!is.null(season_pts) && !is.na(p$total_pts)) paste0(p$total_pts, " pts") else ""
+          rank_text <- if (!is.null(season_pts) && !is.na(p$pos_rank)) paste0(p$pos, p$pos_rank) else p$pos
+          cells <- c(cells, list(
+            tags$td(
+              style = paste0("padding:4px 6px; background:", bg, "33; border:1px solid #ddd; font-size:10px; text-align:center; vertical-align:top;"),
+              div(style = "font-weight:bold; font-size:11px; white-space:nowrap;", p$player_name),
+              div(style = "color:#666; font-size:9px;", paste0(p$pos, " - ", p$team)),
+              if (nchar(pts_text) > 0) div(style = "font-weight:bold; font-size:10px; color:#013369; margin-top:2px;", pts_text),
+              if (nchar(rank_text) > 0) div(style = "font-size:9px; color:#888;", rank_text)
+            )
+          ))
+        } else {
+          cells <- c(cells, list(tags$td(style = "padding:4px 6px; background:#f8f8f8; border:1px solid #ddd;", "")))
+        }
+      }
+      tags$tr(cells)
+    })
+
+    div(
+      style = "overflow-x:auto; max-width:100%;",
+      tags$table(
+        style = "border-collapse:collapse; width:auto;",
+        tags$thead(tags$tr(header_cells)),
+        tags$tbody(body_rows)
+      )
+    )
+  })
 
   output$draft_table <- renderDT({
     req(rv$draft_data, input$draft_season)

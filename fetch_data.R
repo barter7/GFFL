@@ -96,6 +96,14 @@ tryCatch({
   cat("  Saved player IDs (", nrow(player_ids), "players)\n")
 }, error = function(e) cat("  Could not fetch player IDs:", e$message, "\n"))
 
+# Fetch full NFL player season stats from nflreadr (not ESPN-dependent)
+cat("\nFetching full NFL player season stats from nflreadr...\n")
+tryCatch({
+  player_stats <- nflreadr::load_player_stats(seasons = SEASONS, stat_type = "offense")
+  saveRDS(player_stats, "data/player_stats.rds")
+  cat("  Saved player stats (", nrow(player_stats), "rows)\n")
+}, error = function(e) cat("  Could not fetch player stats:", e$message, "\n"))
+
 cat("\nSaved cached data to data/ folder:\n")
 cat("  data/league_info.rds\n")
 cat("  data/standings.rds  (", nrow(standings_data), "rows)\n")
@@ -103,4 +111,5 @@ cat("  data/schedule.rds   (", nrow(schedule_data), "rows)\n")
 cat("  data/drafts.rds     (", nrow(draft_data), "rows)\n")
 cat("  data/starters.rds   (", nrow(starters_data), "rows)\n")
 cat("  data/player_ids.rds\n")
+cat("  data/player_stats.rds\n")
 cat("\nDone! The Shiny app will now load from these cached files.\n")
