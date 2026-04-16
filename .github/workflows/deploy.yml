@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - claude/espn-fantasy-dashboard-NcBRU
 
 concurrency:
   group: deploy
