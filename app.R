@@ -2987,26 +2987,65 @@ server <- function(input, output, session) {
       }
 
       unlocked_count <- sum(unlist(status), na.rm = TRUE)
+      # Each achievement worth 10G (150G total looks similar to reference)
+      gamerscore <- unlocked_count * 10
+      # Games = career matchups
+      owner_st <- standings |> filter(owner == o)
+      career_games <- sum(owner_st$h2h_wins + owner_st$h2h_losses + dplyr::coalesce(owner_st$h2h_ties, 0L), na.rm = TRUE)
 
       div(
         style = paste0(
-          "background:#1a1a1a; border:2px solid #2a2a2a; border-radius:8px; ",
-          "padding:15px; margin-bottom:20px;"
+          "background: linear-gradient(180deg, #1a3a5c 0%, #0f2540 100%); ",
+          "border:2px solid #2a5580; border-radius:8px; ",
+          "padding:15px; margin-bottom:20px; ",
+          "box-shadow: 0 4px 12px rgba(0,0,0,0.5);"
         ),
-        # Header with photo and name
+        # Xbox 360 style gamer card header
         div(
-          style = "display:flex; align-items:center; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #2a2a2a;",
+          style = "display:flex; align-items:center; margin-bottom:15px; padding-bottom:12px; border-bottom:2px solid #2a5580;",
+          # Pixelated photo (square, large)
           if (!is.null(photo_file)) {
             tags$img(src = photo_file,
-                     style = "width:55px; height:55px; border-radius:50%; object-fit:cover; border:2px solid #a1c943; margin-right:12px;")
+                     style = paste0(
+                       "width:110px; height:110px; object-fit:cover; object-position:top; ",
+                       "image-rendering: pixelated; image-rendering: -moz-crisp-edges; image-rendering: crisp-edges; ",
+                       "border:3px solid #6ab4ff; margin-right:20px; ",
+                       "box-shadow: 0 0 12px rgba(106,180,255,0.3); ",
+                       "filter: contrast(1.1) saturate(1.2);"
+                     ))
           } else {
-            div(style = "width:55px; height:55px; border-radius:50%; background:#333; border:2px solid #a1c943; margin-right:12px; display:flex; align-items:center; justify-content:center;",
-                tags$span(style = "color:#666; font-size:22px;", icon("user")))
+            div(style = "width:110px; height:110px; background:#333; border:3px solid #6ab4ff; margin-right:20px; display:flex; align-items:center; justify-content:center;",
+                tags$span(style = "color:#6ab4ff; font-size:40px;", icon("user")))
           },
+          # Gamer card stats
           div(
-            tags$div(style = "color:#fff; font-family:Arial,sans-serif; font-weight:bold; font-size:20px;", o),
-            tags$div(style = "color:#a1c943; font-family:Arial,sans-serif; font-size:12px;",
-                     paste0(unlocked_count, " / ", length(achievements), " UNLOCKED"))
+            style = "flex:1;",
+            # Gamertag
+            tags$div(
+              style = paste0(
+                "color:#6ab4ff; font-family:'Courier New',monospace; font-weight:bold; ",
+                "font-size:28px; text-shadow: 2px 2px 0 #000; letter-spacing:2px; margin-bottom:8px;"
+              ),
+              toupper(o)
+            ),
+            # Stats table
+            tags$table(
+              style = "font-family:'Courier New',monospace; font-size:16px; border-collapse:collapse;",
+              tags$tr(
+                tags$td(style = "color:#6ab4ff; padding:2px 20px 2px 0; font-weight:bold;", "Games"),
+                tags$td(style = "color:#fff; padding:2px 0; font-weight:bold; text-align:right;", career_games)
+              ),
+              tags$tr(
+                tags$td(style = "color:#6ab4ff; padding:2px 20px 2px 0; font-weight:bold;", "Gamerscore"),
+                tags$td(style = "color:#fff; padding:2px 0; font-weight:bold; text-align:right;",
+                        tagList(gamerscore, tags$span(style = "color:#a1c943; margin-left:4px;", "G")))
+              ),
+              tags$tr(
+                tags$td(style = "color:#6ab4ff; padding:2px 20px 2px 0; font-weight:bold;", "Achievements"),
+                tags$td(style = "color:#fff; padding:2px 0; font-weight:bold; text-align:right;",
+                        paste0(unlocked_count, " / ", length(achievements)))
+              )
+            )
           )
         ),
         # Badge grid
