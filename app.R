@@ -2050,14 +2050,21 @@ server <- function(input, output, session) {
     req(rv$draft_data)
     r1 <- rv$draft_data |>
       filter(round == 1) |>
-      count(pos, name = "n") |>
+      count(owner, pos, name = "n") |>
+      group_by(owner) |>
       mutate(pct = round(n / sum(n) * 100, 1)) |>
-      arrange(desc(pct))
-    r1$pos <- factor(r1$pos, levels = r1$pos)
+      ungroup()
 
-    p <- ggplot(r1, aes(x = pos, y = pct, fill = pos, text = paste0(pos, ": ", pct, "%"))) +
-      geom_col(show.legend = FALSE) +
-      labs(x = NULL, y = "% of Round 1 Picks") +
+    # Order owners alphabetically
+    r1$owner <- factor(r1$owner, levels = sort(unique(r1$owner)))
+    # Order positions with clear priority
+    pos_order <- c("QB", "RB", "WR", "TE", "K", "DST")
+    r1$pos <- factor(r1$pos, levels = pos_order[pos_order %in% unique(r1$pos)])
+
+    p <- ggplot(r1, aes(x = owner, y = pct, fill = pos,
+                        text = paste0(owner, "<br>", pos, ": ", pct, "% (", n, " picks)"))) +
+      geom_col(position = "stack") +
+      labs(x = NULL, y = "% of Round 1 Picks", fill = "Position") +
       scale_y_continuous(labels = function(x) paste0(x, "%")) +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
@@ -2067,14 +2074,19 @@ server <- function(input, output, session) {
   output$draft_pos_plot <- renderPlotly({
     req(rv$draft_data)
     pos_counts <- rv$draft_data |>
-      count(pos, name = "n") |>
+      count(owner, pos, name = "n") |>
+      group_by(owner) |>
       mutate(pct = round(n / sum(n) * 100, 1)) |>
-      arrange(desc(pct))
-    pos_counts$pos <- factor(pos_counts$pos, levels = pos_counts$pos)
+      ungroup()
 
-    p <- ggplot(pos_counts, aes(x = pos, y = pct, fill = pos, text = paste0(pos, ": ", pct, "%"))) +
-      geom_col(show.legend = FALSE) +
-      labs(x = NULL, y = "% of All Draft Picks") +
+    pos_counts$owner <- factor(pos_counts$owner, levels = sort(unique(pos_counts$owner)))
+    pos_order <- c("QB", "RB", "WR", "TE", "K", "DST")
+    pos_counts$pos <- factor(pos_counts$pos, levels = pos_order[pos_order %in% unique(pos_counts$pos)])
+
+    p <- ggplot(pos_counts, aes(x = owner, y = pct, fill = pos,
+                                text = paste0(owner, "<br>", pos, ": ", pct, "% (", n, " picks)"))) +
+      geom_col(position = "stack") +
+      labs(x = NULL, y = "% of All Picks", fill = "Position") +
       scale_y_continuous(labels = function(x) paste0(x, "%")) +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
