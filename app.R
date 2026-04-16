@@ -1942,8 +1942,8 @@ server <- function(input, output, session) {
     draft <- rv$draft_data |> filter(season == yr)
     if (nrow(draft) == 0) return(h5(class = "text-muted text-center", "No draft data."))
 
-    # Attach owner names
-    if (!is.null(rv$owner_map)) {
+    # Ensure owner column exists (may already be attached in load_league_data)
+    if (!"owner" %in% names(draft) && !is.null(rv$owner_map)) {
       draft <- draft |>
         left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
         mutate(owner = ifelse(is.na(owner), franchise_name, owner))
