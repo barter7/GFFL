@@ -2630,7 +2630,8 @@ server <- function(input, output, session) {
   # ==========================================================================
 
   output$achievements_gallery <- renderUI({
-    req(rv$standings_data, rv$schedule_data)
+    tryCatch({
+      req(rv$standings_data, rv$schedule_data)
 
     standings <- rv$standings_data
     schedule <- rv$schedule_data
@@ -2773,17 +2774,14 @@ server <- function(input, output, session) {
 
       # Bad Beat: lose as 2nd highest scorer that week
       bad_beat <- FALSE
-      for (i in seq_len(nrow(reg_sc))) {
-        row <- reg_sc[i, ]
-        if (!is.na(row$result) && row$result == "L") {
-          week_scores <- reg_sc |> bind_rows(owner_sc |> filter(season == row$season, week == row$week)) |>
-            distinct()
-          week_all <- schedule |> filter(season == row$season, week == row$week) |>
-            distinct(.data[[name_col]], .keep_all = TRUE) |>
-            arrange(desc(franchise_score))
-          if (nrow(week_all) >= 2 && week_all[[name_col]][2] == o) {
-            bad_beat <- TRUE; break
-          }
+      losses <- reg_sc |> filter(!is.na(result) & result == "L")
+      for (i in seq_len(nrow(losses))) {
+        row <- losses[i, ]
+        week_all <- schedule |> filter(season == row$season, week == row$week) |>
+          distinct(.data[[name_col]], .keep_all = TRUE) |>
+          arrange(desc(franchise_score))
+        if (nrow(week_all) >= 2 && week_all[[name_col]][2] == o) {
+          bad_beat <- TRUE; break
         }
       }
 
@@ -3025,6 +3023,11 @@ server <- function(input, output, session) {
          "GFFL ACHIEVEMENTS"),
       lapply(all_owners, build_owner_section)
     )
+    }, error = function(e) {
+      div(style = "color:#fff; padding:20px; background:#3d0000; border-radius:8px;",
+          h3(style = "color:#ff6b6b;", "Error loading achievements:"),
+          tags$pre(style = "color:#fff; font-size:12px; white-space:pre-wrap;", conditionMessage(e)))
+    })
   })
 
   # ==========================================================================
