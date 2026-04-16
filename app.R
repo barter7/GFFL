@@ -2254,33 +2254,31 @@ server <- function(input, output, session) {
   # ==========================================================================
 
   output$season_points_dist_plot <- renderPlotly({
-    req(rv$schedule_data)
-    df <- rv$schedule_data
+    req(rv$standings_data)
+    df <- rv$standings_data
 
     # Filter by season if selected
     if (!is.null(input$standings_season) && input$standings_season != "All-Time") {
       df <- df |> filter(season == as.integer(input$standings_season))
     }
 
-    if ("game_type" %in% names(df)) {
-      df <- df |> filter(game_type == "Regular Season")
-    }
-
-    # Order owners by median score
+    # Order owners by all-time total PF (descending = top scorer at top)
     owner_order <- df |>
-      group_by(team_owner) |>
-      summarise(med = median(franchise_score, na.rm = TRUE), .groups = "drop") |>
-      arrange(med) |> pull(team_owner)
-    df$team_owner <- factor(df$team_owner, levels = owner_order)
+      group_by(owner) |>
+      summarise(total_pf = sum(points_for, na.rm = TRUE), .groups = "drop") |>
+      arrange(total_pf) |> pull(owner)
+    df$owner <- factor(df$owner, levels = owner_order)
 
-    p <- ggplot(df, aes(x = team_owner, y = franchise_score)) +
+    p <- ggplot(df, aes(x = owner, y = points_for,
+                        text = paste0(owner, "<br>", season, ": ", round(points_for, 0), " pts"))) +
       geom_boxplot(fill = "#013369", color = "#8b6914", alpha = 0.7,
-                   outlier.color = "#d4a84b", outlier.alpha = 0.8) +
+                   outlier.shape = NA) +
+      geom_jitter(width = 0.15, color = "#d4a84b", alpha = 0.9, size = 2.5) +
       coord_flip() +
-      labs(x = NULL, y = "Weekly Score") +
+      labs(x = NULL, y = "Season Total Points") +
       theme_minimal() +
       theme(panel.grid.major.y = element_blank())
-    ggplotly(p, tooltip = c("y"))
+    ggplotly(p, tooltip = "text")
   })
 
   # ==========================================================================
