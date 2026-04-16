@@ -134,11 +134,11 @@ ui <- page_navbar(
     layout_columns(
       col_widths = c(6, 6),
       card(
-        card_header("Round 1 Pick Distribution by Owner"),
+        card_header("Round 1 Position Breakdown (%)"),
         plotlyOutput("draft_r1_plot", height = "400px")
       ),
       card(
-        card_header("Most Drafted Positions by Owner"),
+        card_header("Overall Draft Position Breakdown (%)"),
         plotlyOutput("draft_pos_plot", height = "400px")
       )
     )
@@ -1939,31 +1939,35 @@ server <- function(input, output, session) {
     req(rv$draft_data)
     r1 <- rv$draft_data |>
       filter(round == 1) |>
-      count(owner, name = "First_Round_Picks") |>
-      arrange(desc(First_Round_Picks))
-    r1$owner <- factor(r1$owner, levels = rev(r1$owner))
+      count(pos, name = "n") |>
+      mutate(pct = round(n / sum(n) * 100, 1)) |>
+      arrange(desc(pct))
+    r1$pos <- factor(r1$pos, levels = r1$pos)
 
-    p <- ggplot(r1, aes(x = owner, y = First_Round_Picks, fill = owner)) +
+    p <- ggplot(r1, aes(x = pos, y = pct, fill = pos, text = paste0(pos, ": ", pct, "%"))) +
       geom_col(show.legend = FALSE) +
-      coord_flip() +
-      labs(x = NULL, y = "Round 1 Picks (All Seasons)") +
-      theme_minimal()
-    ggplotly(p, tooltip = c("y"))
+      labs(x = NULL, y = "% of Round 1 Picks") +
+      scale_y_continuous(labels = function(x) paste0(x, "%")) +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    ggplotly(p, tooltip = "text")
   })
 
   output$draft_pos_plot <- renderPlotly({
     req(rv$draft_data)
     pos_counts <- rv$draft_data |>
-      filter(round <= 5) |>
-      count(owner, pos) |>
-      arrange(owner, desc(n))
+      count(pos, name = "n") |>
+      mutate(pct = round(n / sum(n) * 100, 1)) |>
+      arrange(desc(pct))
+    pos_counts$pos <- factor(pos_counts$pos, levels = pos_counts$pos)
 
-    p <- ggplot(pos_counts, aes(x = owner, y = n, fill = pos)) +
-      geom_col(position = "stack") +
-      coord_flip() +
-      labs(x = NULL, y = "Picks (Rounds 1-5)", fill = "Position") +
-      theme_minimal()
-    ggplotly(p, tooltip = c("fill", "y"))
+    p <- ggplot(pos_counts, aes(x = pos, y = pct, fill = pos, text = paste0(pos, ": ", pct, "%"))) +
+      geom_col(show.legend = FALSE) +
+      labs(x = NULL, y = "% of All Draft Picks") +
+      scale_y_continuous(labels = function(x) paste0(x, "%")) +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    ggplotly(p, tooltip = "text")
   })
 
   # ==========================================================================
