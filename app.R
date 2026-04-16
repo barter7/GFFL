@@ -2674,7 +2674,21 @@ server <- function(input, output, session) {
       list(id = "double_ds", name = "Double D's", desc = "Every starter scores 10+ pts (incl DST/K)", icon = "dice-two"),
       list(id = "why", name = "Why?", desc = "Have 3+ kickers on roster at once", icon = "question"),
       list(id = "ban_kickers", name = "Ban Kickers", desc = "Kicker is your highest scoring starter", icon = "futbol"),
-      list(id = "wins_champs", name = "Wins Championships", desc = "Defense is your highest scoring starter", icon = "shield-halved")
+      list(id = "wins_champs", name = "Wins Championships", desc = "Defense is your highest scoring starter", icon = "shield-halved"),
+      list(id = "kingslayer", name = "Kingslayer", desc = "End the win streak of a team that started 5-0+", icon = "khanda"),
+      list(id = "rock_bottom", name = "Rock Bottom", desc = "Have the lowest scoring week of an entire season", icon = "arrow-down"),
+      list(id = "top_qb", name = "Top QB", desc = "Highest scoring single QB starter in a season", icon = "football"),
+      list(id = "top_rb", name = "Top RB", desc = "Highest scoring single RB starter in a season", icon = "person-running"),
+      list(id = "top_wr", name = "Top WR", desc = "Highest scoring single WR starter in a season", icon = "hand"),
+      list(id = "top_te", name = "Top TE", desc = "Highest scoring single TE starter in a season", icon = "user-large"),
+      list(id = "top_k", name = "Top K", desc = "Highest scoring single K starter in a season", icon = "futbol"),
+      list(id = "top_dst", name = "Top D/ST", desc = "Highest scoring single D/ST starter in a season", icon = "shield"),
+      list(id = "best_qb", name = "Best QB Group", desc = "Most total QB starter points in a season", icon = "football"),
+      list(id = "best_rb", name = "Best RB Group", desc = "Most total RB starter points in a season", icon = "person-running"),
+      list(id = "best_wr", name = "Best WR Group", desc = "Most total WR starter points in a season", icon = "hand"),
+      list(id = "best_te", name = "Best TE Group", desc = "Most total TE starter points in a season", icon = "user-large"),
+      list(id = "best_k", name = "Best K Group", desc = "Most total K starter points in a season", icon = "futbol"),
+      list(id = "best_dst", name = "Best D/ST Group", desc = "Most total D/ST starter points in a season", icon = "shield")
     )
 
     # Compute which achievements each owner has unlocked
@@ -2722,6 +2736,88 @@ server <- function(input, output, session) {
       ungroup() |>
       filter(pf_rank == 2, league_rank > 4) |>
       select(season, owner)
+
+    # Rock Bottom: lowest scoring week of a season
+    name_col_sch <- if ("team_owner" %in% names(schedule)) "team_owner" else "franchise_name"
+    rock_bottom_seasons <- schedule |>
+      filter(!is.na(franchise_score)) |>
+      group_by(season) |>
+      arrange(franchise_score) |>
+      slice_head(n = 1) |>
+      ungroup() |>
+      select(season, owner = !!name_col_sch)
+
+    # Kingslayer: ended a 5-0+ start streak
+    kingslayer_owners <- character(0)
+    if ("game_type" %in% names(schedule)) {
+      reg_all <- schedule |> filter(game_type == "Regular Season", !is.na(result))
+    } else {
+      reg_all <- schedule |> filter(!is.na(result))
+    }
+    for (yr in unique(reg_all$season)) {
+      yr_data <- reg_all |> filter(season == yr) |> arrange(week)
+      for (team in unique(yr_data[[name_col_sch]])) {
+        team_games <- yr_data |> filter(.data[[name_col_sch]] == team) |> arrange(week)
+        if (nrow(team_games) >= 6) {
+          # Check if first 5 games are wins
+          first_5 <- head(team_games, 5)$result
+          if (all(!is.na(first_5)) && all(first_5 == "W")) {
+            # Find first loss after week 5
+            after_5 <- team_games[team_games$week > 5, ]
+            first_loss <- after_5 |> filter(result == "L") |> head(1)
+            if (nrow(first_loss) > 0) {
+              # The winner of that game is the kingslayer
+              opp_col_sch <- if ("opponent_owner" %in% names(reg_all)) "opponent_owner" else "opponent_name"
+              kingslayer <- first_loss[[opp_col_sch]]
+              kingslayer_owners <- c(kingslayer_owners, kingslayer)
+            }
+          }
+        }
+      }
+    }
+    kingslayer_owners <- unique(kingslayer_owners)
+
+    # Top scorer at each position per season (single best player)
+    top_pos_seasons <- list(QB = c(), RB = c(), WR = c(), TE = c(), K = c(), DST = c())
+    # Best total at each position per season (sum of starter points)
+    best_pos_seasons <- list(QB = c(), RB = c(), WR = c(), TE = c(), K = c(), DST = c())
+
+    if (!is.null(starters) && !is.null(rv$owner_map)) {
+      st_with_owner <- starters |>
+        left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
+        mutate(owner = ifelse(is.na(owner), franchise_name, owner)) |>
+        filter(!lineup_slot %in% c("BE", "IR"))
+
+      # Normalize position (DST/D/ST/DEF -> DST)
+      st_with_owner <- st_with_owner |>
+        mutate(pos_norm = ifelse(pos %in% c("DST", "D/ST", "DEF"), "DST", pos))
+
+      for (position in c("QB", "RB", "WR", "TE", "K", "DST")) {
+        pos_data <- st_with_owner |> filter(pos_norm == position)
+
+        # Single highest-scoring player by season
+        if (nrow(pos_data) > 0) {
+          single <- pos_data |>
+            group_by(season, owner, player_name) |>
+            summarise(pts = sum(player_score, na.rm = TRUE), .groups = "drop") |>
+            group_by(season) |>
+            arrange(desc(pts)) |>
+            slice_head(n = 1) |>
+            ungroup()
+          top_pos_seasons[[position]] <- unique(single$owner)
+
+          # Total at position by season
+          totals <- pos_data |>
+            group_by(season, owner) |>
+            summarise(pts = sum(player_score, na.rm = TRUE), .groups = "drop") |>
+            group_by(season) |>
+            arrange(desc(pts)) |>
+            slice_head(n = 1) |>
+            ungroup()
+          best_pos_seasons[[position]] <- unique(totals$owner)
+        }
+      }
+    }
 
     compute_achievements <- function(o) {
       owner_st <- standings |> filter(owner == o)
@@ -2912,7 +3008,21 @@ server <- function(input, output, session) {
         double_ds = double_ds,
         why = why,
         ban_kickers = ban_kickers,
-        wins_champs = wins_champs
+        wins_champs = wins_champs,
+        kingslayer = o %in% kingslayer_owners,
+        rock_bottom = o %in% rock_bottom_seasons$owner,
+        top_qb = o %in% top_pos_seasons$QB,
+        top_rb = o %in% top_pos_seasons$RB,
+        top_wr = o %in% top_pos_seasons$WR,
+        top_te = o %in% top_pos_seasons$TE,
+        top_k = o %in% top_pos_seasons$K,
+        top_dst = o %in% top_pos_seasons$DST,
+        best_qb = o %in% best_pos_seasons$QB,
+        best_rb = o %in% best_pos_seasons$RB,
+        best_wr = o %in% best_pos_seasons$WR,
+        best_te = o %in% best_pos_seasons$TE,
+        best_k = o %in% best_pos_seasons$K,
+        best_dst = o %in% best_pos_seasons$DST
       )
     }
 
@@ -2987,35 +3097,44 @@ server <- function(input, output, session) {
       }
 
       unlocked_count <- sum(unlist(status), na.rm = TRUE)
-      # Each achievement worth 10G (150G total looks similar to reference)
-      gamerscore <- unlocked_count * 10
+      # Gamerscore: most are 100G, special achievements worth more
+      # Champion 1000, Finalist 500, Playoff Bound 250, all others 100
+      ach_value <- function(id) {
+        if (id == "champion") 1000
+        else if (id == "title_game") 500
+        else if (id == "playoff_bound") 250
+        else 100
+      }
+      gamerscore <- sum(sapply(achievements, function(a) {
+        if (isTRUE(status[[a$id]])) ach_value(a$id) else 0
+      }), na.rm = TRUE)
       # Games = career matchups
       owner_st <- standings |> filter(owner == o)
       career_games <- sum(owner_st$h2h_wins + owner_st$h2h_losses + dplyr::coalesce(owner_st$h2h_ties, 0L), na.rm = TRUE)
 
       div(
         style = paste0(
-          "background: linear-gradient(180deg, #1a3a5c 0%, #0f2540 100%); ",
-          "border:2px solid #2a5580; border-radius:8px; ",
+          "background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%); ",
+          "border:2px solid #a1c943; border-radius:8px; ",
           "padding:15px; margin-bottom:20px; ",
-          "box-shadow: 0 4px 12px rgba(0,0,0,0.5);"
+          "box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 20px rgba(161,201,67,0.15);"
         ),
         # Xbox 360 style gamer card header
         div(
-          style = "display:flex; align-items:center; margin-bottom:15px; padding-bottom:12px; border-bottom:2px solid #2a5580;",
+          style = "display:flex; align-items:center; margin-bottom:15px; padding-bottom:12px; border-bottom:2px solid #a1c943;",
           # Pixelated photo (square, large)
           if (!is.null(photo_file)) {
             tags$img(src = photo_file,
                      style = paste0(
                        "width:110px; height:110px; object-fit:cover; object-position:top; ",
                        "image-rendering: pixelated; image-rendering: -moz-crisp-edges; image-rendering: crisp-edges; ",
-                       "border:3px solid #6ab4ff; margin-right:20px; ",
-                       "box-shadow: 0 0 12px rgba(106,180,255,0.3); ",
+                       "border:3px solid #a1c943; margin-right:20px; ",
+                       "box-shadow: 0 0 12px rgba(161,201,67,0.4); ",
                        "filter: contrast(1.1) saturate(1.2);"
                      ))
           } else {
-            div(style = "width:110px; height:110px; background:#333; border:3px solid #6ab4ff; margin-right:20px; display:flex; align-items:center; justify-content:center;",
-                tags$span(style = "color:#6ab4ff; font-size:40px;", icon("user")))
+            div(style = "width:110px; height:110px; background:#333; border:3px solid #a1c943; margin-right:20px; display:flex; align-items:center; justify-content:center;",
+                tags$span(style = "color:#a1c943; font-size:40px;", icon("user")))
           },
           # Gamer card stats
           div(
@@ -3023,7 +3142,7 @@ server <- function(input, output, session) {
             # Gamertag
             tags$div(
               style = paste0(
-                "color:#6ab4ff; font-family:'Courier New',monospace; font-weight:bold; ",
+                "color:#a1c943; font-family:'Courier New',monospace; font-weight:bold; ",
                 "font-size:28px; text-shadow: 2px 2px 0 #000; letter-spacing:2px; margin-bottom:8px;"
               ),
               toupper(o)
@@ -3032,16 +3151,16 @@ server <- function(input, output, session) {
             tags$table(
               style = "font-family:'Courier New',monospace; font-size:16px; border-collapse:collapse;",
               tags$tr(
-                tags$td(style = "color:#6ab4ff; padding:2px 20px 2px 0; font-weight:bold;", "Games"),
+                tags$td(style = "color:#a1c943; padding:2px 20px 2px 0; font-weight:bold;", "Games"),
                 tags$td(style = "color:#fff; padding:2px 0; font-weight:bold; text-align:right;", career_games)
               ),
               tags$tr(
-                tags$td(style = "color:#6ab4ff; padding:2px 20px 2px 0; font-weight:bold;", "Gamerscore"),
+                tags$td(style = "color:#a1c943; padding:2px 20px 2px 0; font-weight:bold;", "Gamerscore"),
                 tags$td(style = "color:#fff; padding:2px 0; font-weight:bold; text-align:right;",
-                        tagList(gamerscore, tags$span(style = "color:#a1c943; margin-left:4px;", "G")))
+                        tagList(format(gamerscore, big.mark = ","), tags$span(style = "color:#a1c943; margin-left:4px;", "G")))
               ),
               tags$tr(
-                tags$td(style = "color:#6ab4ff; padding:2px 20px 2px 0; font-weight:bold;", "Achievements"),
+                tags$td(style = "color:#a1c943; padding:2px 20px 2px 0; font-weight:bold;", "Achievements"),
                 tags$td(style = "color:#fff; padding:2px 0; font-weight:bold; text-align:right;",
                         paste0(unlocked_count, " / ", length(achievements)))
               )
