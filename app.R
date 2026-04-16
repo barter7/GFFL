@@ -839,7 +839,8 @@ server <- function(input, output, session) {
                 div(
                   style = "position:absolute; top:10%; left:10%; width:80%; height:80%; overflow:hidden;",
                   tags$img(src = photo_file,
-                           style = "width:100%; height:100%; object-fit:cover; object-position:top;")
+                           style = paste0("width:100%; height:100%; object-fit:cover; object-position:",
+                                          if (o == "Joe") "50% 20%" else "top", ";"))
                 ),
                 tags$img(src = "photos/frame.PNG",
                          style = "position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;")
