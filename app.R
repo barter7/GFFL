@@ -24,7 +24,7 @@ ESPN_SWID_TOKEN <- Sys.getenv("ESPN_SWID", "{5762B088-9519-444D-A2B0-889519E44D1
 
 # --- UI ---
 ui <- page_navbar(
-  title = "GFFL Historical Dashboard",
+  title = "GFFL Archives",
   theme = bs_theme(
     version = 5,
     bootswatch = "flatly",
@@ -37,7 +37,7 @@ ui <- page_navbar(
 
   # HOME / TITLE PAGE
   nav_panel(
-    title = "Home",
+    title = "GFFL",
     icon = icon("house"),
     tags$head(
       tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Bebas+Neue&display=swap")
@@ -117,10 +117,19 @@ ui <- page_navbar(
     layout_columns(
       col_widths = c(8, 4),
       card(
-        card_header("All-Time Standings"),
+        card_header(
+          class = "d-flex justify-content-between align-items-center",
+          textOutput("standings_title", inline = TRUE),
+          div(
+            selectInput("standings_season", label = NULL, choices = NULL, width = "140px")
+          )
+        ),
         DTOutput("alltime_standings_table")
       ),
-      div()
+      card(
+        card_header(textOutput("box_plot_title", inline = TRUE)),
+        plotlyOutput("season_points_dist_plot", height = "400px")
+      )
     )
   ),
 
@@ -258,36 +267,6 @@ ui <- page_navbar(
     )
   ),
 
-  # SEASON RECAPS
-  nav_panel(
-    title = "Season Recaps",
-    icon = icon("calendar"),
-    layout_columns(
-      col_widths = c(12),
-      card(
-        card_header(
-          class = "d-flex justify-content-between align-items-center",
-          "Season Recap",
-          div(
-            selectInput("recap_season", label = NULL, choices = NULL, width = "120px")
-          )
-        ),
-        layout_columns(
-          col_widths = c(6, 6),
-          plotlyOutput("season_standings_plot", height = "400px"),
-          plotlyOutput("season_points_dist_plot", height = "400px")
-        )
-      )
-    ),
-    layout_columns(
-      col_widths = c(12),
-      card(
-        card_header("Season Standings Detail"),
-        DTOutput("season_detail_table")
-      )
-    )
-  ),
-
   # RECAP PHOTOS
   nav_panel(
     title = "Recap Photos",
@@ -403,11 +382,11 @@ server <- function(input, output, session) {
       if (length(loaded) > 0) {
         updateSelectInput(session, "matchup_season",
                           choices = sort(loaded, decreasing = TRUE))
-        updateSelectInput(session, "recap_season",
-                          choices = sort(loaded, decreasing = TRUE))
         updateSelectInput(session, "draft_season",
                           choices = sort(loaded, decreasing = TRUE))
         updateSelectInput(session, "perf_season",
+                          choices = c("All-Time", sort(loaded, decreasing = TRUE)))
+        updateSelectInput(session, "standings_season",
                           choices = c("All-Time", sort(loaded, decreasing = TRUE)))
       }
     })
@@ -1677,25 +1656,64 @@ server <- function(input, output, session) {
   # STANDINGS TAB
   # ==========================================================================
 
+  # Dynamic title
+  output$standings_title <- renderText({
+    if (is.null(input$standings_season) || input$standings_season == "All-Time") {
+      "All-Time Standings"
+    } else {
+      paste0(input$standings_season, " Standings")
+    }
+  })
+
+  output$box_plot_title <- renderText({
+    if (is.null(input$standings_season) || input$standings_season == "All-Time") {
+      "All-Time Weekly Score Distribution"
+    } else {
+      paste0(input$standings_season, " Weekly Score Distribution")
+    }
+  })
+
   output$alltime_standings_table <- renderDT({
     req(rv$standings_data)
-    alltime <- compute_alltime_standings(rv$standings_data)
+
+    # Filter by season if applicable
+    if (!is.null(input$standings_season) && input$standings_season != "All-Time") {
+      yr <- as.integer(input$standings_season)
+      season_data <- rv$standings_data |> filter(season == yr) |> arrange(desc(h2h_wins), desc(points_for))
+      df <- season_data |>
+        mutate(Rank = row_number(),
+               `Win%` = h2h_wins / (h2h_wins + h2h_losses + ifelse(is.na(h2h_ties), 0, h2h_ties)),
+               `PF/G` = points_for / (h2h_wins + h2h_losses + ifelse(is.na(h2h_ties), 0, h2h_ties))) |>
+        select(Rank, Team = owner, W = h2h_wins, L = h2h_losses,
+               `Win%`, PF = points_for, PA = points_against, `PF/G`)
+    } else {
+      df <- compute_alltime_standings(rv$standings_data)
+    }
 
     # Color breaks for conditional formatting
-    w_breaks <- quantile(alltime$W, probs = c(0.33, 0.66), na.rm = TRUE)
-    pf_breaks <- quantile(alltime$PF, probs = c(0.33, 0.66), na.rm = TRUE)
-    pa_breaks <- quantile(alltime$PA, probs = c(0.33, 0.66), na.rm = TRUE)
-    ppg_breaks <- quantile(alltime$`PF/G`, probs = c(0.33, 0.66), na.rm = TRUE)
+    w_breaks <- quantile(df$W, probs = c(0.33, 0.66), na.rm = TRUE)
+    pf_breaks <- quantile(df$PF, probs = c(0.33, 0.66), na.rm = TRUE)
+    pa_breaks <- quantile(df$PA, probs = c(0.33, 0.66), na.rm = TRUE)
+    ppg_breaks <- quantile(df$`PF/G`, probs = c(0.33, 0.66), na.rm = TRUE)
 
-    datatable(
-      alltime,
+    # Handle case where all values are same (ties in breaks)
+    safe_breaks <- function(b) {
+      if (length(unique(b)) < 2) c(b[1] - 0.001, b[1] + 0.001) else b
+    }
+    w_breaks <- safe_breaks(w_breaks)
+    pf_breaks <- safe_breaks(pf_breaks)
+    pa_breaks <- safe_breaks(pa_breaks)
+    ppg_breaks <- safe_breaks(ppg_breaks)
+
+    dt <- datatable(
+      df,
       options = list(
         pageLength = 20,
         dom = "t",
         order = list(list(2, "desc")),
         columnDefs = list(
           list(width = "70px", targets = 0),
-          list(className = "dt-center", targets = 1:7)
+          list(className = "dt-center", targets = 1:(ncol(df)-1))
         )
       ),
       rownames = FALSE
@@ -1703,29 +1721,19 @@ server <- function(input, output, session) {
       formatPercentage("Win%", digits = 1) |>
       formatRound(c("PF", "PA", "PF/G"), 1) |>
       formatStyle("W",
-        background = styleInterval(
-          w_breaks,
-          c("rgba(220,53,69,0.2)", "rgba(255,193,7,0.2)", "rgba(40,167,69,0.2)")
-        )
-      ) |>
+        background = styleInterval(w_breaks,
+          c("rgba(220,53,69,0.2)", "rgba(255,193,7,0.2)", "rgba(40,167,69,0.2)"))) |>
       formatStyle("PF",
-        background = styleInterval(
-          pf_breaks,
-          c("rgba(220,53,69,0.2)", "rgba(255,193,7,0.2)", "rgba(40,167,69,0.2)")
-        )
-      ) |>
+        background = styleInterval(pf_breaks,
+          c("rgba(220,53,69,0.2)", "rgba(255,193,7,0.2)", "rgba(40,167,69,0.2)"))) |>
       formatStyle("PA",
-        background = styleInterval(
-          pa_breaks,
-          c("rgba(40,167,69,0.2)", "rgba(255,193,7,0.2)", "rgba(220,53,69,0.2)")
-        )
-      ) |>
+        background = styleInterval(pa_breaks,
+          c("rgba(40,167,69,0.2)", "rgba(255,193,7,0.2)", "rgba(220,53,69,0.2)"))) |>
       formatStyle("PF/G",
-        background = styleInterval(
-          ppg_breaks,
-          c("rgba(220,53,69,0.2)", "rgba(255,193,7,0.2)", "rgba(40,167,69,0.2)")
-        )
-      )
+        background = styleInterval(ppg_breaks,
+          c("rgba(220,53,69,0.2)", "rgba(255,193,7,0.2)", "rgba(40,167,69,0.2)")))
+
+    dt
   })
 
   output$wins_by_season_plot <- renderPlotly({
@@ -2105,47 +2113,34 @@ server <- function(input, output, session) {
   # SEASON RECAPS TAB
   # ==========================================================================
 
-  output$season_standings_plot <- renderPlotly({
-    req(rv$standings_data, input$recap_season)
-    df <- rv$standings_data |>
-      filter(season == as.integer(input$recap_season)) |>
-      arrange(desc(h2h_wins))
-    df$owner <- factor(df$owner, levels = rev(df$owner))
-
-    p <- ggplot(df, aes(x = owner, y = h2h_wins, fill = owner)) +
-      geom_col(show.legend = FALSE) +
-      coord_flip() +
-      labs(x = NULL, y = "Wins", title = paste(input$recap_season, "Standings")) +
-      theme_minimal()
-    ggplotly(p, tooltip = c("y"))
-  })
-
   output$season_points_dist_plot <- renderPlotly({
-    req(rv$schedule_data, input$recap_season)
-    df <- rv$schedule_data |>
-      filter(season == as.integer(input$recap_season),
-             game_type == "Regular Season")
+    req(rv$schedule_data)
+    df <- rv$schedule_data
 
-    p <- ggplot(df, aes(x = team_owner, y = franchise_score, fill = team_owner)) +
-      geom_boxplot(show.legend = FALSE) +
+    # Filter by season if selected
+    if (!is.null(input$standings_season) && input$standings_season != "All-Time") {
+      df <- df |> filter(season == as.integer(input$standings_season))
+    }
+
+    if ("game_type" %in% names(df)) {
+      df <- df |> filter(game_type == "Regular Season")
+    }
+
+    # Order owners by median score
+    owner_order <- df |>
+      group_by(team_owner) |>
+      summarise(med = median(franchise_score, na.rm = TRUE), .groups = "drop") |>
+      arrange(med) |> pull(team_owner)
+    df$team_owner <- factor(df$team_owner, levels = owner_order)
+
+    p <- ggplot(df, aes(x = team_owner, y = franchise_score)) +
+      geom_boxplot(fill = "#013369", color = "#8b6914", alpha = 0.7,
+                   outlier.color = "#d4a84b", outlier.alpha = 0.8) +
       coord_flip() +
-      labs(x = NULL, y = "Weekly Score",
-           title = paste(input$recap_season, "Score Distribution")) +
-      theme_minimal()
+      labs(x = NULL, y = "Weekly Score") +
+      theme_minimal() +
+      theme(panel.grid.major.y = element_blank())
     ggplotly(p, tooltip = c("y"))
-  })
-
-  output$season_detail_table <- renderDT({
-    req(rv$standings_data, input$recap_season)
-    df <- rv$standings_data |>
-      filter(season == as.integer(input$recap_season)) |>
-      arrange(desc(h2h_wins), desc(points_for)) |>
-      mutate(Rank = row_number()) |>
-      select(Rank, Owner = owner, Team = franchise_name,
-             W = h2h_wins, L = h2h_losses,
-             PF = points_for, PA = points_against)
-    datatable(df, options = list(pageLength = 20, dom = "t"), rownames = FALSE) |>
-      formatRound(c("PF", "PA"), 1)
   })
 
   # ==========================================================================
