@@ -2782,8 +2782,8 @@ server <- function(input, output, session) {
     # Best total at each position per season (sum of starter points)
     best_pos_seasons <- list(QB = c(), RB = c(), WR = c(), TE = c(), K = c(), DST = c())
 
-    if (!is.null(starters) && !is.null(rv$owner_map)) {
-      st_with_owner <- starters |>
+    if (!is.null(rv$starters_data) && !is.null(rv$owner_map)) {
+      st_with_owner <- rv$starters_data |>
         left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
         mutate(owner = ifelse(is.na(owner), franchise_name, owner)) |>
         filter(!lineup_slot %in% c("BE", "IR"))
