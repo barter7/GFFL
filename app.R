@@ -2520,34 +2520,64 @@ server <- function(input, output, session) {
     set.seed(42)
     recap_files <- sample(recap_files)
 
-    # Build masonry-style collage using CSS columns
+    # Build masonry-style collage using CSS columns - fewer, larger columns
     photo_tags <- lapply(recap_files, function(f) {
+      src_url <- paste0("recaps/", f)
       div(
-        style = "break-inside:avoid; margin-bottom:8px;",
+        style = "break-inside:avoid; margin-bottom:12px;",
         tags$img(
-          src = paste0("recaps/", f),
+          src = src_url,
+          onclick = paste0("openRecapLightbox('", src_url, "')"),
           style = paste0(
             "width:100%; border-radius:6px; ",
             "box-shadow: 0 2px 8px rgba(0,0,0,0.3); ",
             "cursor:pointer; transition: transform 0.2s;"
           ),
-          onmouseover = "this.style.transform='scale(1.03)'",
+          onmouseover = "this.style.transform='scale(1.02)'",
           onmouseout = "this.style.transform='scale(1)'"
         )
       )
     })
 
     div(
-      style = paste0(
-        "column-count:3; column-gap:8px; padding:12px; ",
-        "background:#1a1a2e; border-radius:12px;"
+      # CSS: 2 columns desktop, 1 column mobile (much bigger images)
+      tags$style(".recap-collage { column-count:2; column-gap:12px; }
+                  @media (max-width:768px) { .recap-collage { column-count:1; } }
+                  #recap-lightbox { display:none; position:fixed; inset:0; z-index:9999;
+                      background:rgba(0,0,0,0.92); align-items:center; justify-content:center;
+                      cursor:zoom-out; padding:20px; }
+                  #recap-lightbox.open { display:flex; }
+                  #recap-lightbox img { max-width:95vw; max-height:95vh; object-fit:contain;
+                      border-radius:8px; box-shadow:0 0 40px rgba(0,0,0,0.8); }
+                  #recap-lightbox-close { position:absolute; top:20px; right:30px;
+                      color:#fff; font-size:40px; font-weight:bold; cursor:pointer;
+                      line-height:1; text-shadow:0 0 8px rgba(0,0,0,0.8); }"),
+      tags$script(HTML("
+        function openRecapLightbox(src) {
+          var lb = document.getElementById('recap-lightbox');
+          var img = document.getElementById('recap-lightbox-img');
+          img.src = src;
+          lb.classList.add('open');
+          document.body.style.overflow = 'hidden';
+        }
+        function closeRecapLightbox() {
+          var lb = document.getElementById('recap-lightbox');
+          lb.classList.remove('open');
+          document.body.style.overflow = '';
+        }
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape') closeRecapLightbox();
+        });
+      ")),
+      # Lightbox overlay
+      tags$div(id = "recap-lightbox", onclick = "closeRecapLightbox()",
+        tags$span(id = "recap-lightbox-close", HTML("&times;")),
+        tags$img(id = "recap-lightbox-img", src = "")
       ),
-      # CSS override for mobile: 2 columns
-      tags$style(".recap-collage { column-count:3; }
-                  @media (max-width:768px) { .recap-collage { column-count:2; } }"),
-      div(class = "recap-collage",
-          style = "column-gap:8px;",
-          photo_tags)
+      div(
+        style = "padding:12px; background:#1a1a2e; border-radius:12px;",
+        div(class = "recap-collage", photo_tags)
+      )
     )
   })
 
