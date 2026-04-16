@@ -288,6 +288,16 @@ ui <- page_navbar(
     )
   ),
 
+  # ACHIEVEMENTS
+  nav_panel(
+    title = "Achievements",
+    icon = icon("trophy"),
+    div(
+      style = "background:#0a0a0a; padding:20px; border-radius:12px; min-height:80vh;",
+      uiOutput("achievements_gallery")
+    )
+  ),
+
   nav_panel(
     title = "Top Performances",
     icon = icon("star"),
@@ -2612,6 +2622,216 @@ server <- function(input, output, session) {
     div(
       style = "display:flex; flex-wrap:wrap; justify-content:center; gap:10px;",
       cards
+    )
+  })
+
+  # ==========================================================================
+  # ACHIEVEMENTS TAB
+  # ==========================================================================
+
+  output$achievements_gallery <- renderUI({
+    req(rv$standings_data, rv$schedule_data)
+
+    standings <- rv$standings_data
+    schedule <- rv$schedule_data
+
+    # Define all 20 achievements with icons and criteria
+    achievements <- list(
+      list(id = "first_win", name = "First Blood", desc = "Win a regular season game", icon = "medal"),
+      list(id = "champion", name = "Champion", desc = "Win a championship", icon = "trophy"),
+      list(id = "dynasty", name = "Dynasty", desc = "Win 2+ championships", icon = "crown"),
+      list(id = "title_game", name = "Finalist", desc = "Make the championship game", icon = "flag-checkered"),
+      list(id = "one_seed", name = "Top Dog", desc = "Earn the #1 seed", icon = "medal"),
+      list(id = "playoff_bound", name = "Playoff Bound", desc = "Make the playoffs", icon = "award"),
+      list(id = "most_pf", name = "Points Leader", desc = "Lead league in PF in a season", icon = "fire"),
+      list(id = "century", name = "Century Club", desc = "Score 100+ in a single week", icon = "100"),
+      list(id = "one_fifty", name = "Elite Performer", desc = "Score 150+ in a single week", icon = "star"),
+      list(id = "two_hundred", name = "Unstoppable", desc = "Score 200+ in a single week", icon = "bolt"),
+      list(id = "winning_record", name = "Winner", desc = "All-time winning record", icon = "chart-line"),
+      list(id = "veteran", name = "Veteran", desc = "Play 5+ seasons", icon = "shield"),
+      list(id = "decade", name = "Decade of Play", desc = "Play 9+ seasons", icon = "hourglass-end"),
+      list(id = "undefeated", name = "Perfect Season", desc = "Go undefeated in regular season", icon = "certificate"),
+      list(id = "sacko", name = "Sacko Holder", desc = "Finish last in the regular season", icon = "poo"),
+      list(id = "double_sacko", name = "Repeat Offender", desc = "Win the Sacko 2+ times", icon = "dumpster-fire"),
+      list(id = "runner_up", name = "So Close", desc = "Finish 2nd in the championship", icon = "medal"),
+      list(id = "hundred_wins", name = "Centurion", desc = "Win 100+ career games (reg season)", icon = "check-double"),
+      list(id = "fourteen_k", name = "14K Club", desc = "Score 14,000+ career points", icon = "coins"),
+      list(id = "big_blowout", name = "Demolition", desc = "Win a game by 75+ points", icon = "bomb")
+    )
+
+    # Compute which achievements each owner has unlocked
+    owners <- sort(unique(standings$owner))
+    legacy <- c("Joe")
+    active <- setdiff(owners, legacy)
+    all_owners <- c(active, legacy)
+
+    compute_achievements <- function(o) {
+      owner_st <- standings |> filter(owner == o)
+      owner_sc <- schedule |> filter(!is.na(result))
+      name_col <- if ("team_owner" %in% names(owner_sc)) "team_owner" else "franchise_name"
+      owner_sc <- owner_sc |> filter(.data[[name_col]] == o)
+
+      reg_sc <- if ("game_type" %in% names(owner_sc)) owner_sc |> filter(game_type == "Regular Season") else owner_sc
+
+      # Get best PF ranks per season
+      most_pf_seasons <- standings |>
+        group_by(season) |>
+        arrange(desc(points_for)) |>
+        slice_head(n = 1) |>
+        ungroup() |>
+        filter(owner == o)
+
+      # Get sackos
+      sacko_seasons <- standings |>
+        group_by(season) |>
+        arrange(h2h_wins, points_for) |>
+        slice_head(n = 1) |>
+        ungroup() |>
+        filter(owner == o)
+
+      # Total career wins
+      career_wins <- sum(owner_st$h2h_wins, na.rm = TRUE)
+      career_pf <- sum(owner_st$points_for, na.rm = TRUE)
+      total_seasons <- nrow(owner_st)
+
+      # Max week score
+      max_week <- if (nrow(reg_sc) > 0) max(reg_sc$franchise_score, na.rm = TRUE) else 0
+      # Max win margin
+      max_margin <- if (nrow(reg_sc) > 0) max(reg_sc$franchise_score - reg_sc$opponent_score, na.rm = TRUE) else 0
+
+      # Undefeated season
+      undefeated <- any(owner_st$h2h_losses == 0 & owner_st$h2h_wins > 0)
+
+      list(
+        first_win = career_wins >= 1,
+        champion = any(owner_st$league_rank == 1),
+        dynasty = sum(owner_st$league_rank == 1, na.rm = TRUE) >= 2,
+        title_game = any(owner_st$league_rank <= 2, na.rm = TRUE),
+        one_seed = any(standings |> group_by(season) |> arrange(desc(h2h_wins), desc(points_for)) |> slice_head(n = 1) |> ungroup() |> filter(owner == o) |> nrow() > 0),
+        playoff_bound = any(owner_st$league_rank <= 4, na.rm = TRUE),
+        most_pf = nrow(most_pf_seasons) > 0,
+        century = max_week >= 100,
+        one_fifty = max_week >= 150,
+        two_hundred = max_week >= 200,
+        winning_record = career_wins > sum(owner_st$h2h_losses, na.rm = TRUE),
+        veteran = total_seasons >= 5,
+        decade = total_seasons >= 9,
+        undefeated = undefeated,
+        sacko = nrow(sacko_seasons) > 0,
+        double_sacko = nrow(sacko_seasons) >= 2,
+        runner_up = any(owner_st$league_rank == 2, na.rm = TRUE),
+        hundred_wins = career_wins >= 100,
+        fourteen_k = career_pf >= 14000,
+        big_blowout = max_margin >= 75
+      )
+    }
+
+    # Helper: build one Xbox 360 style achievement badge
+    build_badge <- function(ach, unlocked) {
+      # Xbox 360 logo: circle with 4 segments split by horizontal and vertical gaps
+      # Center circle with icon
+      icon_color <- if (unlocked) "#a1c943" else "#444"
+      ring_color <- if (unlocked) "#a1c943" else "#2a2a2a"
+      bg_color <- if (unlocked) "#1a1a1a" else "#0a0a0a"
+      text_color <- if (unlocked) "#fff" else "#666"
+
+      div(
+        title = paste0(ach$name, ": ", ach$desc),
+        style = "display:flex; flex-direction:column; align-items:center; margin:8px; width:85px;",
+
+        # Xbox 360 style ring
+        div(
+          style = paste0(
+            "position:relative; width:70px; height:70px; display:flex; align-items:center; justify-content:center; ",
+            # 4 quarter ring using conic-gradient with gaps
+            "background: conic-gradient(from 3deg, ", ring_color, " 0deg 84deg, transparent 84deg 96deg, ",
+            ring_color, " 96deg 174deg, transparent 174deg 186deg, ",
+            ring_color, " 186deg 264deg, transparent 264deg 276deg, ",
+            ring_color, " 276deg 354deg, transparent 354deg 360deg); ",
+            "border-radius:50%; ",
+            # Make it a ring by cutting center with mask
+            "-webkit-mask: radial-gradient(circle, transparent 50%, #000 51%); ",
+            "mask: radial-gradient(circle, transparent 50%, #000 51%);"
+          )
+        ),
+        # Center circle with icon
+        div(
+          style = paste0(
+            "position:absolute; margin-top:14px; width:42px; height:42px; border-radius:50%; ",
+            "background:", bg_color, "; border:1px solid ", ring_color, "; ",
+            "display:flex; align-items:center; justify-content:center; ",
+            "box-shadow: inset 0 0 8px rgba(0,0,0,0.5);"
+          ),
+          tags$span(style = paste0("color:", icon_color, "; font-size:20px;"),
+                    icon(ach$icon))
+        ),
+        # Label below
+        div(
+          style = paste0(
+            "margin-top:8px; font-size:10px; text-align:center; color:", text_color, "; ",
+            "font-family:Arial,sans-serif; font-weight:bold; line-height:1.2;"
+          ),
+          ach$name
+        )
+      )
+    }
+
+    # Build owner section
+    build_owner_section <- function(o) {
+      status <- compute_achievements(o)
+      badges <- lapply(achievements, function(ach) {
+        build_badge(ach, isTRUE(status[[ach$id]]))
+      })
+
+      # Owner photo
+      photo_file <- NULL
+      o_clean <- gsub(" ", "", tolower(o))
+      for (name_variant in c(paste0(o_clean, "_headshot"), paste0(tolower(o), "_headshot"), tolower(o), o)) {
+        for (ext in c(".png", ".jpg", ".jpeg", ".PNG")) {
+          if (file.exists(file.path("www", "photos", paste0(name_variant, ext)))) {
+            photo_file <- paste0("photos/", name_variant, ext)
+            break
+          }
+        }
+        if (!is.null(photo_file)) break
+      }
+
+      unlocked_count <- sum(unlist(status), na.rm = TRUE)
+
+      div(
+        style = paste0(
+          "background:#1a1a1a; border:2px solid #2a2a2a; border-radius:8px; ",
+          "padding:15px; margin-bottom:20px;"
+        ),
+        # Header with photo and name
+        div(
+          style = "display:flex; align-items:center; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #2a2a2a;",
+          if (!is.null(photo_file)) {
+            tags$img(src = photo_file,
+                     style = "width:55px; height:55px; border-radius:50%; object-fit:cover; border:2px solid #a1c943; margin-right:12px;")
+          } else {
+            div(style = "width:55px; height:55px; border-radius:50%; background:#333; border:2px solid #a1c943; margin-right:12px; display:flex; align-items:center; justify-content:center;",
+                tags$span(style = "color:#666; font-size:22px;", icon("user")))
+          },
+          div(
+            tags$div(style = "color:#fff; font-family:Arial,sans-serif; font-weight:bold; font-size:20px;", o),
+            tags$div(style = "color:#a1c943; font-family:Arial,sans-serif; font-size:12px;",
+                     paste0(unlocked_count, " / ", length(achievements), " UNLOCKED"))
+          )
+        ),
+        # Badge grid
+        div(
+          style = "display:flex; flex-wrap:wrap; justify-content:flex-start;",
+          badges
+        )
+      )
+    }
+
+    # Build all sections
+    tagList(
+      h2(style = "color:#a1c943; font-family:Arial,sans-serif; text-align:center; letter-spacing:3px; margin-bottom:20px;",
+         "GFFL ACHIEVEMENTS"),
+      lapply(all_owners, build_owner_section)
     )
   })
 
