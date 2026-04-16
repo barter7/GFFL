@@ -2695,7 +2695,17 @@ server <- function(input, output, session) {
       list(id = "pokedex_300", name = "Pokedex 300", desc = "Roster 300+ different players lifetime", icon = "book-open"),
       list(id = "pokedex_400", name = "Pokedex 400", desc = "Roster 400+ different players lifetime", icon = "book-atlas"),
       list(id = "pokedex_500", name = "Pokedex 500", desc = "Roster 500+ different players lifetime", icon = "books-medical"),
-      list(id = "mr_relevant", name = "Mr. Relevant", desc = "Start a last-round pick 10+ weeks in a season", icon = "thumbs-up")
+      list(id = "mr_relevant", name = "Mr. Relevant", desc = "Start a last-round pick 10+ weeks in a season", icon = "thumbs-up"),
+      list(id = "dream_work", name = "Makes the Dream Work", desc = "Start 4 players from same NFL team in a week", icon = "people-group"),
+      list(id = "repeat", name = "Repeat", desc = "Back-to-back championships", icon = "rotate-right"),
+      list(id = "threepeat", name = "Threepeat", desc = "Three championships in a row", icon = "infinity"),
+      list(id = "singled_out", name = "Singled Out", desc = "All starters scored single digits in a week", icon = "1"),
+      list(id = "benchwarmers", name = "Benchwarmers", desc = "Bench outscored starters in a week", icon = "couch"),
+      list(id = "negative", name = "Negative", desc = "Negative score from a non-K/DST starter", icon = "minus"),
+      list(id = "double_negative", name = "Double-Negative", desc = "Two negative scores from non-K/DST starters in a week", icon = "circle-xmark"),
+      list(id = "consistency", name = "Consistency", desc = "Scored within 10 pts for 3 straight weeks", icon = "equals"),
+      list(id = "is_key", name = "Is Key", desc = "Scored within 10 pts for 5 straight weeks", icon = "key"),
+      list(id = "perfectly_avg", name = "Perfectly Average", desc = "Never highest or lowest scoring team in a season", icon = "gauge-simple")
     )
 
     # Compute which achievements each owner has unlocked
@@ -2886,6 +2896,148 @@ server <- function(input, output, session) {
         mr_relevant_owners <- unique(relevant_starts$owner)
       }
     }
+
+    # Repeat & Threepeat championships
+    champ_years_by_owner <- standings |>
+      filter(league_rank == 1) |>
+      select(season, owner) |>
+      arrange(owner, season)
+    # Include Connor's 2016 championship
+    champ_years_by_owner <- bind_rows(
+      champ_years_by_owner,
+      data.frame(season = 2016L, owner = "Connor", stringsAsFactors = FALSE)
+    ) |> arrange(owner, season)
+
+    repeat_owners <- character(0)
+    threepeat_owners <- character(0)
+    for (o_check in unique(champ_years_by_owner$owner)) {
+      yrs <- champ_years_by_owner |> filter(owner == o_check) |> pull(season) |> sort()
+      if (length(yrs) >= 2) {
+        for (i in 2:length(yrs)) {
+          if (yrs[i] - yrs[i-1] == 1) {
+            repeat_owners <- c(repeat_owners, o_check)
+            break
+          }
+        }
+      }
+      if (length(yrs) >= 3) {
+        for (i in 3:length(yrs)) {
+          if (yrs[i] - yrs[i-1] == 1 && yrs[i-1] - yrs[i-2] == 1) {
+            threepeat_owners <- c(threepeat_owners, o_check)
+            break
+          }
+        }
+      }
+    }
+    repeat_owners <- unique(repeat_owners)
+    threepeat_owners <- unique(threepeat_owners)
+
+    # Makes the Dream Work, Singled Out, Benchwarmers, Negative, Double Negative
+    # These all need starters data
+    dream_work_owners <- character(0)
+    singled_out_owners <- character(0)
+    benchwarmers_owners <- character(0)
+    negative_owners <- character(0)
+    double_negative_owners <- character(0)
+
+    if (!is.null(rv$starters_data) && !is.null(rv$owner_map)) {
+      all_st <- rv$starters_data |>
+        left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
+        mutate(owner = ifelse(is.na(owner), franchise_name, owner))
+
+      starting_only <- all_st |> filter(!lineup_slot %in% c("BE", "IR"))
+      bench_only <- all_st |> filter(lineup_slot == "BE")
+
+      # Dream Work: 4+ starters from same NFL team in a week
+      dream <- starting_only |>
+        group_by(season, week, owner, team) |>
+        summarise(n = n(), .groups = "drop") |>
+        filter(n >= 4)
+      dream_work_owners <- unique(dream$owner)
+
+      # Singled Out: all starters scored under 10 in a week
+      singled <- starting_only |>
+        group_by(season, week, owner) |>
+        summarise(max_score = max(player_score, na.rm = TRUE),
+                  n_start = n(), .groups = "drop") |>
+        filter(max_score < 10, n_start >= 8)
+      singled_out_owners <- unique(singled$owner)
+
+      # Benchwarmers: total bench points > total starter points in a week
+      starter_totals <- starting_only |>
+        group_by(season, week, owner) |>
+        summarise(start_pts = sum(player_score, na.rm = TRUE), .groups = "drop")
+      bench_totals <- bench_only |>
+        group_by(season, week, owner) |>
+        summarise(bench_pts = sum(player_score, na.rm = TRUE), .groups = "drop")
+      bench_vs_start <- starter_totals |>
+        inner_join(bench_totals, by = c("season", "week", "owner")) |>
+        filter(bench_pts > start_pts)
+      benchwarmers_owners <- unique(bench_vs_start$owner)
+
+      # Negative scores from non-K/DST starter
+      non_kdst <- starting_only |> filter(!pos %in% c("K", "DST", "D/ST", "DEF"))
+      negatives_by_week <- non_kdst |>
+        filter(player_score < 0) |>
+        group_by(season, week, owner) |>
+        summarise(n = n(), .groups = "drop")
+      negative_owners <- unique(negatives_by_week$owner)
+      double_negative_owners <- unique((negatives_by_week |> filter(n >= 2))$owner)
+    }
+
+    # Consistency (3 straight) and Is Key (5 straight): scores within 10 pts of each other
+    consistency_owners <- character(0)
+    is_key_owners <- character(0)
+    name_col_cons <- if ("team_owner" %in% names(schedule)) "team_owner" else "franchise_name"
+    for (o_check in unique(schedule[[name_col_cons]])) {
+      owner_weeks <- schedule |>
+        filter(.data[[name_col_cons]] == o_check, !is.na(franchise_score)) |>
+        arrange(season, week)
+      for (yr in unique(owner_weeks$season)) {
+        wks <- owner_weeks |> filter(season == yr) |> pull(franchise_score)
+        # Rolling 3-week window
+        if (length(wks) >= 3) {
+          for (i in 3:length(wks)) {
+            window <- wks[(i-2):i]
+            if (max(window) - min(window) <= 10) {
+              consistency_owners <- c(consistency_owners, o_check)
+              break
+            }
+          }
+        }
+        # Rolling 5-week window
+        if (length(wks) >= 5) {
+          for (i in 5:length(wks)) {
+            window <- wks[(i-4):i]
+            if (max(window) - min(window) <= 10) {
+              is_key_owners <- c(is_key_owners, o_check)
+              break
+            }
+          }
+        }
+      }
+    }
+    consistency_owners <- unique(consistency_owners)
+    is_key_owners <- unique(is_key_owners)
+
+    # Perfectly Average: never the highest or lowest in any week of a season
+    perfectly_avg_owners <- character(0)
+    for (yr in unique(schedule$season)) {
+      yr_sc <- schedule |> filter(season == yr, !is.na(franchise_score))
+      high_low_owners <- character(0)
+      for (wk in unique(yr_sc$week)) {
+        wk_sc <- yr_sc |> filter(week == wk)
+        if (nrow(wk_sc) == 0) next
+        high <- wk_sc[[name_col_cons]][which.max(wk_sc$franchise_score)]
+        low <- wk_sc[[name_col_cons]][which.min(wk_sc$franchise_score)]
+        high_low_owners <- unique(c(high_low_owners, high, low))
+      }
+      all_yr_owners <- unique(yr_sc[[name_col_cons]])
+      safe <- setdiff(all_yr_owners, high_low_owners)
+      perfectly_avg_owners <- c(perfectly_avg_owners, safe)
+    }
+    perfectly_avg_owners <- unique(perfectly_avg_owners)
+
 
     compute_achievements <- function(o) {
       owner_st <- standings |> filter(owner == o)
@@ -3121,7 +3273,17 @@ server <- function(input, output, session) {
             length(v) > 0 && v[1] >= 500
           } else FALSE
         },
-        mr_relevant = o %in% mr_relevant_owners
+        mr_relevant = o %in% mr_relevant_owners,
+        dream_work = o %in% dream_work_owners,
+        `repeat` = o %in% repeat_owners,
+        threepeat = o %in% threepeat_owners,
+        singled_out = o %in% singled_out_owners,
+        benchwarmers = o %in% benchwarmers_owners,
+        negative = o %in% negative_owners,
+        double_negative = o %in% double_negative_owners,
+        consistency = o %in% consistency_owners,
+        is_key = o %in% is_key_owners,
+        perfectly_avg = o %in% perfectly_avg_owners
       )
     }
 
@@ -3199,7 +3361,9 @@ server <- function(input, output, session) {
       # Gamerscore: most are 100G, special achievements worth more
       # Champion 1000, Finalist 500, Playoff Bound 250, all others 100
       ach_value <- function(id) {
-        if (id == "champion") 1000
+        if (id == "threepeat") 10000
+        else if (id == "repeat") 5000
+        else if (id == "champion") 1000
         else if (id == "title_game") 500
         else if (id == "playoff_bound") 250
         else 100
