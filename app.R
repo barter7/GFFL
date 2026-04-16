@@ -2643,7 +2643,8 @@ server <- function(input, output, session) {
       list(id = "title_game", name = "Finalist", desc = "Make the championship game", icon = "flag-checkered"),
       list(id = "one_seed", name = "Top Dog", desc = "Earn the #1 seed", icon = "medal"),
       list(id = "playoff_bound", name = "Playoff Bound", desc = "Make the playoffs", icon = "award"),
-      list(id = "most_pf", name = "Points Leader", desc = "Lead league in PF in a season", icon = "fire"),
+      list(id = "mvp", name = "MVP", desc = "Best regular season record", icon = "star"),
+      list(id = "opoy", name = "OPOY", desc = "Most regular season points in a season", icon = "fire"),
       list(id = "century", name = "Century Club", desc = "Score 100+ in a single week", icon = "100"),
       list(id = "one_fifty", name = "Elite Performer", desc = "Score 150+ in a single week", icon = "star"),
       list(id = "two_hundred", name = "Unstoppable", desc = "Score 200+ in a single week", icon = "bolt"),
@@ -2654,9 +2655,25 @@ server <- function(input, output, session) {
       list(id = "sacko", name = "Sacko Holder", desc = "Finish last in the regular season", icon = "poo"),
       list(id = "double_sacko", name = "Repeat Offender", desc = "Win the Sacko 2+ times", icon = "dumpster-fire"),
       list(id = "runner_up", name = "So Close", desc = "Finish 2nd in the championship", icon = "medal"),
-      list(id = "hundred_wins", name = "Centurion", desc = "Win 100+ career games (reg season)", icon = "check-double"),
+      list(id = "hundred_wins", name = "Centurion", desc = "Win 100+ career games", icon = "check-double"),
       list(id = "fourteen_k", name = "14K Club", desc = "Score 14,000+ career points", icon = "coins"),
-      list(id = "big_blowout", name = "Demolition", desc = "Win a game by 75+ points", icon = "bomb")
+      list(id = "big_blowout", name = "Demolition", desc = "Win a game by 75+ points", icon = "bomb"),
+      list(id = "homer", name = "Homer", desc = "Draft 3+ players from your favorite team", icon = "home"),
+      list(id = "double_zero", name = "00 Agent", desc = "Have two started players score 0 pts in a week", icon = "user-ninja"),
+      list(id = "game_of_inches", name = "Game of Inches", desc = "Win a matchup by 1 point or less", icon = "ruler"),
+      list(id = "gauntlet", name = "The Gauntlet", desc = "Defeat every team at least once in a season", icon = "fist-raised"),
+      list(id = "bad_beat", name = "Bad Beat", desc = "Lose a week as 2nd-highest scoring team", icon = "heart-crack"),
+      list(id = "really_bad_beat", name = "Really Bad Beat", desc = "Miss playoffs as 2nd-highest PF in reg season", icon = "skull"),
+      list(id = "heating_up", name = "Heating Up", desc = "Win 5 weeks in a row (same season)", icon = "fire-flame-curved"),
+      list(id = "on_fire", name = "On Fire", desc = "Win 10 weeks in a row (same season)", icon = "fire-flame-simple"),
+      list(id = "soft_schedule", name = "Soft Schedule", desc = "Lowest points against in a season", icon = "feather"),
+      list(id = "ninja", name = "Ninja", desc = "Sneak into playoffs with bottom 3 PF", icon = "mask"),
+      list(id = "blowout", name = "Blowout", desc = "Win a week by 50+ points", icon = "explosion"),
+      list(id = "everyone_eats", name = "Everyone Eats", desc = "Every starter scores 6+ pts in a week", icon = "utensils"),
+      list(id = "double_ds", name = "Double D's", desc = "Every starter scores 10+ pts (incl DST/K)", icon = "dice-two"),
+      list(id = "why", name = "Why?", desc = "Have 3+ kickers on roster at once", icon = "question"),
+      list(id = "ban_kickers", name = "Ban Kickers", desc = "Kicker is your highest scoring starter", icon = "futbol"),
+      list(id = "wins_champs", name = "Wins Championships", desc = "Defense is your highest scoring starter", icon = "shield-halved")
     )
 
     # Compute which achievements each owner has unlocked
@@ -2665,15 +2682,56 @@ server <- function(input, output, session) {
     active <- setdiff(owners, legacy)
     all_owners <- c(active, legacy)
 
+    # Team-to-owner favorite team map for Homer achievement
+    favorite_teams <- list(
+      Tom = "NYJ", RJ = "NYJ", Matt = "NYJ",
+      Kerley = "NYG", Jack = "NYG", Mike = "NYG",
+      Faz = "PIT", Alex = "PIT", Harry = "PIT", Connor = "PIT"
+    )
+
+    # Pre-compute season-wide data for achievements
+    # Soft Schedule: lowest PA per season winner
+    soft_schedule_seasons <- standings |>
+      group_by(season) |>
+      arrange(points_against) |>
+      slice_head(n = 1) |>
+      ungroup() |>
+      select(season, owner)
+
+    # MVP: best regular season record per season
+    mvp_seasons <- standings |>
+      group_by(season) |>
+      arrange(desc(h2h_wins), desc(points_for)) |>
+      slice_head(n = 1) |>
+      ungroup() |>
+      select(season, owner)
+
+    # Ninja: bottom 3 PF but made playoffs (top 4)
+    ninja_seasons <- standings |>
+      group_by(season) |>
+      mutate(pf_rank = rank(-points_for)) |>
+      ungroup() |>
+      filter(league_rank <= 4, pf_rank >= 8) |>
+      select(season, owner)
+
+    # Really Bad Beat: 2nd highest PF but missed playoffs
+    rbb_seasons <- standings |>
+      group_by(season) |>
+      mutate(pf_rank = rank(-points_for)) |>
+      ungroup() |>
+      filter(pf_rank == 2, league_rank > 4) |>
+      select(season, owner)
+
     compute_achievements <- function(o) {
       owner_st <- standings |> filter(owner == o)
       owner_sc <- schedule |> filter(!is.na(result))
       name_col <- if ("team_owner" %in% names(owner_sc)) "team_owner" else "franchise_name"
-      owner_sc <- owner_sc |> filter(.data[[name_col]] == o)
+      opp_col <- if ("opponent_owner" %in% names(owner_sc)) "opponent_owner" else "opponent_name"
 
-      reg_sc <- if ("game_type" %in% names(owner_sc)) owner_sc |> filter(game_type == "Regular Season") else owner_sc
+      owner_sc_all <- owner_sc |> filter(.data[[name_col]] == o)
+      reg_sc <- if ("game_type" %in% names(owner_sc_all)) owner_sc_all |> filter(game_type == "Regular Season") else owner_sc_all
 
-      # Get best PF ranks per season
+      # Most PF seasons
       most_pf_seasons <- standings |>
         group_by(season) |>
         arrange(desc(points_for)) |>
@@ -2681,7 +2739,7 @@ server <- function(input, output, session) {
         ungroup() |>
         filter(owner == o)
 
-      # Get sackos
+      # Sackos
       sacko_seasons <- standings |>
         group_by(season) |>
         arrange(h2h_wins, points_for) |>
@@ -2689,18 +2747,135 @@ server <- function(input, output, session) {
         ungroup() |>
         filter(owner == o)
 
-      # Total career wins
       career_wins <- sum(owner_st$h2h_wins, na.rm = TRUE)
       career_pf <- sum(owner_st$points_for, na.rm = TRUE)
       total_seasons <- nrow(owner_st)
-
-      # Max week score
       max_week <- if (nrow(reg_sc) > 0) max(reg_sc$franchise_score, na.rm = TRUE) else 0
-      # Max win margin
       max_margin <- if (nrow(reg_sc) > 0) max(reg_sc$franchise_score - reg_sc$opponent_score, na.rm = TRUE) else 0
-
-      # Undefeated season
       undefeated <- any(owner_st$h2h_losses == 0 & owner_st$h2h_wins > 0)
+
+      # Game of Inches: win by 1 pt or less
+      game_of_inches <- any((reg_sc$franchise_score - reg_sc$opponent_score) > 0 &
+                            (reg_sc$franchise_score - reg_sc$opponent_score) <= 1, na.rm = TRUE)
+
+      # Blowout: win by 50+
+      blowout_50 <- any((reg_sc$franchise_score - reg_sc$opponent_score) >= 50, na.rm = TRUE)
+
+      # Gauntlet: beat every owner in one season
+      gauntlet <- FALSE
+      for (yr in unique(reg_sc$season)) {
+        beaten <- reg_sc |> filter(season == yr, result == "W") |> pull(.data[[opp_col]]) |> unique()
+        all_opps_yr <- reg_sc |> filter(season == yr) |> pull(.data[[opp_col]]) |> unique()
+        if (length(all_opps_yr) > 0 && all(all_opps_yr %in% beaten)) {
+          gauntlet <- TRUE; break
+        }
+      }
+
+      # Bad Beat: lose as 2nd highest scorer that week
+      bad_beat <- FALSE
+      for (i in seq_len(nrow(reg_sc))) {
+        row <- reg_sc[i, ]
+        if (!is.na(row$result) && row$result == "L") {
+          week_scores <- reg_sc |> bind_rows(owner_sc |> filter(season == row$season, week == row$week)) |>
+            distinct()
+          week_all <- schedule |> filter(season == row$season, week == row$week) |>
+            distinct(.data[[name_col]], .keep_all = TRUE) |>
+            arrange(desc(franchise_score))
+          if (nrow(week_all) >= 2 && week_all[[name_col]][2] == o) {
+            bad_beat <- TRUE; break
+          }
+        }
+      }
+
+      # Winning streaks
+      owner_games_sorted <- reg_sc |> arrange(season, week)
+      calc_max_streak_within_season <- function(result_val) {
+        max_s <- 0
+        for (yr in unique(owner_games_sorted$season)) {
+          yr_games <- owner_games_sorted |> filter(season == yr)
+          cur <- 0; m <- 0
+          for (r in yr_games$result) {
+            if (!is.na(r) && r == result_val) { cur <- cur + 1; m <- max(m, cur) } else cur <- 0
+          }
+          max_s <- max(max_s, m)
+        }
+        max_s
+      }
+      max_win_streak <- calc_max_streak_within_season("W")
+
+      # Starter-based achievements (00 Agent, Double D's, Everyone Eats, kicker stuff)
+      double_zero <- FALSE
+      double_ds <- FALSE
+      everyone_eats <- FALSE
+      why <- FALSE
+      ban_kickers <- FALSE
+      wins_champs <- FALSE
+
+      if (!is.null(rv$starters_data)) {
+        starters <- rv$starters_data
+        own_st <- starters |>
+          left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
+          mutate(owner = ifelse(is.na(owner), franchise_name, owner)) |>
+          filter(owner == o)
+
+        # Starters (non-bench/IR)
+        starting <- own_st |> filter(!lineup_slot %in% c("BE", "IR"))
+
+        # 00 Agent: 2+ starters with 0 in same week
+        zero_wks <- starting |> filter(player_score == 0) |>
+          count(season, week, name = "n") |> filter(n >= 2)
+        double_zero <- nrow(zero_wks) > 0
+
+        # Double D's: every starter 10+
+        weekly_min <- starting |>
+          group_by(season, week) |>
+          summarise(min_score = min(player_score, na.rm = TRUE),
+                    n_start = n(), .groups = "drop") |>
+          filter(n_start >= 8, min_score >= 10)
+        double_ds <- nrow(weekly_min) > 0
+
+        # Everyone Eats: every starter 6+ (proxy for TD)
+        weekly_six <- starting |>
+          group_by(season, week) |>
+          summarise(min_score = min(player_score, na.rm = TRUE),
+                    n_start = n(), .groups = "drop") |>
+          filter(n_start >= 8, min_score >= 6)
+        everyone_eats <- nrow(weekly_six) > 0
+
+        # Why?: 3+ kickers on roster at same time
+        kicker_weeks <- own_st |> filter(pos == "K") |>
+          count(season, week, name = "n") |> filter(n >= 3)
+        why <- nrow(kicker_weeks) > 0
+
+        # Ban Kickers: kicker is top scoring starter
+        top_starter_pos <- starting |>
+          group_by(season, week) |>
+          slice_max(player_score, n = 1, with_ties = FALSE) |>
+          ungroup()
+        ban_kickers <- any(top_starter_pos$pos == "K", na.rm = TRUE)
+
+        # Wins Championships: defense is top scoring starter
+        wins_champs <- any(top_starter_pos$pos %in% c("DST", "D/ST", "DEF"), na.rm = TRUE)
+      }
+
+      # Homer: 3+ players from favorite NFL team in a draft
+      homer <- FALSE
+      fav_team <- favorite_teams[[o]]
+      if (!is.null(fav_team) && !is.null(rv$draft_data)) {
+        own_draft <- rv$draft_data |> filter(owner == o) |>
+          count(season, team, name = "n") |>
+          filter(team == fav_team, n >= 3)
+        homer <- nrow(own_draft) > 0
+      }
+
+      # Soft Schedule: lowest PA
+      soft_schedule <- o %in% soft_schedule_seasons$owner
+      # MVP: best reg season record
+      mvp <- o %in% mvp_seasons$owner
+      # Ninja: made playoffs with bottom 3 PF
+      ninja <- o %in% ninja_seasons$owner
+      # Really Bad Beat
+      really_bad_beat <- o %in% rbb_seasons$owner
 
       list(
         first_win = career_wins >= 1,
@@ -2709,7 +2884,8 @@ server <- function(input, output, session) {
         title_game = any(owner_st$league_rank <= 2, na.rm = TRUE),
         one_seed = any(standings |> group_by(season) |> arrange(desc(h2h_wins), desc(points_for)) |> slice_head(n = 1) |> ungroup() |> filter(owner == o) |> nrow() > 0),
         playoff_bound = any(owner_st$league_rank <= 4, na.rm = TRUE),
-        most_pf = nrow(most_pf_seasons) > 0,
+        mvp = mvp,
+        opoy = nrow(most_pf_seasons) > 0,
         century = max_week >= 100,
         one_fifty = max_week >= 150,
         two_hundred = max_week >= 200,
@@ -2722,7 +2898,23 @@ server <- function(input, output, session) {
         runner_up = any(owner_st$league_rank == 2, na.rm = TRUE),
         hundred_wins = career_wins >= 100,
         fourteen_k = career_pf >= 14000,
-        big_blowout = max_margin >= 75
+        big_blowout = max_margin >= 75,
+        homer = homer,
+        double_zero = double_zero,
+        game_of_inches = game_of_inches,
+        gauntlet = gauntlet,
+        bad_beat = bad_beat,
+        really_bad_beat = really_bad_beat,
+        heating_up = max_win_streak >= 5,
+        on_fire = max_win_streak >= 10,
+        soft_schedule = soft_schedule,
+        ninja = ninja,
+        blowout = blowout_50,
+        everyone_eats = everyone_eats,
+        double_ds = double_ds,
+        why = why,
+        ban_kickers = ban_kickers,
+        wins_champs = wins_champs
       )
     }
 
