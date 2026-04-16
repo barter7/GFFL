@@ -4001,18 +4001,8 @@ server <- function(input, output, session) {
       }
 
       unlocked_count <- sum(unlist(status), na.rm = TRUE)
-      # Gamerscore: most are 100G, special achievements worth more
-      # Champion 1000, Finalist 500, Playoff Bound 250, all others 100
-      ach_value <- function(id) {
-        if (id == "threepeat") 10000
-        else if (id == "repeat") 5000
-        else if (id == "champion") 1000
-        else if (id == "title_game") 500
-        else if (id == "playoff_bound") 250
-        else 100
-      }
       gamerscore <- sum(sapply(achievements, function(a) {
-        if (isTRUE(status[[a$id]])) ach_value(a$id) else 0
+        if (isTRUE(status[[a$id]])) ach_values[[a$id]] else 0
       }), na.rm = TRUE)
       # Games = career matchups
       owner_st <- standings |> filter(owner == o)
@@ -4085,6 +4075,30 @@ server <- function(input, output, session) {
     all_results <- lapply(all_owners, function(o) compute_achievements(o))
     names(all_results) <- all_owners
 
+    # Negative/embarrassing achievements get 500G; positive ones scale by rarity
+    negative_ids <- c("sacko", "double_sacko", "double_zero", "bad_beat", "really_bad_beat",
+                      "rock_bottom", "why", "ban_kickers", "singled_out", "benchwarmers",
+                      "negative", "double_negative", "perfectly_wrong", "ran_out_of_gas",
+                      "historic_futility", "all_pain", "perfectly_avg")
+
+    # Compute rarity and value for each achievement
+    ach_values <- list()
+    for (ach in achievements) {
+      count <- sum(sapply(all_owners, function(o) isTRUE(all_results[[o]]$unlocked[[ach$id]])))
+      rarity_pct <- round(100 * count / length(all_owners))
+      if (ach$id %in% negative_ids) {
+        ach_values[[ach$id]] <- 500
+      } else if (rarity_pct <= 10) {
+        ach_values[[ach$id]] <- 10000
+      } else if (rarity_pct <= 25) {
+        ach_values[[ach$id]] <- 5000
+      } else if (rarity_pct <= 50) {
+        ach_values[[ach$id]] <- 2500
+      } else {
+        ach_values[[ach$id]] <- 1000
+      }
+    }
+
     # Build summary table: how many owners unlocked each achievement
     summary_rows <- lapply(achievements, function(ach) {
       unlocked_by <- all_owners[sapply(all_owners, function(o) isTRUE(all_results[[o]]$unlocked[[ach$id]]))]
@@ -4100,6 +4114,8 @@ server <- function(input, output, session) {
         else if (rarity_pct <= 25) "RARE"
         else if (rarity_pct <= 50) "UNCOMMON"
         else "COMMON"
+      val <- ach_values[[ach$id]]
+      val_str <- paste0(format(val, big.mark = ","), "G")
       tags$tr(
         tags$td(style = "padding:6px 10px; border-bottom:1px solid #333; white-space:nowrap;",
           tags$span(style = paste0("color:", if (count > 0) "#a1c943" else "#555", "; margin-right:6px;"), icon(ach$icon)),
@@ -4110,6 +4126,7 @@ server <- function(input, output, session) {
           paste0(count, "/", length(all_owners))
         ),
         tags$td(style = paste0("padding:6px 10px; border-bottom:1px solid #333; text-align:center; font-size:10px; font-weight:bold; color:", rarity_color, ";"), rarity_label),
+        tags$td(style = "padding:6px 10px; border-bottom:1px solid #333; text-align:center; color:#a1c943; font-size:12px; font-weight:bold;", val_str),
         tags$td(style = "padding:6px 10px; border-bottom:1px solid #333; color:#ccc; font-size:12px;", who)
       )
     })
@@ -4136,6 +4153,7 @@ server <- function(input, output, session) {
               tags$th(style = "padding:8px 10px; text-align:left; color:#a1c943; font-size:13px;", "Description"),
               tags$th(style = "padding:8px 10px; text-align:center; color:#a1c943; font-size:13px;", "Unlocked"),
               tags$th(style = "padding:8px 10px; text-align:center; color:#a1c943; font-size:13px;", "Rarity"),
+              tags$th(style = "padding:8px 10px; text-align:center; color:#a1c943; font-size:13px;", "Value"),
               tags$th(style = "padding:8px 10px; text-align:left; color:#a1c943; font-size:13px;", "Who")
             )
           ),
