@@ -1949,9 +1949,35 @@ server <- function(input, output, session) {
         mutate(owner = ifelse(is.na(owner), franchise_name, owner))
     }
 
-    # Get season points from starters data (rostered pts)
+    # Get season points - prefer full nflreadr stats, fall back to rostered
     season_pts <- NULL
-    if (!is.null(rv$starters_data)) {
+    if (!is.null(rv$player_stats)) {
+      # Use full NFL season fantasy points (includes unrostered players)
+      # Half-PPR = (standard + full PPR) / 2
+      ps <- rv$player_stats |> filter(season == yr)
+      has_ppr <- "fantasy_points_ppr" %in% names(ps)
+      has_std <- "fantasy_points" %in% names(ps)
+
+      if ("week" %in% names(ps)) {
+        # Weekly data - aggregate
+        agg <- ps |> group_by(player_display_name, position)
+        if (has_ppr && has_std) {
+          agg <- agg |> summarise(total_pts = round(sum((fantasy_points + fantasy_points_ppr) / 2, na.rm = TRUE), 0), .groups = "drop")
+        } else if (has_ppr) {
+          agg <- agg |> summarise(total_pts = round(sum(fantasy_points_ppr, na.rm = TRUE), 0), .groups = "drop")
+        } else {
+          agg <- agg |> summarise(total_pts = round(sum(fantasy_points, na.rm = TRUE), 0), .groups = "drop")
+        }
+        season_pts <- agg |> rename(player_name = player_display_name, pos = position)
+      } else {
+        season_pts <- ps |>
+          mutate(total_pts = if (has_ppr && has_std) round((fantasy_points + fantasy_points_ppr) / 2, 0)
+                             else if (has_ppr) round(fantasy_points_ppr, 0)
+                             else round(fantasy_points, 0)) |>
+          select(player_name = player_display_name, pos = position, total_pts)
+      }
+    } else if (!is.null(rv$starters_data)) {
+      # Fall back to rostered points from starters data
       season_pts <- rv$starters_data |>
         filter(season == yr) |>
         group_by(player_name, pos) |>
