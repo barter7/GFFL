@@ -3982,10 +3982,7 @@ server <- function(input, output, session) {
     }
 
     # Build owner section
-    build_owner_section <- function(o) {
-      result <- compute_achievements(o)
-      status <- result$unlocked
-      details <- result$detail
+    build_owner_section_from_result <- function(o, status, details) {
       badges <- lapply(achievements, function(ach) {
         build_badge(ach, isTRUE(status[[ach$id]]), details[[ach$id]])
       })
@@ -4084,11 +4081,74 @@ server <- function(input, output, session) {
       )
     }
 
+    # Compute achievement counts across all owners for summary
+    all_results <- lapply(all_owners, function(o) compute_achievements(o))
+    names(all_results) <- all_owners
+
+    # Build summary table: how many owners unlocked each achievement
+    summary_rows <- lapply(achievements, function(ach) {
+      unlocked_by <- all_owners[sapply(all_owners, function(o) isTRUE(all_results[[o]]$unlocked[[ach$id]]))]
+      count <- length(unlocked_by)
+      who <- if (count > 0) paste(unlocked_by, collapse = ", ") else "Nobody"
+      rarity_pct <- round(100 * count / length(all_owners))
+      rarity_color <- if (rarity_pct <= 10) "#ff4444"
+        else if (rarity_pct <= 25) "#ff8c00"
+        else if (rarity_pct <= 50) "#ffd700"
+        else if (rarity_pct <= 75) "#a1c943"
+        else "#888"
+      rarity_label <- if (rarity_pct <= 10) "LEGENDARY"
+        else if (rarity_pct <= 25) "RARE"
+        else if (rarity_pct <= 50) "UNCOMMON"
+        else "COMMON"
+      tags$tr(
+        tags$td(style = "padding:6px 10px; border-bottom:1px solid #333; white-space:nowrap;",
+          tags$span(style = paste0("color:", if (count > 0) "#a1c943" else "#555", "; margin-right:6px;"), icon(ach$icon)),
+          tags$span(style = paste0("color:", if (count > 0) "#fff" else "#555", "; font-weight:bold;"), ach$name)
+        ),
+        tags$td(style = "padding:6px 10px; border-bottom:1px solid #333; color:#aaa; font-size:12px;", ach$desc),
+        tags$td(style = paste0("padding:6px 10px; border-bottom:1px solid #333; text-align:center; font-weight:bold; color:", rarity_color, ";"),
+          paste0(count, "/", length(all_owners))
+        ),
+        tags$td(style = paste0("padding:6px 10px; border-bottom:1px solid #333; text-align:center; font-size:10px; font-weight:bold; color:", rarity_color, ";"), rarity_label),
+        tags$td(style = "padding:6px 10px; border-bottom:1px solid #333; color:#ccc; font-size:12px;", who)
+      )
+    })
+
     # Build all sections
     tagList(
       h2(style = "color:#a1c943; font-family:Arial,sans-serif; text-align:center; letter-spacing:3px; margin-bottom:20px;",
          "GFFL ACHIEVEMENTS"),
-      lapply(all_owners, build_owner_section)
+      # Summary section
+      div(
+        style = paste0(
+          "background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%); ",
+          "border:2px solid #a1c943; border-radius:8px; padding:15px; margin-bottom:30px; ",
+          "box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 20px rgba(161,201,67,0.15); ",
+          "overflow-x:auto;"
+        ),
+        h3(style = "color:#a1c943; font-family:Arial,sans-serif; text-align:center; letter-spacing:2px; margin-bottom:12px;",
+           "ACHIEVEMENT SUMMARY"),
+        tags$table(
+          style = "width:100%; border-collapse:collapse; font-family:Arial,sans-serif;",
+          tags$thead(
+            tags$tr(style = "border-bottom:2px solid #a1c943;",
+              tags$th(style = "padding:8px 10px; text-align:left; color:#a1c943; font-size:13px;", "Achievement"),
+              tags$th(style = "padding:8px 10px; text-align:left; color:#a1c943; font-size:13px;", "Description"),
+              tags$th(style = "padding:8px 10px; text-align:center; color:#a1c943; font-size:13px;", "Unlocked"),
+              tags$th(style = "padding:8px 10px; text-align:center; color:#a1c943; font-size:13px;", "Rarity"),
+              tags$th(style = "padding:8px 10px; text-align:left; color:#a1c943; font-size:13px;", "Who")
+            )
+          ),
+          tags$tbody(summary_rows)
+        )
+      ),
+      # Owner cards - reuse precomputed results
+      lapply(all_owners, function(o) {
+        result <- all_results[[o]]
+        status <- result$unlocked
+        details <- result$detail
+        build_owner_section_from_result(o, status, details)
+      })
     )
     }, error = function(e) {
       div(style = "color:#fff; padding:20px; background:#3d0000; border-radius:8px;",
