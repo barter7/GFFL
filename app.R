@@ -148,6 +148,30 @@ ui <- page_navbar(
         card_header("Overall Draft Position Breakdown (%)"),
         plotlyOutput("draft_pos_plot", height = "400px")
       )
+    ),
+    layout_columns(
+      col_widths = c(12),
+      card(
+        card_header("Biggest Draft Busts"),
+        helpText("Players whose actual points fell well short of what their draft slot should have yielded"),
+        DTOutput("draft_busts_table")
+      )
+    ),
+    layout_columns(
+      col_widths = c(12),
+      card(
+        card_header("Biggest Draft Values"),
+        helpText("Players who dramatically outscored their draft position's expected value"),
+        DTOutput("draft_values_table")
+      )
+    ),
+    layout_columns(
+      col_widths = c(12),
+      card(
+        card_header("Closest to Draft Value"),
+        helpText("Players who finished closest to where they were drafted (min top-40 at position)"),
+        DTOutput("draft_accurate_table")
+      )
     )
   ),
 
@@ -2071,6 +2095,166 @@ server <- function(input, output, session) {
       arrange(Overall)
     datatable(df, options = list(pageLength = 25, dom = "ftp"),
               rownames = FALSE, filter = "top")
+  })
+
+  # Compute draft value analysis (busts, values, accurate)
+  draft_value_data <- reactive({
+    req(rv$draft_data)
+
+    drafts <- rv$draft_data |>
+      filter(pos %in% c("QB", "RB", "WR", "TE"))
+
+    # Attach owner if not present
+    if (!"owner" %in% names(drafts) && !is.null(rv$owner_map)) {
+      drafts <- drafts |>
+        left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
+        mutate(owner = ifelse(is.na(owner), franchise_name, owner))
+    }
+
+    # Compute drafted position rank per season (e.g., 1st RB taken = 1)
+    drafts <- drafts |>
+      group_by(season, pos) |>
+      arrange(overall) |>
+      mutate(drafted_pos_rank = row_number()) |>
+      ungroup()
+
+    # Get season fantasy points (full stats if available, else rostered)
+    get_season_pts <- function(yr) {
+      if (!is.null(rv$player_stats)) {
+        ps <- rv$player_stats |> filter(season == yr)
+        has_ppr <- "fantasy_points_ppr" %in% names(ps)
+        has_std <- "fantasy_points" %in% names(ps)
+        if ("week" %in% names(ps)) {
+          if (has_ppr && has_std) {
+            ps |> group_by(player_display_name, position) |>
+              summarise(total_pts = sum((fantasy_points + fantasy_points_ppr) / 2, na.rm = TRUE), .groups = "drop") |>
+              rename(player_name = player_display_name, pos = position)
+          } else {
+            col <- if (has_ppr) "fantasy_points_ppr" else "fantasy_points"
+            ps |> group_by(player_display_name, position) |>
+              summarise(total_pts = sum(.data[[col]], na.rm = TRUE), .groups = "drop") |>
+              rename(player_name = player_display_name, pos = position)
+          }
+        } else {
+          col <- if (has_ppr && has_std) NA else if (has_ppr) "fantasy_points_ppr" else "fantasy_points"
+          if (is.na(col)) {
+            ps |> mutate(total_pts = (fantasy_points + fantasy_points_ppr) / 2) |>
+              select(player_name = player_display_name, pos = position, total_pts)
+          } else {
+            ps |> mutate(total_pts = .data[[col]]) |>
+              select(player_name = player_display_name, pos = position, total_pts)
+          }
+        }
+      } else if (!is.null(rv$starters_data)) {
+        rv$starters_data |>
+          filter(season == yr) |>
+          group_by(player_name, pos) |>
+          summarise(total_pts = sum(player_score, na.rm = TRUE), .groups = "drop")
+      } else NULL
+    }
+
+    # Process each season
+    all_years <- sort(unique(drafts$season))
+    results <- list()
+    for (yr in all_years) {
+      sp <- get_season_pts(yr)
+      if (is.null(sp) || nrow(sp) == 0) next
+
+      # Compute actual position rank per position
+      sp <- sp |>
+        filter(pos %in% c("QB", "RB", "WR", "TE")) |>
+        group_by(pos) |>
+        mutate(actual_pos_rank = rank(-total_pts, ties.method = "min")) |>
+        ungroup()
+
+      yr_drafts <- drafts |> filter(season == yr)
+      joined <- yr_drafts |>
+        left_join(sp, by = c("player_name", "pos")) |>
+        mutate(total_pts = ifelse(is.na(total_pts), 0, total_pts),
+               actual_pos_rank = ifelse(is.na(actual_pos_rank),
+                                        max(sp$actual_pos_rank, na.rm = TRUE) + 1,
+                                        actual_pos_rank))
+
+      # Compute "expected points" = points of the actual player at that draft rank
+      # e.g., if drafted as 1st RB, expected = actual RB1 points that season
+      pos_rank_pts <- sp |>
+        group_by(pos) |>
+        arrange(actual_pos_rank) |>
+        mutate(rank_for_draft = row_number()) |>
+        ungroup() |>
+        select(pos, rank_for_draft, expected_pts = total_pts)
+
+      joined <- joined |>
+        left_join(pos_rank_pts, by = c("pos" = "pos", "drafted_pos_rank" = "rank_for_draft")) |>
+        mutate(value_diff = total_pts - expected_pts,
+               rank_diff = actual_pos_rank - drafted_pos_rank)
+
+      results[[as.character(yr)]] <- joined
+    }
+
+    bind_rows(results)
+  })
+
+  output$draft_busts_table <- renderDT({
+    req(draft_value_data())
+    df <- draft_value_data() |>
+      filter(!is.na(value_diff), !is.na(expected_pts), expected_pts > 0) |>
+      arrange(value_diff) |> head(25) |>
+      transmute(
+        Season = season,
+        Owner = owner,
+        Player = player_name,
+        Pos = pos,
+        `Drafted As` = paste0(pos, drafted_pos_rank),
+        `Finished As` = paste0(pos, actual_pos_rank),
+        Points = round(total_pts, 0),
+        `Expected Pts` = round(expected_pts, 0),
+        `Pts Lost` = round(value_diff, 0)
+      )
+    datatable(df, options = list(pageLength = 15, dom = "tp"),
+              rownames = FALSE)
+  })
+
+  output$draft_values_table <- renderDT({
+    req(draft_value_data())
+    df <- draft_value_data() |>
+      filter(!is.na(value_diff), !is.na(expected_pts)) |>
+      arrange(desc(value_diff)) |> head(25) |>
+      transmute(
+        Season = season,
+        Owner = owner,
+        Player = player_name,
+        Pos = pos,
+        `Drafted As` = paste0(pos, drafted_pos_rank),
+        `Finished As` = paste0(pos, actual_pos_rank),
+        Points = round(total_pts, 0),
+        `Expected Pts` = round(expected_pts, 0),
+        `Pts Gained` = round(value_diff, 0)
+      )
+    datatable(df, options = list(pageLength = 15, dom = "tp"),
+              rownames = FALSE)
+  })
+
+  output$draft_accurate_table <- renderDT({
+    req(draft_value_data())
+    df <- draft_value_data() |>
+      filter(!is.na(value_diff), !is.na(expected_pts),
+             drafted_pos_rank <= 40, actual_pos_rank <= 40) |>
+      mutate(abs_diff = abs(value_diff)) |>
+      arrange(abs_diff) |> head(25) |>
+      transmute(
+        Season = season,
+        Owner = owner,
+        Player = player_name,
+        Pos = pos,
+        `Drafted As` = paste0(pos, drafted_pos_rank),
+        `Finished As` = paste0(pos, actual_pos_rank),
+        Points = round(total_pts, 0),
+        `Expected Pts` = round(expected_pts, 0),
+        `Pts Diff` = round(value_diff, 0)
+      )
+    datatable(df, options = list(pageLength = 15, dom = "tp"),
+              rownames = FALSE)
   })
 
   output$draft_r1_plot <- renderPlotly({
