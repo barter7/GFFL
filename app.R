@@ -307,6 +307,19 @@ ui <- page_navbar(
     )
   ),
 
+  # PLAYER RECORDS
+  nav_panel(
+    title = "Player Records",
+    icon = icon("star"),
+    tags$head(
+      tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap")
+    ),
+    div(
+      class = "record-book",
+      uiOutput("player_records_book")
+    )
+  ),
+
   nav_spacer(),
   nav_item(
     tags$a(
@@ -2263,6 +2276,222 @@ server <- function(input, output, session) {
     div(
       style = "display:flex; flex-wrap:wrap; justify-content:center; gap:10px;",
       cards
+    )
+  })
+
+  # ==========================================================================
+  # PLAYER RECORDS TAB
+  # ==========================================================================
+
+  output$player_records_book <- renderUI({
+    req(rv$starters_data)
+
+    starters <- rv$starters_data
+    started <- starters |> filter(!lineup_slot %in% c("BE", "IR"))
+    benched <- starters |> filter(lineup_slot == "BE")
+
+    # Attach owner names
+    if (!is.null(rv$owner_map)) {
+      starters <- starters |>
+        left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
+        mutate(owner = ifelse(is.na(owner), franchise_name, owner))
+      started <- started |>
+        left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
+        mutate(owner = ifelse(is.na(owner), franchise_name, owner))
+      benched <- benched |>
+        left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
+        mutate(owner = ifelse(is.na(owner), franchise_name, owner))
+    }
+
+    # Helper: get ESPN headshot URL
+    get_hs <- function(pname) {
+      if (is.null(rv$player_ids)) return(NULL)
+      m <- rv$player_ids |> filter(tolower(name) == tolower(pname)) |> head(1)
+      if (nrow(m) > 0 && "espn_id" %in% names(m) && !is.na(m$espn_id)) {
+        return(paste0("https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/", m$espn_id, ".png&w=96&h=70&cb=1"))
+      }
+      NULL
+    }
+
+    # Build a top-5 record section with headshots
+    build_top5 <- function(title, df, value_col, extra_col = NULL) {
+      rows <- lapply(seq_len(min(5, nrow(df))), function(i) {
+        r <- df[i, ]
+        hs_url <- get_hs(r$player_name)
+        tags$tr(
+          tags$td(style = "color:#8b6914; font-size:14px; padding:4px 6px; width:30px; vertical-align:middle;",
+                  paste0("#", i)),
+          tags$td(style = "width:40px; padding:4px;",
+            if (!is.null(hs_url)) tags$img(src = hs_url, style = "width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid #8b6914;", onerror = "this.style.display='none'")
+          ),
+          tags$td(style = "color:#3d2a10; font-family:'Cormorant Garamond',Georgia,serif; font-size:16px; font-weight:600; padding:4px; vertical-align:middle;",
+                  r$player_name,
+                  tags$span(style = "color:#8b6914; font-size:12px; margin-left:4px;", paste0(r$pos, " - ", r$team))),
+          tags$td(style = "color:#3d2a10; font-family:'Cormorant Garamond',Georgia,serif; font-size:18px; font-weight:bold; text-align:right; padding:4px; vertical-align:middle;",
+                  r[[value_col]]),
+          if (!is.null(extra_col)) tags$td(style = "color:#5c3a10; font-size:13px; font-style:italic; text-align:right; padding:4px; vertical-align:middle;", r[[extra_col]])
+        )
+      })
+
+      tagList(
+        div(style = "margin:25px 20px 10px;",
+          div(style = "font-family:'IM Fell English',Georgia,serif; font-size:20px; color:#3d2a10; font-weight:bold; letter-spacing:2px; text-transform:uppercase; border-bottom:2px solid #5c3a10; padding-bottom:4px;",
+              title)),
+        tags$table(style = "width:calc(100% - 40px); margin:0 20px; border-collapse:collapse;",
+          tags$tbody(rows)),
+        tags$hr(style = "border:none; border-top:1px dashed rgba(92,58,16,0.25); margin:10px 20px;")
+      )
+    }
+
+    # Build a single-record entry (same style as Records tab)
+    build_single <- function(title, player, value, detail = "") {
+      hs_url <- get_hs(player)
+      div(style = "margin:15px 20px;",
+        div(style = "font-family:'IM Fell English',Georgia,serif; font-size:18px; color:#3d2a10; font-weight:bold; letter-spacing:1px; text-transform:uppercase;",
+            title),
+        div(style = "display:flex; align-items:center; padding-left:20px; margin-top:4px;",
+          if (!is.null(hs_url)) tags$img(src = hs_url, style = "width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid #8b6914; margin-right:10px;", onerror = "this.style.display='none'"),
+          div(
+            tags$span(style = "font-family:'Cormorant Garamond',Georgia,serif; font-size:18px; font-weight:600; color:#3d2a10;", value),
+            tags$span(style = "color:#8b6914; font-size:14px; margin-left:6px;", paste0("— ", player)),
+            if (nchar(detail) > 0) tags$span(style = "color:#5c3a10; font-size:13px; margin-left:6px; font-style:italic;", paste0("(", detail, ")"))
+          )
+        ),
+        tags$hr(style = "border:none; border-top:1px dashed rgba(92,58,16,0.25); margin:8px 0 0;")
+      )
+    }
+
+    # ==================== COMPUTE ALL RECORDS ====================
+
+    # 1. Highest single-game starter score - top 5
+    top_scores <- started |> arrange(desc(player_score)) |> head(5) |>
+      mutate(display = paste0(round(player_score, 1), " pts"),
+             detail = paste0(owner, " - ", season, " W", week))
+
+    # 2. Most games scoring 50+ points
+    above50 <- started |> filter(player_score >= 50) |>
+      count(player_name, pos, team, name = "games_50plus") |> arrange(desc(games_50plus)) |> head(5)
+
+    # 3. Most games scoring 40+ points
+    above40 <- started |> filter(player_score >= 40) |>
+      count(player_name, pos, team, name = "games_40plus") |> arrange(desc(games_40plus)) |> head(5)
+
+    # 4. Most games scoring 30+ points
+    above30 <- started |> filter(player_score >= 30) |>
+      count(player_name, pos, team, name = "games_30plus") |> arrange(desc(games_30plus)) |> head(5)
+
+    # 5. Highest single-game bench score (left on bench)
+    top_bench <- benched |> arrange(desc(player_score)) |> head(5) |>
+      mutate(display = paste0(round(player_score, 1), " pts on bench"),
+             detail = paste0(owner, " - ", season, " W", week))
+
+    # 6. Most weeks on someone's bench
+    bench_kings <- benched |>
+      count(player_name, pos, team, name = "weeks_benched") |>
+      arrange(desc(weeks_benched)) |> head(5)
+
+    # 7. Most seasons owned by the same owner
+    loyalty <- starters |>
+      group_by(player_name, pos, team, owner) |>
+      summarise(seasons = n_distinct(season), .groups = "drop") |>
+      arrange(desc(seasons)) |> head(5) |>
+      mutate(display = paste0(seasons, " seasons"),
+             detail = owner)
+
+    # 8. Player on most different owners' teams
+    nomads <- starters |>
+      group_by(player_name, pos, team) |>
+      summarise(num_owners = n_distinct(franchise_id), .groups = "drop") |>
+      arrange(desc(num_owners)) |> head(5)
+
+    # 9. Most total starts across all seasons
+    most_starts <- started |>
+      count(player_name, pos, team, name = "total_starts") |>
+      arrange(desc(total_starts)) |> head(5)
+
+    # 10. Most total fantasy points scored as a starter
+    most_total_pts <- started |>
+      group_by(player_name, pos, team) |>
+      summarise(total_pts = round(sum(player_score, na.rm = TRUE), 0), .groups = "drop") |>
+      arrange(desc(total_pts)) |> head(5)
+
+    # 11. Highest average score per start (min 10 starts)
+    best_avg <- started |>
+      group_by(player_name, pos, team) |>
+      summarise(starts = n(), avg_pts = round(mean(player_score, na.rm = TRUE), 1), .groups = "drop") |>
+      filter(starts >= 10) |>
+      arrange(desc(avg_pts)) |> head(5)
+
+    # 12. Biggest bust: highest projected with lowest actual
+    if ("projected_score" %in% names(started)) {
+      busts <- started |>
+        mutate(bust_margin = projected_score - player_score) |>
+        filter(!is.na(bust_margin)) |>
+        arrange(desc(bust_margin)) |> head(5) |>
+        mutate(display = paste0("Projected ", round(projected_score, 0), ", scored ", round(player_score, 1)),
+               detail = paste0(owner, " - ", season, " W", week))
+    } else { busts <- NULL }
+
+    # 13. Biggest overperformer: lowest projected with highest actual
+    if ("projected_score" %in% names(started)) {
+      booms <- started |>
+        mutate(boom_margin = player_score - projected_score) |>
+        filter(!is.na(boom_margin)) |>
+        arrange(desc(boom_margin)) |> head(5) |>
+        mutate(display = paste0("Projected ", round(projected_score, 0), ", scored ", round(player_score, 1)),
+               detail = paste0(owner, " - ", season, " W", week))
+    } else { booms <- NULL }
+
+    # 14. Most goose eggs (0 points as a starter)
+    goose_eggs <- started |> filter(player_score == 0) |>
+      count(player_name, pos, team, name = "goose_eggs") |>
+      arrange(desc(goose_eggs)) |> head(5)
+
+    # 15. Most different teams (NFL) a player appeared on
+    team_hoppers <- starters |>
+      group_by(player_name, pos) |>
+      summarise(nfl_teams = n_distinct(team), .groups = "drop") |>
+      filter(nfl_teams > 1) |>
+      arrange(desc(nfl_teams)) |> head(5) |>
+      mutate(team = "Multiple")
+
+    # ==================== BUILD UI ====================
+
+    tagList(
+      tags$style("
+        .record-book .player-records th { font-family:'IM Fell English',Georgia,serif; font-size:14px; color:#5c3a10; }
+      "),
+      h1("The GFFL Player Records"),
+      div(class = "subtitle", "A Catalogue of Heroes, Villains & Benchwarming Legends"),
+      div(class = "fleuron", HTML("&#10086; &#10086; &#10086;")),
+
+      build_top5("Highest Single-Game Score", top_scores, "display", "detail"),
+      build_top5("Most Games Scoring 50+ Points", above50, "games_50plus"),
+      build_top5("Most Games Scoring 40+ Points", above40, "games_40plus"),
+      build_top5("Most Games Scoring 30+ Points", above30, "games_30plus"),
+      build_top5("Most Total Fantasy Points (Career)", most_total_pts, "total_pts"),
+      build_top5("Highest Avg Points Per Start (min 10)", best_avg, "avg_pts"),
+      build_top5("Most Starts Across All Seasons", most_starts, "total_starts"),
+
+      div(class = "fleuron", HTML("&#10086;")),
+
+      build_top5("Highest Score Left on Bench", top_bench, "display", "detail"),
+      build_top5("Most Weeks Spent on the Bench", bench_kings, "weeks_benched"),
+      build_top5("Most Goose Eggs (0 pts as starter)", goose_eggs, "goose_eggs"),
+
+      div(class = "fleuron", HTML("&#10086;")),
+
+      build_top5("Most Loyal: Seasons with Same Owner", loyalty, "display", "detail"),
+      build_top5("Most Nomadic: Different Owners", nomads, "num_owners"),
+      build_top5("Most NFL Teams Played For", team_hoppers, "nfl_teams"),
+
+      if (!is.null(busts)) tagList(
+        div(class = "fleuron", HTML("&#10086;")),
+        build_top5("Biggest Busts (Projected vs Actual)", busts, "display", "detail"),
+        build_top5("Biggest Booms (Over-Performed Projection)", booms, "display", "detail")
+      ),
+
+      div(class = "fleuron", HTML("&#10086; &#10086; &#10086;"))
     )
   })
 
