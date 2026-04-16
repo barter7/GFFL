@@ -55,8 +55,10 @@ jobs:
             secret = Sys.getenv("SHINYAPPS_SECRET")
           )
 
-          # Retry deploy up to 5 times with exponential backoff for 409 conflicts
-          deploy_with_retry <- function(max_tries = 5) {
+          # Retry deploy up to 10 times with longer backoff for 409 conflicts
+          deploy_with_retry <- function(max_tries = 10) {
+            # Initial wait to let any previous deploy settle on shinyapps side
+            Sys.sleep(15)
             for (attempt in 1:max_tries) {
               result <- tryCatch({
                 rsconnect::deployApp(
@@ -72,7 +74,7 @@ jobs:
               }, error = function(e) {
                 msg <- conditionMessage(e)
                 if (grepl("409|in progress|transient", msg, ignore.case = TRUE) && attempt < max_tries) {
-                  wait_s <- 30 * attempt
+                  wait_s <- 60 + (attempt * 30)
                   cat("Deploy attempt", attempt, "hit transient error. Waiting", wait_s, "seconds...\n")
                   Sys.sleep(wait_s)
                   return(NULL)
