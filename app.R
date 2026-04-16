@@ -2286,7 +2286,7 @@ server <- function(input, output, session) {
   output$player_records_book <- renderUI({
     req(rv$starters_data)
 
-    starters <- rv$starters_data
+    starters <- rv$starters_data |> filter(!pos %in% c("DST", "D/ST", "DEF", "K"))
     started <- starters |> filter(!lineup_slot %in% c("BE", "IR"))
     benched <- starters |> filter(lineup_slot == "BE")
 
@@ -2315,7 +2315,7 @@ server <- function(input, output, session) {
 
     # Build a top-5 record section with headshots
     build_top5 <- function(title, df, value_col, extra_col = NULL) {
-      rows <- lapply(seq_len(min(5, nrow(df))), function(i) {
+      rows <- lapply(seq_len(min(10, nrow(df))), function(i) {
         r <- df[i, ]
         hs_url <- get_hs(r$player_name)
         tags$tr(
@@ -2364,37 +2364,37 @@ server <- function(input, output, session) {
     # ==================== COMPUTE ALL RECORDS ====================
 
     # 1. Highest single-game starter score - top 5
-    top_scores <- started |> arrange(desc(player_score)) |> head(5) |>
+    top_scores <- started |> arrange(desc(player_score)) |> head(10) |>
       mutate(display = paste0(round(player_score, 1), " pts"),
              detail = paste0(owner, " - ", season, " W", week))
 
     # 2. Most games scoring 50+ points
     above50 <- started |> filter(player_score >= 50) |>
-      count(player_name, pos, team, name = "games_50plus") |> arrange(desc(games_50plus)) |> head(5)
+      count(player_name, pos, team, name = "games_50plus") |> arrange(desc(games_50plus)) |> head(10)
 
     # 3. Most games scoring 40+ points
     above40 <- started |> filter(player_score >= 40) |>
-      count(player_name, pos, team, name = "games_40plus") |> arrange(desc(games_40plus)) |> head(5)
+      count(player_name, pos, team, name = "games_40plus") |> arrange(desc(games_40plus)) |> head(10)
 
     # 4. Most games scoring 30+ points
     above30 <- started |> filter(player_score >= 30) |>
-      count(player_name, pos, team, name = "games_30plus") |> arrange(desc(games_30plus)) |> head(5)
+      count(player_name, pos, team, name = "games_30plus") |> arrange(desc(games_30plus)) |> head(10)
 
     # 5. Highest single-game bench score (left on bench)
-    top_bench <- benched |> arrange(desc(player_score)) |> head(5) |>
+    top_bench <- benched |> arrange(desc(player_score)) |> head(10) |>
       mutate(display = paste0(round(player_score, 1), " pts on bench"),
              detail = paste0(owner, " - ", season, " W", week))
 
     # 6. Most weeks on someone's bench
     bench_kings <- benched |>
       count(player_name, pos, team, name = "weeks_benched") |>
-      arrange(desc(weeks_benched)) |> head(5)
+      arrange(desc(weeks_benched)) |> head(10)
 
     # 7. Most seasons owned by the same owner
     loyalty <- starters |>
       group_by(player_name, pos, team, owner) |>
       summarise(seasons = n_distinct(season), .groups = "drop") |>
-      arrange(desc(seasons)) |> head(5) |>
+      arrange(desc(seasons)) |> head(10) |>
       mutate(display = paste0(seasons, " seasons"),
              detail = owner)
 
@@ -2402,32 +2402,32 @@ server <- function(input, output, session) {
     nomads <- starters |>
       group_by(player_name, pos, team) |>
       summarise(num_owners = n_distinct(franchise_id), .groups = "drop") |>
-      arrange(desc(num_owners)) |> head(5)
+      arrange(desc(num_owners)) |> head(10)
 
     # 9. Most total starts across all seasons
     most_starts <- started |>
       count(player_name, pos, team, name = "total_starts") |>
-      arrange(desc(total_starts)) |> head(5)
+      arrange(desc(total_starts)) |> head(10)
 
     # 10. Most total fantasy points scored as a starter
     most_total_pts <- started |>
       group_by(player_name, pos, team) |>
       summarise(total_pts = round(sum(player_score, na.rm = TRUE), 0), .groups = "drop") |>
-      arrange(desc(total_pts)) |> head(5)
+      arrange(desc(total_pts)) |> head(10)
 
     # 11. Highest average score per start (min 10 starts)
     best_avg <- started |>
       group_by(player_name, pos, team) |>
       summarise(starts = n(), avg_pts = round(mean(player_score, na.rm = TRUE), 1), .groups = "drop") |>
       filter(starts >= 10) |>
-      arrange(desc(avg_pts)) |> head(5)
+      arrange(desc(avg_pts)) |> head(10)
 
     # 12. Biggest bust: highest projected with lowest actual
     if ("projected_score" %in% names(started)) {
       busts <- started |>
         mutate(bust_margin = projected_score - player_score) |>
         filter(!is.na(bust_margin)) |>
-        arrange(desc(bust_margin)) |> head(5) |>
+        arrange(desc(bust_margin)) |> head(10) |>
         mutate(display = paste0("Projected ", round(projected_score, 0), ", scored ", round(player_score, 1)),
                detail = paste0(owner, " - ", season, " W", week))
     } else { busts <- NULL }
@@ -2437,7 +2437,7 @@ server <- function(input, output, session) {
       booms <- started |>
         mutate(boom_margin = player_score - projected_score) |>
         filter(!is.na(boom_margin)) |>
-        arrange(desc(boom_margin)) |> head(5) |>
+        arrange(desc(boom_margin)) |> head(10) |>
         mutate(display = paste0("Projected ", round(projected_score, 0), ", scored ", round(player_score, 1)),
                detail = paste0(owner, " - ", season, " W", week))
     } else { booms <- NULL }
@@ -2445,15 +2445,98 @@ server <- function(input, output, session) {
     # 14. Most goose eggs (0 points as a starter)
     goose_eggs <- started |> filter(player_score == 0) |>
       count(player_name, pos, team, name = "goose_eggs") |>
-      arrange(desc(goose_eggs)) |> head(5)
+      arrange(desc(goose_eggs)) |> head(10)
 
     # 15. Most different teams (NFL) a player appeared on
     team_hoppers <- starters |>
       group_by(player_name, pos) |>
       summarise(nfl_teams = n_distinct(team), .groups = "drop") |>
       filter(nfl_teams > 1) |>
-      arrange(desc(nfl_teams)) |> head(5) |>
+      arrange(desc(nfl_teams)) |> head(10) |>
       mutate(team = "Multiple")
+
+    # 16. Most games scoring 20+ points
+    above20 <- started |> filter(player_score >= 20) |>
+      count(player_name, pos, team, name = "games_20plus") |> arrange(desc(games_20plus)) |> head(10)
+
+    # 17. Most games scoring under 5 points (started)
+    under5 <- started |> filter(player_score < 5) |>
+      count(player_name, pos, team, name = "games_under5") |> arrange(desc(games_under5)) |> head(10)
+
+    # 18. Highest scoring QB in a single game
+    top_qb <- started |> filter(pos == "QB") |> arrange(desc(player_score)) |> head(10) |>
+      mutate(display = paste0(round(player_score, 1), " pts"),
+             detail = paste0(owner, " - ", season, " W", week))
+
+    # 19. Highest scoring RB in a single game
+    top_rb <- started |> filter(pos == "RB") |> arrange(desc(player_score)) |> head(10) |>
+      mutate(display = paste0(round(player_score, 1), " pts"),
+             detail = paste0(owner, " - ", season, " W", week))
+
+    # 20. Highest scoring WR in a single game
+    top_wr <- started |> filter(pos == "WR") |> arrange(desc(player_score)) |> head(10) |>
+      mutate(display = paste0(round(player_score, 1), " pts"),
+             detail = paste0(owner, " - ", season, " W", week))
+
+    # 21. Highest scoring TE in a single game
+    top_te <- started |> filter(pos == "TE") |> arrange(desc(player_score)) |> head(10) |>
+      mutate(display = paste0(round(player_score, 1), " pts"),
+             detail = paste0(owner, " - ", season, " W", week))
+
+    # 22. Most consistent: lowest standard deviation (min 20 starts)
+    most_consistent <- started |>
+      group_by(player_name, pos, team) |>
+      summarise(starts = n(), sd_pts = round(sd(player_score, na.rm = TRUE), 2),
+                avg = round(mean(player_score, na.rm = TRUE), 1), .groups = "drop") |>
+      filter(starts >= 20) |>
+      arrange(sd_pts) |> head(10) |>
+      mutate(display = paste0("SD: ", sd_pts, " (avg ", avg, ")"))
+
+    # 23. Most boom-or-bust: highest standard deviation (min 20 starts)
+    most_volatile <- started |>
+      group_by(player_name, pos, team) |>
+      summarise(starts = n(), sd_pts = round(sd(player_score, na.rm = TRUE), 2),
+                avg = round(mean(player_score, na.rm = TRUE), 1), .groups = "drop") |>
+      filter(starts >= 20) |>
+      arrange(desc(sd_pts)) |> head(10) |>
+      mutate(display = paste0("SD: ", sd_pts, " (avg ", avg, ")"))
+
+    # 24. Biggest single-game improvement over previous week
+    week_jumps <- started |>
+      arrange(player_name, season, week) |>
+      group_by(player_name, pos, team) |>
+      mutate(prev_score = lag(player_score),
+             jump = player_score - prev_score) |>
+      ungroup() |>
+      filter(!is.na(jump)) |>
+      arrange(desc(jump)) |> head(10) |>
+      mutate(display = paste0("+", round(jump, 1), " pts (", round(prev_score, 0), " -> ", round(player_score, 0), ")"),
+             detail = paste0(owner, " - ", season, " W", week))
+
+    # 25. Biggest single-game drop from previous week
+    week_drops <- started |>
+      arrange(player_name, season, week) |>
+      group_by(player_name, pos, team) |>
+      mutate(prev_score = lag(player_score),
+             drop = prev_score - player_score) |>
+      ungroup() |>
+      filter(!is.na(drop)) |>
+      arrange(desc(drop)) |> head(10) |>
+      mutate(display = paste0("-", round(drop, 1), " pts (", round(prev_score, 0), " -> ", round(player_score, 0), ")"),
+             detail = paste0(owner, " - ", season, " W", week))
+
+    # 26. Most points scored in a single season for one owner
+    season_leaders <- started |>
+      group_by(player_name, pos, team, season, owner) |>
+      summarise(season_pts = round(sum(player_score, na.rm = TRUE), 0), .groups = "drop") |>
+      arrange(desc(season_pts)) |> head(10) |>
+      mutate(display = paste0(season_pts, " pts"),
+             detail = paste0(owner, " - ", season))
+
+    # 27. Most games started across all owners (most popular starter)
+    most_popular <- started |>
+      count(player_name, pos, team, name = "times_started") |>
+      arrange(desc(times_started)) |> head(10)
 
     # ==================== BUILD UI ====================
 
@@ -2484,6 +2567,27 @@ server <- function(input, output, session) {
       build_top5("Most Loyal: Seasons with Same Owner", loyalty, "display", "detail"),
       build_top5("Most Nomadic: Different Owners", nomads, "num_owners"),
       build_top5("Most NFL Teams Played For", team_hoppers, "nfl_teams"),
+
+      div(class = "fleuron", HTML("&#10086;")),
+
+      build_top5("Highest Scoring QB (Single Game)", top_qb, "display", "detail"),
+      build_top5("Highest Scoring RB (Single Game)", top_rb, "display", "detail"),
+      build_top5("Highest Scoring WR (Single Game)", top_wr, "display", "detail"),
+      build_top5("Highest Scoring TE (Single Game)", top_te, "display", "detail"),
+
+      div(class = "fleuron", HTML("&#10086;")),
+
+      build_top5("Most Games Scoring 20+ Points", above20, "games_20plus"),
+      build_top5("Most Games Under 5 Points (as starter)", under5, "games_under5"),
+      build_top5("Most Points in a Single Season", season_leaders, "display", "detail"),
+      build_top5("Most Popular Starter (Times Started)", most_popular, "times_started"),
+
+      div(class = "fleuron", HTML("&#10086;")),
+
+      build_top5("Most Consistent (Lowest Variability, min 20 starts)", most_consistent, "display"),
+      build_top5("Most Boom-or-Bust (Highest Variability, min 20 starts)", most_volatile, "display"),
+      build_top5("Biggest Week-to-Week Jump", week_jumps, "display", "detail"),
+      build_top5("Biggest Week-to-Week Drop", week_drops, "display", "detail"),
 
       if (!is.null(busts)) tagList(
         div(class = "fleuron", HTML("&#10086;")),
