@@ -54,13 +54,34 @@ jobs:
             token  = Sys.getenv("SHINYAPPS_TOKEN"),
             secret = Sys.getenv("SHINYAPPS_SECRET")
           )
-          rsconnect::deployApp(
-            appDir    = ".",
-            appName   = "gffl-dashboard",
-            appTitle  = "GFFL Historical Dashboard",
-            appFiles  = c("app.R", "helpers.R",
-                          list.files("data", recursive = TRUE, full.names = TRUE),
-                          list.files("www", recursive = TRUE, full.names = TRUE)),
-            forceUpdate = TRUE
-          )
+
+          # Retry deploy up to 5 times with exponential backoff for 409 conflicts
+          deploy_with_retry <- function(max_tries = 5) {
+            for (attempt in 1:max_tries) {
+              result <- tryCatch({
+                rsconnect::deployApp(
+                  appDir    = ".",
+                  appName   = "gffl-dashboard",
+                  appTitle  = "GFFL Archives",
+                  appFiles  = c("app.R", "helpers.R",
+                                list.files("data", recursive = TRUE, full.names = TRUE),
+                                list.files("www", recursive = TRUE, full.names = TRUE)),
+                  forceUpdate = TRUE
+                )
+                "success"
+              }, error = function(e) {
+                msg <- conditionMessage(e)
+                if (grepl("409|in progress|transient", msg, ignore.case = TRUE) && attempt < max_tries) {
+                  wait_s <- 30 * attempt
+                  cat("Deploy attempt", attempt, "hit transient error. Waiting", wait_s, "seconds...\n")
+                  Sys.sleep(wait_s)
+                  return(NULL)
+                }
+                stop(e)
+              })
+              if (!is.null(result)) return(invisible())
+            }
+            stop("Deploy failed after ", max_tries, " attempts")
+          }
+          deploy_with_retry()
         shell: Rscript {0}
