@@ -2705,7 +2705,11 @@ server <- function(input, output, session) {
       list(id = "double_negative", name = "Double-Negative", desc = "Two negative scores from non-K/DST starters in a week", icon = "circle-xmark"),
       list(id = "consistency", name = "Consistency", desc = "Scored within 10 pts for 3 straight weeks", icon = "equals"),
       list(id = "is_key", name = "Is Key", desc = "Scored within 10 pts for 5 straight weeks", icon = "key"),
-      list(id = "perfectly_avg", name = "Perfectly Average", desc = "Never highest or lowest scoring team in a season", icon = "gauge-simple")
+      list(id = "perfectly_avg", name = "Perfectly Average", desc = "Never highest or lowest scoring team in a season", icon = "gauge-simple"),
+      list(id = "boomer", name = "Boomer", desc = "Highest scoring week of an entire season", icon = "rocket"),
+      list(id = "boomer_boomer", name = "Boomer Boomer", desc = "Highest scoring week of a season in 3 different years", icon = "rocket"),
+      list(id = "late_bloomer", name = "Late Bloomer", desc = "Start the season 0-3 and make the playoffs", icon = "seedling"),
+      list(id = "ran_out_of_gas", name = "Ran Out of Gas", desc = "Start the season 3-0 and miss the playoffs", icon = "gas-pump")
     )
 
     # Compute which achievements each owner has unlocked
@@ -3038,6 +3042,54 @@ server <- function(input, output, session) {
     }
     perfectly_avg_owners <- unique(perfectly_avg_owners)
 
+    # Boomer: highest scoring week of an entire season
+    # Boomer Boomer: 3+ different seasons with that honor
+    boomer_seasons_by_owner <- list()
+    for (yr in unique(schedule$season)) {
+      yr_sc <- schedule |> filter(season == yr, !is.na(franchise_score))
+      if (nrow(yr_sc) == 0) next
+      top_row <- yr_sc[which.max(yr_sc$franchise_score), ]
+      top_owner <- top_row[[name_col_cons]]
+      boomer_seasons_by_owner[[top_owner]] <- unique(c(boomer_seasons_by_owner[[top_owner]], yr))
+    }
+    boomer_owners <- names(boomer_seasons_by_owner)
+    boomer_boomer_owners <- names(boomer_seasons_by_owner)[
+      sapply(boomer_seasons_by_owner, function(v) length(v) >= 3)
+    ]
+
+    # Late Bloomer: started 0-3 and made playoffs
+    # Ran Out of Gas: started 3-0 and missed playoffs
+    late_bloomer_owners <- character(0)
+    ran_out_of_gas_owners <- character(0)
+    reg_only <- if ("game_type" %in% names(schedule)) {
+      schedule |> filter(game_type == "Regular Season")
+    } else schedule
+    for (yr in unique(reg_only$season)) {
+      yr_games <- reg_only |> filter(season == yr, !is.na(result))
+      for (o_check in unique(yr_games[[name_col_cons]])) {
+        first3 <- yr_games |>
+          filter(.data[[name_col_cons]] == o_check) |>
+          arrange(week) |>
+          head(3)
+        if (nrow(first3) < 3) next
+        owner_name <- standings |>
+          filter(season == yr, franchise_name == o_check | owner == o_check) |>
+          pull(owner) |> unique()
+        if (length(owner_name) == 0) owner_name <- o_check
+        owner_name <- owner_name[1]
+        made_playoffs <- any(standings$season == yr & standings$owner == owner_name &
+                             standings$league_rank <= 4, na.rm = TRUE)
+        if (all(first3$result == "L")) {
+          if (made_playoffs) late_bloomer_owners <- c(late_bloomer_owners, owner_name)
+        }
+        if (all(first3$result == "W")) {
+          if (!made_playoffs) ran_out_of_gas_owners <- c(ran_out_of_gas_owners, owner_name)
+        }
+      }
+    }
+    late_bloomer_owners <- unique(late_bloomer_owners)
+    ran_out_of_gas_owners <- unique(ran_out_of_gas_owners)
+
 
     compute_achievements <- function(o) {
       owner_st <- standings |> filter(owner == o)
@@ -3283,7 +3335,11 @@ server <- function(input, output, session) {
         double_negative = o %in% double_negative_owners,
         consistency = o %in% consistency_owners,
         is_key = o %in% is_key_owners,
-        perfectly_avg = o %in% perfectly_avg_owners
+        perfectly_avg = o %in% perfectly_avg_owners,
+        boomer = o %in% boomer_owners,
+        boomer_boomer = o %in% boomer_boomer_owners,
+        late_bloomer = o %in% late_bloomer_owners,
+        ran_out_of_gas = o %in% ran_out_of_gas_owners
       )
     }
 
