@@ -2739,7 +2739,19 @@ server <- function(input, output, session) {
       list(id = "boomer", name = "Boomer", desc = "Highest scoring week of an entire season", icon = "rocket"),
       list(id = "boomer_boomer", name = "Boomer Boomer", desc = "Highest scoring week of a season in 3 different years", icon = "rocket"),
       list(id = "late_bloomer", name = "Late Bloomer", desc = "Start the season 0-3 and make the playoffs", icon = "seedling"),
-      list(id = "ran_out_of_gas", name = "Ran Out of Gas", desc = "Start the season 3-0 and miss the playoffs", icon = "gas-pump")
+      list(id = "ran_out_of_gas", name = "Ran Out of Gas", desc = "Start the season 3-0 and miss the playoffs", icon = "gas-pump"),
+      list(id = "perfectly_wrong", name = "Perfectly Wrong", desc = "Start the lowest possible scoring lineup (every starter had a better bench option)", icon = "thumbs-down"),
+      list(id = "dynasty_promised", name = "The Dynasty That Was Promised", desc = "Make the playoffs 5 times in 6 years", icon = "dragon"),
+      list(id = "bridesmaid", name = "Always the Bridesmaid", desc = "Finish 2nd three times without ever winning", icon = "ring"),
+      list(id = "never_left", name = "Like We Never Left", desc = "Make playoffs 3 straight years after missing 3 straight", icon = "right-to-bracket"),
+      list(id = "never_looked_back", name = "Never Looked Back", desc = "Spent an entire season in 1st place after week 1", icon = "eye-slash"),
+      list(id = "points_machine", name = "Points Machine", desc = "Lead the league in total points in 3 different seasons", icon = "gauge-high"),
+      list(id = "streaming_savant", name = "Streaming Savant", desc = "Win 3 straight weeks using a different QB each time", icon = "rotate"),
+      list(id = "escape_artist", name = "Escape Artist", desc = "Avoid finishing last despite entering the final week in last place", icon = "person-running"),
+      list(id = "villain_arc", name = "Villain Arc Complete", desc = "Win a championship after being last place the previous year", icon = "hat-wizard"),
+      list(id = "historic_futility", name = "Historic Futility", desc = "Miss playoffs 5 straight seasons", icon = "face-sad-tear"),
+      list(id = "all_pain", name = "All Pain, No Gain", desc = "Lead the league in points against for a season", icon = "burst"),
+      list(id = "overcoming_adversity", name = "Overcoming Adversity", desc = "Make the playoffs despite having the most points against", icon = "mountain")
     )
 
     # Compute which achievements each owner has unlocked
@@ -3150,6 +3162,248 @@ server <- function(input, output, session) {
     }
     late_bloomer_owners <- names(late_bloomer_seasons)
     ran_out_of_gas_owners <- names(ran_out_of_gas_seasons)
+
+    # Playoff seasons per owner (made playoffs = league_rank <= 4)
+    owner_seasons <- standings |>
+      mutate(made_playoffs = league_rank <= 4) |>
+      arrange(owner, season)
+
+    # Dynasty That Was Promised: 5 playoff seasons in any 6-year window
+    dynasty_promised_owners <- character(0)
+    dynasty_promised_detail <- list()
+    # Historic Futility: 5 consecutive missed playoff seasons
+    historic_futility_owners <- character(0)
+    historic_futility_detail <- list()
+    # Like We Never Left: 3 straight misses then 3 straight makes
+    never_left_owners <- character(0)
+    never_left_detail <- list()
+    for (o_chk in unique(owner_seasons$owner)) {
+      os <- owner_seasons |> filter(owner == o_chk) |> arrange(season)
+      if (nrow(os) < 5) next
+      # Historic Futility
+      run <- 0; first_fut <- NA
+      for (i in seq_len(nrow(os))) {
+        if (!os$made_playoffs[i]) {
+          run <- run + 1
+          if (run == 5) { first_fut <- os$season[i - 4]; break }
+        } else run <- 0
+      }
+      if (!is.na(first_fut)) {
+        historic_futility_owners <- c(historic_futility_owners, o_chk)
+        historic_futility_detail[[o_chk]] <- paste0(first_fut, "-", first_fut + 4)
+      }
+      # Dynasty Promised: 5 in 6
+      if (nrow(os) >= 6) {
+        for (i in 1:(nrow(os) - 5)) {
+          window <- os[i:(i + 5), ]
+          if (sum(window$made_playoffs) >= 5) {
+            dynasty_promised_owners <- c(dynasty_promised_owners, o_chk)
+            dynasty_promised_detail[[o_chk]] <- paste0(window$season[1], "-", window$season[6])
+            break
+          }
+        }
+      }
+      # Never Left: 3 misses then 3 makes
+      if (nrow(os) >= 6) {
+        for (i in 1:(nrow(os) - 5)) {
+          w <- os[i:(i + 5), ]
+          if (all(!w$made_playoffs[1:3]) && all(w$made_playoffs[4:6])) {
+            never_left_owners <- c(never_left_owners, o_chk)
+            never_left_detail[[o_chk]] <- paste0(w$season[1], "-", w$season[6])
+            break
+          }
+        }
+      }
+    }
+
+    # Always the Bridesmaid: 3+ runner-ups, 0 titles
+    bridesmaid_owners <- character(0)
+    bridesmaid_detail <- list()
+    by_owner_ranks <- standings |> group_by(owner) |>
+      summarise(titles = sum(league_rank == 1, na.rm = TRUE),
+                runners = sum(league_rank == 2, na.rm = TRUE), .groups = "drop")
+    for (i in seq_len(nrow(by_owner_ranks))) {
+      r <- by_owner_ranks[i, ]
+      if (r$runners >= 3 && r$titles == 0) {
+        bridesmaid_owners <- c(bridesmaid_owners, r$owner)
+        yrs <- sort((standings |> filter(owner == r$owner, league_rank == 2))$season)
+        bridesmaid_detail[[r$owner]] <- paste0("Runner-up: ", paste(yrs, collapse = ", "))
+      }
+    }
+
+    # Points Machine: opoy 3+ times
+    points_machine_owners <- character(0)
+    points_machine_detail <- list()
+    opoy_by_owner <- standings |>
+      group_by(season) |> arrange(desc(points_for)) |> slice_head(n = 1) |> ungroup()
+    for (o_chk in unique(opoy_by_owner$owner)) {
+      yrs <- sort(opoy_by_owner$season[opoy_by_owner$owner == o_chk])
+      if (length(yrs) >= 3) {
+        points_machine_owners <- c(points_machine_owners, o_chk)
+        points_machine_detail[[o_chk]] <- paste0("Years: ", paste(yrs, collapse = ", "))
+      }
+    }
+
+    # All Pain, No Gain: led league in points against a season
+    pa_leaders <- standings |>
+      group_by(season) |> arrange(desc(points_against)) |> slice_head(n = 1) |> ungroup()
+    all_pain_owners <- unique(pa_leaders$owner)
+    all_pain_detail <- list()
+    for (o_chk in all_pain_owners) {
+      yrs <- sort(pa_leaders$season[pa_leaders$owner == o_chk])
+      all_pain_detail[[o_chk]] <- paste0("First: ", yrs[1])
+    }
+    # Overcoming Adversity: led PA AND made playoffs
+    adversity_rows <- pa_leaders |> filter(league_rank <= 4)
+    overcoming_adversity_owners <- unique(adversity_rows$owner)
+    overcoming_adversity_detail <- list()
+    for (o_chk in overcoming_adversity_owners) {
+      yrs <- sort(adversity_rows$season[adversity_rows$owner == o_chk])
+      overcoming_adversity_detail[[o_chk]] <- paste0("First: ", yrs[1])
+    }
+
+    # Villain Arc: champion in Y, sacko in Y-1
+    champ_rows <- standings |> filter(league_rank == 1) |> select(owner, season)
+    sacko_rows <- standings |> group_by(season) |>
+      arrange(h2h_wins, points_for) |> slice_head(n = 1) |> ungroup() |> select(owner, season)
+    villain_arc_owners <- character(0)
+    villain_arc_detail <- list()
+    for (i in seq_len(nrow(champ_rows))) {
+      cr <- champ_rows[i, ]
+      if (any(sacko_rows$owner == cr$owner & sacko_rows$season == cr$season - 1)) {
+        villain_arc_owners <- c(villain_arc_owners, cr$owner)
+        if (is.null(villain_arc_detail[[cr$owner]])) {
+          villain_arc_detail[[cr$owner]] <- paste0("Sacko ", cr$season - 1, " → Champ ", cr$season)
+        }
+      }
+    }
+    villain_arc_owners <- unique(villain_arc_owners)
+
+    # Never Looked Back: #1 in standings (by wins, then points_for) after every week from week 2 onward
+    never_looked_back_owners <- character(0)
+    never_looked_back_detail <- list()
+    for (yr in sort(unique(schedule$season))) {
+      yr_sc <- schedule |> filter(season == yr, !is.na(result))
+      if (nrow(yr_sc) == 0) next
+      reg_yr <- if ("game_type" %in% names(yr_sc)) yr_sc |> filter(game_type == "Regular Season") else yr_sc
+      # Estimate reg season weeks as max week where everyone played
+      n_weeks <- length(unique(reg_yr$week))
+      if (n_weeks < 3) next
+      # Cumulative record through each week
+      leaders <- c()
+      for (wk in 2:n_weeks) {
+        thru <- reg_yr |> filter(week <= wk) |>
+          group_by(.data[[name_col_cons]]) |>
+          summarise(w = sum(result == "W", na.rm = TRUE),
+                    pf = sum(franchise_score, na.rm = TRUE), .groups = "drop") |>
+          arrange(desc(w), desc(pf))
+        if (nrow(thru) == 0) break
+        leaders <- c(leaders, thru[[1]][1])
+      }
+      if (length(leaders) >= 2 && length(unique(leaders)) == 1) {
+        o_led <- leaders[1]
+        never_looked_back_owners <- c(never_looked_back_owners, o_led)
+        if (is.null(never_looked_back_detail[[o_led]])) {
+          never_looked_back_detail[[o_led]] <- paste0("Season: ", yr)
+        }
+      }
+    }
+    never_looked_back_owners <- unique(never_looked_back_owners)
+
+    # Escape Artist: in last place going into final week, finish not-last
+    escape_artist_owners <- character(0)
+    escape_artist_detail <- list()
+    for (yr in sort(unique(schedule$season))) {
+      yr_sc <- schedule |> filter(season == yr, !is.na(result))
+      if (nrow(yr_sc) == 0) next
+      reg_yr <- if ("game_type" %in% names(yr_sc)) yr_sc |> filter(game_type == "Regular Season") else yr_sc
+      n_weeks <- length(unique(reg_yr$week))
+      if (n_weeks < 2) next
+      final_wk <- max(reg_yr$week)
+      before_final <- reg_yr |> filter(week < final_wk) |>
+        group_by(.data[[name_col_cons]]) |>
+        summarise(w = sum(result == "W", na.rm = TRUE),
+                  pf = sum(franchise_score, na.rm = TRUE), .groups = "drop") |>
+        arrange(w, pf)
+      if (nrow(before_final) == 0) next
+      last_owner <- before_final[[1]][1]
+      # End-of-reg-season sacko
+      end_sacko <- standings |> filter(season == yr) |>
+        arrange(h2h_wins, points_for) |> slice_head(n = 1) |> pull(owner)
+      if (length(end_sacko) == 0) next
+      if (!identical(last_owner, end_sacko)) {
+        escape_artist_owners <- c(escape_artist_owners, last_owner)
+        if (is.null(escape_artist_detail[[last_owner]])) {
+          escape_artist_detail[[last_owner]] <- paste0("Season: ", yr)
+        }
+      }
+    }
+    escape_artist_owners <- unique(escape_artist_owners)
+
+    # Perfectly Wrong: every starter had a same-position bench player who scored more
+    # Streaming Savant: 3 straight wins with a different QB each week
+    perfectly_wrong_owners <- character(0)
+    perfectly_wrong_detail <- list()
+    streaming_savant_owners <- character(0)
+    streaming_savant_detail <- list()
+    if (!is.null(rv$starters_data) && !is.null(rv$owner_map)) {
+      all_st_pw <- rv$starters_data |>
+        left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
+        mutate(owner = ifelse(is.na(owner), franchise_name, owner),
+               pos_norm = ifelse(pos %in% c("DST", "D/ST", "DEF"), "DST", pos))
+      # Perfectly Wrong
+      for (key in unique(paste(all_st_pw$season, all_st_pw$week, all_st_pw$owner, sep = "|"))) {
+        parts <- strsplit(key, "\\|")[[1]]
+        yr <- as.integer(parts[1]); wk <- as.integer(parts[2]); ow <- parts[3]
+        wk_data <- all_st_pw |> filter(season == yr, week == wk, owner == ow)
+        starters_wk <- wk_data |> filter(!lineup_slot %in% c("BE", "IR"))
+        bench_wk <- wk_data |> filter(lineup_slot == "BE")
+        if (nrow(starters_wk) < 8 || nrow(bench_wk) == 0) next
+        all_wrong <- TRUE
+        for (i in seq_len(nrow(starters_wk))) {
+          s <- starters_wk[i, ]
+          bench_same <- bench_wk |> filter(pos_norm == s$pos_norm)
+          if (nrow(bench_same) == 0) { all_wrong <- FALSE; break }
+          if (!any(bench_same$player_score > s$player_score, na.rm = TRUE)) { all_wrong <- FALSE; break }
+        }
+        if (isTRUE(all_wrong)) {
+          perfectly_wrong_owners <- c(perfectly_wrong_owners, ow)
+          if (is.null(perfectly_wrong_detail[[ow]])) {
+            perfectly_wrong_detail[[ow]] <- paste0(yr, " Wk ", wk)
+          }
+        }
+      }
+      perfectly_wrong_owners <- unique(perfectly_wrong_owners)
+
+      # Streaming Savant: 3 straight wins with different QBs
+      qb_by_wk <- all_st_pw |>
+        filter(pos_norm == "QB", !lineup_slot %in% c("BE", "IR")) |>
+        group_by(season, week, owner) |>
+        slice_max(player_score, n = 1, with_ties = FALSE) |>
+        ungroup() |>
+        select(season, week, owner, qb = player_name)
+      reg_owner_results <- schedule |> filter(!is.na(result)) |>
+        select(season, week, owner = !!name_col_cons, result)
+      ow_wk <- qb_by_wk |> inner_join(reg_owner_results, by = c("season", "week", "owner")) |>
+        arrange(owner, season, week)
+      for (o_chk in unique(ow_wk$owner)) {
+        rows <- ow_wk |> filter(owner == o_chk) |> arrange(season, week)
+        if (nrow(rows) < 3) next
+        found <- FALSE
+        for (i in 1:(nrow(rows) - 2)) {
+          win_triple <- all(rows$result[i:(i+2)] == "W")
+          same_season <- length(unique(rows$season[i:(i+2)])) == 1
+          consecutive <- all(diff(rows$week[i:(i+2)]) == 1)
+          diff_qbs <- length(unique(rows$qb[i:(i+2)])) == 3
+          if (win_triple && same_season && consecutive && diff_qbs) {
+            streaming_savant_owners <- c(streaming_savant_owners, o_chk)
+            streaming_savant_detail[[o_chk]] <- paste0(rows$season[i], " Wk ", rows$week[i], "-", rows$week[i+2])
+            found <- TRUE; break
+          }
+        }
+      }
+      streaming_savant_owners <- unique(streaming_savant_owners)
+    }
 
 
     compute_achievements <- function(o) {
@@ -3643,8 +3897,32 @@ server <- function(input, output, session) {
         boomer = o %in% boomer_owners,
         boomer_boomer = o %in% boomer_boomer_owners,
         late_bloomer = o %in% late_bloomer_owners,
-        ran_out_of_gas = o %in% ran_out_of_gas_owners
+        ran_out_of_gas = o %in% ran_out_of_gas_owners,
+        perfectly_wrong = o %in% perfectly_wrong_owners,
+        dynasty_promised = o %in% dynasty_promised_owners,
+        bridesmaid = o %in% bridesmaid_owners,
+        never_left = o %in% never_left_owners,
+        never_looked_back = o %in% never_looked_back_owners,
+        points_machine = o %in% points_machine_owners,
+        streaming_savant = o %in% streaming_savant_owners,
+        escape_artist = o %in% escape_artist_owners,
+        villain_arc = o %in% villain_arc_owners,
+        historic_futility = o %in% historic_futility_owners,
+        all_pain = o %in% all_pain_owners,
+        overcoming_adversity = o %in% overcoming_adversity_owners
       )
+      if (!is.null(perfectly_wrong_detail[[o]])) d$perfectly_wrong <- perfectly_wrong_detail[[o]]
+      if (!is.null(dynasty_promised_detail[[o]])) d$dynasty_promised <- dynasty_promised_detail[[o]]
+      if (!is.null(bridesmaid_detail[[o]])) d$bridesmaid <- bridesmaid_detail[[o]]
+      if (!is.null(never_left_detail[[o]])) d$never_left <- never_left_detail[[o]]
+      if (!is.null(never_looked_back_detail[[o]])) d$never_looked_back <- never_looked_back_detail[[o]]
+      if (!is.null(points_machine_detail[[o]])) d$points_machine <- points_machine_detail[[o]]
+      if (!is.null(streaming_savant_detail[[o]])) d$streaming_savant <- streaming_savant_detail[[o]]
+      if (!is.null(escape_artist_detail[[o]])) d$escape_artist <- escape_artist_detail[[o]]
+      if (!is.null(villain_arc_detail[[o]])) d$villain_arc <- villain_arc_detail[[o]]
+      if (!is.null(historic_futility_detail[[o]])) d$historic_futility <- historic_futility_detail[[o]]
+      if (!is.null(all_pain_detail[[o]])) d$all_pain <- all_pain_detail[[o]]
+      if (!is.null(overcoming_adversity_detail[[o]])) d$overcoming_adversity <- overcoming_adversity_detail[[o]]
       list(unlocked = unlocked, detail = d)
     }
 
