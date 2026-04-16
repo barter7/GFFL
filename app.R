@@ -2315,7 +2315,7 @@ server <- function(input, output, session) {
 
     # Build a top-5 record section with headshots
     build_top5 <- function(title, df, value_col, extra_col = NULL) {
-      rows <- lapply(seq_len(min(10, nrow(df))), function(i) {
+      rows <- lapply(seq_len(min(nrow(df), 20)), function(i) {
         r <- df[i, ]
         hs_url <- get_hs(r$player_name)
         tags$tr(
@@ -2538,6 +2538,69 @@ server <- function(input, output, session) {
       count(player_name, pos, team, name = "times_started") |>
       arrange(desc(times_started)) |> head(10)
 
+    # 28. Most career bench points
+    bench_pts <- benched |>
+      group_by(player_name, pos, team) |>
+      summarise(bench_pts = round(sum(player_score, na.rm = TRUE), 0), .groups = "drop") |>
+      arrange(desc(bench_pts)) |> head(10)
+
+    # 29. Non-QB: Highest single-game score
+    non_qb_started <- started |> filter(pos != "QB")
+    top_non_qb <- non_qb_started |> arrange(desc(player_score)) |> head(10) |>
+      mutate(display = paste0(round(player_score, 1), " pts"),
+             detail = paste0(owner, " - ", season, " W", week))
+
+    # 30. Non-QB: Highest score left on bench
+    non_qb_benched <- benched |> filter(pos != "QB")
+    top_non_qb_bench <- non_qb_benched |> arrange(desc(player_score)) |> head(10) |>
+      mutate(display = paste0(round(player_score, 1), " pts on bench"),
+             detail = paste0(owner, " - ", season, " W", week))
+
+    # 31. Non-QB: Most games scoring 30+ points
+    non_qb_above30 <- non_qb_started |> filter(player_score >= 30) |>
+      count(player_name, pos, team, name = "games_30plus") |> arrange(desc(games_30plus)) |> head(10)
+
+    # 32. Non-QB: Most games scoring 20+ points
+    non_qb_above20 <- non_qb_started |> filter(player_score >= 20) |>
+      count(player_name, pos, team, name = "games_20plus") |> arrange(desc(games_20plus)) |> head(10)
+
+    # 33. Non-QB: Highest average per start (min 10)
+    non_qb_avg <- non_qb_started |>
+      group_by(player_name, pos, team) |>
+      summarise(starts = n(), avg_pts = round(mean(player_score, na.rm = TRUE), 1), .groups = "drop") |>
+      filter(starts >= 10) |>
+      arrange(desc(avg_pts)) |> head(10)
+
+    # 34. Non-QB: Most total career points
+    non_qb_total <- non_qb_started |>
+      group_by(player_name, pos, team) |>
+      summarise(total_pts = round(sum(player_score, na.rm = TRUE), 0), .groups = "drop") |>
+      arrange(desc(total_pts)) |> head(10)
+
+    # 35. Non-QB: Most points in a single season
+    non_qb_season <- non_qb_started |>
+      group_by(player_name, pos, team, season, owner) |>
+      summarise(season_pts = round(sum(player_score, na.rm = TRUE), 0), .groups = "drop") |>
+      arrange(desc(season_pts)) |> head(10) |>
+      mutate(display = paste0(season_pts, " pts"),
+             detail = paste0(owner, " - ", season))
+
+    # 36-39. Most points in a single season BY POSITION (top 20)
+    pos_season_records <- function(position) {
+      started |>
+        filter(pos == position) |>
+        group_by(player_name, pos, team, season, owner) |>
+        summarise(season_pts = round(sum(player_score, na.rm = TRUE), 0), .groups = "drop") |>
+        arrange(desc(season_pts)) |> head(20) |>
+        mutate(display = paste0(season_pts, " pts"),
+               detail = paste0(owner, " - ", season))
+    }
+
+    qb_season <- pos_season_records("QB")
+    rb_season <- pos_season_records("RB")
+    wr_season <- pos_season_records("WR")
+    te_season <- pos_season_records("TE")
+
     # ==================== BUILD UI ====================
 
     tagList(
@@ -2594,6 +2657,27 @@ server <- function(input, output, session) {
         build_top5("Biggest Busts (Projected vs Actual)", busts, "display", "detail"),
         build_top5("Biggest Booms (Over-Performed Projection)", booms, "display", "detail")
       ),
+
+      div(class = "fleuron", HTML("&#10086;")),
+
+      build_top5("Most Career Bench Points", bench_pts, "bench_pts"),
+      build_top5("Highest Non-QB Single-Game Score", top_non_qb, "display", "detail"),
+      build_top5("Highest Non-QB Score Left on Bench", top_non_qb_bench, "display", "detail"),
+      build_top5("Non-QB: Most Games Scoring 30+", non_qb_above30, "games_30plus"),
+      build_top5("Non-QB: Most Games Scoring 20+", non_qb_above20, "games_20plus"),
+      build_top5("Non-QB: Highest Avg Per Start (min 10)", non_qb_avg, "avg_pts"),
+      build_top5("Non-QB: Most Career Starter Points", non_qb_total, "total_pts"),
+      build_top5("Non-QB: Most Points in a Season", non_qb_season, "display", "detail"),
+
+      div(class = "fleuron", HTML("&#10086;")),
+
+      h2(style = "font-family:'IM Fell English',Georgia,serif; color:#3d2a10; text-align:center; letter-spacing:3px; margin:20px 0 10px;",
+         "SEASONAL RECORDS BY POSITION"),
+
+      build_top5("QB: Most Points in a Season (Top 20)", qb_season, "display", "detail"),
+      build_top5("RB: Most Points in a Season (Top 20)", rb_season, "display", "detail"),
+      build_top5("WR: Most Points in a Season (Top 20)", wr_season, "display", "detail"),
+      build_top5("TE: Most Points in a Season (Top 20)", te_season, "display", "detail"),
 
       div(class = "fleuron", HTML("&#10086; &#10086; &#10086;"))
     )
