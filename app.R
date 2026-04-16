@@ -2769,7 +2769,7 @@ server <- function(input, output, session) {
       select(season, owner = !!name_col_sch)
 
     # Kingslayer: ended a 5-0+ start streak
-    kingslayer_owners <- character(0)
+    kingslayer_events <- list()  # owner -> data.frame(season, week, victim)
     if ("game_type" %in% names(schedule)) {
       reg_all <- schedule |> filter(game_type == "Regular Season", !is.na(result))
     } else {
@@ -2780,28 +2780,28 @@ server <- function(input, output, session) {
       for (team in unique(yr_data[[name_col_sch]])) {
         team_games <- yr_data |> filter(.data[[name_col_sch]] == team) |> arrange(week)
         if (nrow(team_games) >= 6) {
-          # Check if first 5 games are wins
           first_5 <- head(team_games, 5)$result
           if (all(!is.na(first_5)) && all(first_5 == "W")) {
-            # Find first loss after week 5
             after_5 <- team_games[team_games$week > 5, ]
             first_loss <- after_5 |> filter(result == "L") |> head(1)
             if (nrow(first_loss) > 0) {
-              # The winner of that game is the kingslayer
               opp_col_sch <- if ("opponent_owner" %in% names(reg_all)) "opponent_owner" else "opponent_name"
               kingslayer <- first_loss[[opp_col_sch]]
-              kingslayer_owners <- c(kingslayer_owners, kingslayer)
+              entry <- data.frame(season = yr, week = first_loss$week[1], victim = team, stringsAsFactors = FALSE)
+              kingslayer_events[[kingslayer]] <- rbind(kingslayer_events[[kingslayer]], entry)
             }
           }
         }
       }
     }
-    kingslayer_owners <- unique(kingslayer_owners)
+    kingslayer_owners <- names(kingslayer_events)
 
     # Top scorer at each position per season (single best player)
     top_pos_seasons <- list(QB = c(), RB = c(), WR = c(), TE = c(), K = c(), DST = c())
+    top_pos_info <- list(QB = NULL, RB = NULL, WR = NULL, TE = NULL, K = NULL, DST = NULL)  # season/owner/player/pts
     # Best total at each position per season (sum of starter points)
     best_pos_seasons <- list(QB = c(), RB = c(), WR = c(), TE = c(), K = c(), DST = c())
+    best_pos_info <- list(QB = NULL, RB = NULL, WR = NULL, TE = NULL, K = NULL, DST = NULL)  # season/owner/pts
 
     if (!is.null(rv$starters_data) && !is.null(rv$owner_map)) {
       st_with_owner <- rv$starters_data |>
@@ -2826,6 +2826,7 @@ server <- function(input, output, session) {
             slice_head(n = 1) |>
             ungroup()
           top_pos_seasons[[position]] <- unique(single$owner)
+          top_pos_info[[position]] <- single
 
           # Total at position by season
           totals <- pos_data |>
@@ -2836,6 +2837,7 @@ server <- function(input, output, session) {
             slice_head(n = 1) |>
             ungroup()
           best_pos_seasons[[position]] <- unique(totals$owner)
+          best_pos_info[[position]] <- totals
         }
       }
     }
@@ -2898,8 +2900,10 @@ server <- function(input, output, session) {
           filter(starts >= 10)
 
         mr_relevant_owners <- unique(relevant_starts$owner)
+        mr_relevant_info <- relevant_starts
       }
     }
+    if (!exists("mr_relevant_info")) mr_relevant_info <- NULL
 
     # Repeat & Threepeat championships
     champ_years_by_owner <- standings |>
@@ -2914,12 +2918,15 @@ server <- function(input, output, session) {
 
     repeat_owners <- character(0)
     threepeat_owners <- character(0)
+    repeat_years <- list()    # owner -> c(yr1, yr2)
+    threepeat_years <- list() # owner -> c(yr1, yr2, yr3)
     for (o_check in unique(champ_years_by_owner$owner)) {
       yrs <- champ_years_by_owner |> filter(owner == o_check) |> pull(season) |> sort()
       if (length(yrs) >= 2) {
         for (i in 2:length(yrs)) {
           if (yrs[i] - yrs[i-1] == 1) {
             repeat_owners <- c(repeat_owners, o_check)
+            repeat_years[[o_check]] <- c(yrs[i-1], yrs[i])
             break
           }
         }
@@ -2928,6 +2935,7 @@ server <- function(input, output, session) {
         for (i in 3:length(yrs)) {
           if (yrs[i] - yrs[i-1] == 1 && yrs[i-1] - yrs[i-2] == 1) {
             threepeat_owners <- c(threepeat_owners, o_check)
+            threepeat_years[[o_check]] <- c(yrs[i-2], yrs[i-1], yrs[i])
             break
           }
         }
@@ -2944,6 +2952,11 @@ server <- function(input, output, session) {
     negative_owners <- character(0)
     double_negative_owners <- character(0)
 
+    dream_events <- NULL         # season/week/owner/team
+    singled_events <- NULL       # season/week/owner
+    benchwarmers_events <- NULL  # season/week/owner
+    negative_events <- NULL      # season/week/owner/player
+    double_neg_events <- NULL    # season/week/owner
     if (!is.null(rv$starters_data) && !is.null(rv$owner_map)) {
       all_st <- rv$starters_data |>
         left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
@@ -2958,6 +2971,7 @@ server <- function(input, output, session) {
         summarise(n = n(), .groups = "drop") |>
         filter(n >= 4)
       dream_work_owners <- unique(dream$owner)
+      dream_events <- dream
 
       # Singled Out: all starters scored under 10 in a week
       singled <- starting_only |>
@@ -2966,6 +2980,7 @@ server <- function(input, output, session) {
                   n_start = n(), .groups = "drop") |>
         filter(max_score < 10, n_start >= 8)
       singled_out_owners <- unique(singled$owner)
+      singled_events <- singled
 
       # Benchwarmers: total bench points > total starter points in a week
       starter_totals <- starting_only |>
@@ -2978,43 +2993,54 @@ server <- function(input, output, session) {
         inner_join(bench_totals, by = c("season", "week", "owner")) |>
         filter(bench_pts > start_pts)
       benchwarmers_owners <- unique(bench_vs_start$owner)
+      benchwarmers_events <- bench_vs_start
 
       # Negative scores from non-K/DST starter
       non_kdst <- starting_only |> filter(!pos %in% c("K", "DST", "D/ST", "DEF"))
+      negatives_raw <- non_kdst |>
+        filter(player_score < 0) |>
+        group_by(season, week, owner) |>
+        arrange(player_score) |>
+        mutate(rn = row_number()) |>
+        ungroup()
+      negative_events <- negatives_raw |> filter(rn == 1) |> select(season, week, owner, player_name, player_score)
       negatives_by_week <- non_kdst |>
         filter(player_score < 0) |>
         group_by(season, week, owner) |>
         summarise(n = n(), .groups = "drop")
       negative_owners <- unique(negatives_by_week$owner)
       double_negative_owners <- unique((negatives_by_week |> filter(n >= 2))$owner)
+      double_neg_events <- negatives_by_week |> filter(n >= 2)
     }
 
     # Consistency (3 straight) and Is Key (5 straight): scores within 10 pts of each other
     consistency_owners <- character(0)
     is_key_owners <- character(0)
+    consistency_first <- list()  # owner -> first season
+    is_key_first <- list()
     name_col_cons <- if ("team_owner" %in% names(schedule)) "team_owner" else "franchise_name"
     for (o_check in unique(schedule[[name_col_cons]])) {
       owner_weeks <- schedule |>
         filter(.data[[name_col_cons]] == o_check, !is.na(franchise_score)) |>
         arrange(season, week)
-      for (yr in unique(owner_weeks$season)) {
+      for (yr in sort(unique(owner_weeks$season))) {
         wks <- owner_weeks |> filter(season == yr) |> pull(franchise_score)
-        # Rolling 3-week window
-        if (length(wks) >= 3) {
+        if (length(wks) >= 3 && is.null(consistency_first[[o_check]])) {
           for (i in 3:length(wks)) {
             window <- wks[(i-2):i]
             if (max(window) - min(window) <= 10) {
               consistency_owners <- c(consistency_owners, o_check)
+              consistency_first[[o_check]] <- yr
               break
             }
           }
         }
-        # Rolling 5-week window
-        if (length(wks) >= 5) {
+        if (length(wks) >= 5 && is.null(is_key_first[[o_check]])) {
           for (i in 5:length(wks)) {
             window <- wks[(i-4):i]
             if (max(window) - min(window) <= 10) {
               is_key_owners <- c(is_key_owners, o_check)
+              is_key_first[[o_check]] <- yr
               break
             }
           }
@@ -3026,7 +3052,8 @@ server <- function(input, output, session) {
 
     # Perfectly Average: never the highest or lowest in any week of a season
     perfectly_avg_owners <- character(0)
-    for (yr in unique(schedule$season)) {
+    perfectly_avg_first <- list()  # owner -> first season
+    for (yr in sort(unique(schedule$season))) {
       yr_sc <- schedule |> filter(season == yr, !is.na(franchise_score))
       high_low_owners <- character(0)
       for (wk in unique(yr_sc$week)) {
@@ -3038,29 +3065,33 @@ server <- function(input, output, session) {
       }
       all_yr_owners <- unique(yr_sc[[name_col_cons]])
       safe <- setdiff(all_yr_owners, high_low_owners)
+      for (s in safe) {
+        if (is.null(perfectly_avg_first[[s]])) perfectly_avg_first[[s]] <- yr
+      }
       perfectly_avg_owners <- c(perfectly_avg_owners, safe)
     }
     perfectly_avg_owners <- unique(perfectly_avg_owners)
 
     # Boomer: highest scoring week of an entire season
     # Boomer Boomer: 3+ different seasons with that honor
-    boomer_seasons_by_owner <- list()
+    boomer_info_by_owner <- list()  # owner -> data.frame(season, week, pts)
     for (yr in unique(schedule$season)) {
       yr_sc <- schedule |> filter(season == yr, !is.na(franchise_score))
       if (nrow(yr_sc) == 0) next
       top_row <- yr_sc[which.max(yr_sc$franchise_score), ]
       top_owner <- top_row[[name_col_cons]]
-      boomer_seasons_by_owner[[top_owner]] <- unique(c(boomer_seasons_by_owner[[top_owner]], yr))
+      entry <- data.frame(season = yr, week = top_row$week[1], pts = top_row$franchise_score[1])
+      boomer_info_by_owner[[top_owner]] <- rbind(boomer_info_by_owner[[top_owner]], entry)
     }
-    boomer_owners <- names(boomer_seasons_by_owner)
-    boomer_boomer_owners <- names(boomer_seasons_by_owner)[
-      sapply(boomer_seasons_by_owner, function(v) length(v) >= 3)
+    boomer_owners <- names(boomer_info_by_owner)
+    boomer_boomer_owners <- names(boomer_info_by_owner)[
+      sapply(boomer_info_by_owner, function(df) nrow(df) >= 3)
     ]
 
     # Late Bloomer: started 0-3 and made playoffs
     # Ran Out of Gas: started 3-0 and missed playoffs
-    late_bloomer_owners <- character(0)
-    ran_out_of_gas_owners <- character(0)
+    late_bloomer_seasons <- list()    # owner -> c(seasons)
+    ran_out_of_gas_seasons <- list()  # owner -> c(seasons)
     reg_only <- if ("game_type" %in% names(schedule)) {
       schedule |> filter(game_type == "Regular Season")
     } else schedule
@@ -3080,15 +3111,15 @@ server <- function(input, output, session) {
         made_playoffs <- any(standings$season == yr & standings$owner == owner_name &
                              standings$league_rank <= 4, na.rm = TRUE)
         if (all(first3$result == "L")) {
-          if (made_playoffs) late_bloomer_owners <- c(late_bloomer_owners, owner_name)
+          if (made_playoffs) late_bloomer_seasons[[owner_name]] <- c(late_bloomer_seasons[[owner_name]], yr)
         }
         if (all(first3$result == "W")) {
-          if (!made_playoffs) ran_out_of_gas_owners <- c(ran_out_of_gas_owners, owner_name)
+          if (!made_playoffs) ran_out_of_gas_seasons[[owner_name]] <- c(ran_out_of_gas_seasons[[owner_name]], yr)
         }
       }
     }
-    late_bloomer_owners <- unique(late_bloomer_owners)
-    ran_out_of_gas_owners <- unique(ran_out_of_gas_owners)
+    late_bloomer_owners <- names(late_bloomer_seasons)
+    ran_out_of_gas_owners <- names(ran_out_of_gas_seasons)
 
 
     compute_achievements <- function(o) {
@@ -3176,6 +3207,8 @@ server <- function(input, output, session) {
       why <- FALSE
       ban_kickers <- FALSE
       wins_champs <- FALSE
+      zero_wks_detail <- NULL; double_ds_detail <- NULL; eats_detail <- NULL
+      why_detail <- NULL; kicker_detail <- NULL; dst_detail <- NULL
 
       if (!is.null(rv$starters_data)) {
         starters <- rv$starters_data
@@ -3189,39 +3222,47 @@ server <- function(input, output, session) {
 
         # 00 Agent: 2+ starters with 0 in same week
         zero_wks <- starting |> filter(player_score == 0) |>
-          count(season, week, name = "n") |> filter(n >= 2)
+          count(season, week, name = "n") |> filter(n >= 2) |> arrange(season, week)
         double_zero <- nrow(zero_wks) > 0
+        if (double_zero) zero_wks_detail <- zero_wks[1, ]
 
         # Double D's: every starter 10+
         weekly_min <- starting |>
           group_by(season, week) |>
           summarise(min_score = min(player_score, na.rm = TRUE),
                     n_start = n(), .groups = "drop") |>
-          filter(n_start >= 8, min_score >= 10)
+          filter(n_start >= 8, min_score >= 10) |> arrange(season, week)
         double_ds <- nrow(weekly_min) > 0
+        if (double_ds) double_ds_detail <- weekly_min[1, ]
 
         # Everyone Eats: every starter 6+ (proxy for TD)
         weekly_six <- starting |>
           group_by(season, week) |>
           summarise(min_score = min(player_score, na.rm = TRUE),
                     n_start = n(), .groups = "drop") |>
-          filter(n_start >= 8, min_score >= 6)
+          filter(n_start >= 8, min_score >= 6) |> arrange(season, week)
         everyone_eats <- nrow(weekly_six) > 0
+        if (everyone_eats) eats_detail <- weekly_six[1, ]
 
         # Why?: 3+ kickers on roster at same time
         kicker_weeks <- own_st |> filter(pos == "K") |>
-          count(season, week, name = "n") |> filter(n >= 3)
+          count(season, week, name = "n") |> filter(n >= 3) |> arrange(season, week)
         why <- nrow(kicker_weeks) > 0
+        if (why) why_detail <- kicker_weeks[1, ]
 
         # Ban Kickers: kicker is top scoring starter
         top_starter_pos <- starting |>
           group_by(season, week) |>
           slice_max(player_score, n = 1, with_ties = FALSE) |>
-          ungroup()
-        ban_kickers <- any(top_starter_pos$pos == "K", na.rm = TRUE)
+          ungroup() |> arrange(season, week)
+        k_rows <- top_starter_pos |> filter(pos == "K")
+        ban_kickers <- nrow(k_rows) > 0
+        if (ban_kickers) kicker_detail <- k_rows[1, ]
 
         # Wins Championships: defense is top scoring starter
-        wins_champs <- any(top_starter_pos$pos %in% c("DST", "D/ST", "DEF"), na.rm = TRUE)
+        dst_rows <- top_starter_pos |> filter(pos %in% c("DST", "D/ST", "DEF"))
+        wins_champs <- nrow(dst_rows) > 0
+        if (wins_champs) dst_detail <- dst_rows[1, ]
       }
 
       # Homer: 3+ players from favorite NFL team in a draft
@@ -3243,7 +3284,240 @@ server <- function(input, output, session) {
       # Really Bad Beat
       really_bad_beat <- o %in% rbb_seasons$owner
 
-      list(
+      # ---- Compute first-unlock detail strings ----
+      d <- list()
+      first_or_null <- function(df, season_col = "season") {
+        if (is.null(df) || nrow(df) == 0) return(NULL)
+        df |> arrange(.data[[season_col]]) |> head(1)
+      }
+      # First win
+      if (career_wins >= 1) {
+        wins_df <- reg_sc |> filter(result == "W") |> arrange(season, week)
+        if (nrow(wins_df) > 0) {
+          r <- wins_df[1, ]
+          d$first_win <- paste0(r$season, " Wk ", r$week, " vs ", r[[opp_col]])
+        }
+      }
+      # Champions
+      champ_yrs <- sort(owner_st$season[owner_st$league_rank == 1])
+      if (length(champ_yrs) > 0) d$champion <- paste0("Won: ", paste(champ_yrs, collapse = ", "))
+      if (length(champ_yrs) >= 2) d$dynasty <- paste0("Titles: ", paste(champ_yrs, collapse = ", "))
+      # Title game (any rank 1 or 2)
+      final_yrs <- sort(owner_st$season[owner_st$league_rank <= 2])
+      if (length(final_yrs) > 0) d$title_game <- paste0("First: ", final_yrs[1])
+      # One seed (best record)
+      one_seed_rows <- standings |> group_by(season) |> arrange(desc(h2h_wins), desc(points_for)) |>
+        slice_head(n = 1) |> ungroup() |> filter(owner == o) |> arrange(season)
+      if (nrow(one_seed_rows) > 0) d$one_seed <- paste0("First: ", one_seed_rows$season[1])
+      # Playoffs
+      playoff_yrs <- sort(owner_st$season[owner_st$league_rank <= 4])
+      if (length(playoff_yrs) > 0) d$playoff_bound <- paste0("First: ", playoff_yrs[1])
+      # MVP
+      mvp_yrs <- mvp_seasons |> filter(owner == o) |> pull(season) |> sort()
+      if (length(mvp_yrs) > 0) d$mvp <- paste0("First: ", mvp_yrs[1])
+      # OPOY
+      opoy_yrs <- sort(most_pf_seasons$season)
+      if (length(opoy_yrs) > 0) d$opoy <- paste0("First: ", opoy_yrs[1])
+      # Century / 150 / 200 point weeks
+      big_wks <- reg_sc |> arrange(season, week)
+      if (nrow(big_wks) > 0) {
+        r100 <- big_wks |> filter(franchise_score >= 100) |> head(1)
+        r150 <- big_wks |> filter(franchise_score >= 150) |> head(1)
+        r200 <- big_wks |> filter(franchise_score >= 200) |> head(1)
+        if (nrow(r100) > 0) d$century <- paste0(r100$season, " Wk ", r100$week, " (", round(r100$franchise_score, 1), " pts)")
+        if (nrow(r150) > 0) d$one_fifty <- paste0(r150$season, " Wk ", r150$week, " (", round(r150$franchise_score, 1), " pts)")
+        if (nrow(r200) > 0) d$two_hundred <- paste0(r200$season, " Wk ", r200$week, " (", round(r200$franchise_score, 1), " pts)")
+      }
+      # Undefeated
+      undef_yrs <- sort(owner_st$season[owner_st$h2h_losses == 0 & owner_st$h2h_wins > 0])
+      if (length(undef_yrs) > 0) d$undefeated <- paste0("Season: ", undef_yrs[1])
+      # Sacko
+      sacko_yrs <- sort(sacko_seasons$season)
+      if (length(sacko_yrs) > 0) d$sacko <- paste0("First: ", sacko_yrs[1])
+      if (length(sacko_yrs) >= 2) d$double_sacko <- paste0("Years: ", paste(sacko_yrs, collapse = ", "))
+      # Runner up
+      runner_yrs <- sort(owner_st$season[owner_st$league_rank == 2])
+      if (length(runner_yrs) > 0) d$runner_up <- paste0("First: ", runner_yrs[1])
+      # Big blowout
+      if (max_margin >= 75 && nrow(reg_sc) > 0) {
+        r <- reg_sc[which.max(reg_sc$franchise_score - reg_sc$opponent_score), ]
+        d$big_blowout <- paste0(r$season, " Wk ", r$week, " vs ", r[[opp_col]], " (+", round(r$franchise_score - r$opponent_score, 1), ")")
+      }
+      # Homer
+      if (homer && !is.null(rv$draft_data)) {
+        hm <- rv$draft_data |> filter(owner == o) |> count(season, team, name = "n") |>
+          filter(team == fav_team, n >= 3) |> arrange(season)
+        if (nrow(hm) > 0) d$homer <- paste0(hm$season[1], " (", hm$team[1], ", ", hm$n[1], " picks)")
+      }
+      # 00 Agent
+      if (!is.null(zero_wks_detail)) d$double_zero <- paste0(zero_wks_detail$season, " Wk ", zero_wks_detail$week)
+      # Game of inches
+      if (game_of_inches) {
+        gi_rows <- reg_sc |> filter((franchise_score - opponent_score) > 0 & (franchise_score - opponent_score) <= 1) |> arrange(season, week)
+        if (nrow(gi_rows) > 0) {
+          r <- gi_rows[1, ]
+          d$game_of_inches <- paste0(r$season, " Wk ", r$week, " vs ", r[[opp_col]], " (+", round(r$franchise_score - r$opponent_score, 2), ")")
+        }
+      }
+      # Gauntlet
+      if (gauntlet) {
+        for (yr in sort(unique(reg_sc$season))) {
+          beaten <- reg_sc |> filter(season == yr, result == "W") |> pull(.data[[opp_col]]) |> unique()
+          all_opps_yr <- reg_sc |> filter(season == yr) |> pull(.data[[opp_col]]) |> unique()
+          if (length(all_opps_yr) > 0 && all(all_opps_yr %in% beaten)) { d$gauntlet <- paste0("Season: ", yr); break }
+        }
+      }
+      # Bad Beat
+      if (bad_beat) {
+        for (i in seq_len(nrow(losses))) {
+          row <- losses[i, ]
+          week_all <- schedule |> filter(season == row$season, week == row$week) |>
+            distinct(.data[[name_col]], .keep_all = TRUE) |>
+            arrange(desc(franchise_score))
+          if (nrow(week_all) >= 2 && week_all[[name_col]][2] == o) {
+            d$bad_beat <- paste0(row$season, " Wk ", row$week); break
+          }
+        }
+      }
+      # Really Bad Beat
+      rbb_yrs <- rbb_seasons |> filter(owner == o) |> pull(season) |> sort()
+      if (length(rbb_yrs) > 0) d$really_bad_beat <- paste0("First: ", rbb_yrs[1])
+      # Heating up / On Fire (5+ / 10+ win streak)
+      if (max_win_streak >= 5) {
+        for (yr in sort(unique(owner_games_sorted$season))) {
+          yr_games <- owner_games_sorted |> filter(season == yr)
+          cur <- 0; m <- 0
+          for (r in yr_games$result) {
+            if (!is.na(r) && r == "W") { cur <- cur + 1; m <- max(m, cur) } else cur <- 0
+          }
+          if (m >= 5) { d$heating_up <- paste0(yr, " (", m, "-game streak)"); break }
+        }
+      }
+      if (max_win_streak >= 10) {
+        for (yr in sort(unique(owner_games_sorted$season))) {
+          yr_games <- owner_games_sorted |> filter(season == yr)
+          cur <- 0; m <- 0
+          for (r in yr_games$result) {
+            if (!is.na(r) && r == "W") { cur <- cur + 1; m <- max(m, cur) } else cur <- 0
+          }
+          if (m >= 10) { d$on_fire <- paste0(yr, " (", m, "-game streak)"); break }
+        }
+      }
+      # Soft schedule
+      ss_yrs <- soft_schedule_seasons |> filter(owner == o) |> pull(season) |> sort()
+      if (length(ss_yrs) > 0) d$soft_schedule <- paste0("First: ", ss_yrs[1])
+      # Ninja
+      ninja_yrs <- ninja_seasons |> filter(owner == o) |> pull(season) |> sort()
+      if (length(ninja_yrs) > 0) d$ninja <- paste0("First: ", ninja_yrs[1])
+      # Blowout (50+)
+      if (blowout_50 && nrow(reg_sc) > 0) {
+        b_rows <- reg_sc |> filter((franchise_score - opponent_score) >= 50) |> arrange(season, week)
+        r <- b_rows[1, ]
+        d$blowout <- paste0(r$season, " Wk ", r$week, " vs ", r[[opp_col]], " (+", round(r$franchise_score - r$opponent_score, 1), ")")
+      }
+      # Everyone Eats, Double D's, Why, Ban Kickers, Wins Champs
+      if (!is.null(eats_detail)) d$everyone_eats <- paste0(eats_detail$season, " Wk ", eats_detail$week)
+      if (!is.null(double_ds_detail)) d$double_ds <- paste0(double_ds_detail$season, " Wk ", double_ds_detail$week)
+      if (!is.null(why_detail)) d$why <- paste0(why_detail$season, " Wk ", why_detail$week)
+      if (!is.null(kicker_detail)) d$ban_kickers <- paste0(kicker_detail$season, " Wk ", kicker_detail$week, ": ", kicker_detail$player_name, " (", round(kicker_detail$player_score, 1), " pts)")
+      if (!is.null(dst_detail)) d$wins_champs <- paste0(dst_detail$season, " Wk ", dst_detail$week, ": ", dst_detail$player_name, " (", round(dst_detail$player_score, 1), " pts)")
+      # Kingslayer
+      if (!is.null(kingslayer_events[[o]])) {
+        ev <- kingslayer_events[[o]] |> arrange(season, week) |> head(1)
+        d$kingslayer <- paste0(ev$season, " Wk ", ev$week, " vs ", ev$victim)
+      }
+      # Rock bottom
+      rb_yrs <- rock_bottom_seasons |> filter(owner == o) |> pull(season) |> sort()
+      if (length(rb_yrs) > 0) d$rock_bottom <- paste0("First: ", rb_yrs[1])
+      # Top position
+      for (pos in c("QB","RB","WR","TE","K","DST")) {
+        info <- top_pos_info[[pos]]
+        if (!is.null(info)) {
+          own_info <- info |> filter(owner == o) |> arrange(season)
+          if (nrow(own_info) > 0) {
+            r <- own_info[1, ]
+            d[[paste0("top_", tolower(pos))]] <- paste0(r$season, ": ", r$player_name, " (", round(r$pts, 1), " pts)")
+          }
+        }
+        binfo <- best_pos_info[[pos]]
+        if (!is.null(binfo)) {
+          own_info <- binfo |> filter(owner == o) |> arrange(season)
+          if (nrow(own_info) > 0) {
+            r <- own_info[1, ]
+            d[[paste0("best_", tolower(pos))]] <- paste0(r$season, " (", round(r$pts, 1), " total pts)")
+          }
+        }
+      }
+      # Skin
+      if (o %in% skin_owners) {
+        for (yr in sort(unique(standings$season))) {
+          yr_st <- standings |> filter(season == yr)
+          sacko_row <- yr_st |> arrange(h2h_wins, points_for) |> slice_head(n = 1)
+          if (nrow(sacko_row) == 0) next
+          same <- yr_st |> filter(h2h_wins == sacko_row$h2h_wins, owner == o, points_for > sacko_row$points_for)
+          if (nrow(same) > 0) { d$skin <- paste0("First: ", yr); break }
+        }
+      }
+      # Catch 'em all
+      if (!is.null(season_rostered)) {
+        ce <- season_rostered |> filter(owner == o, distinct_players >= 50) |> arrange(season)
+        if (nrow(ce) > 0) d$catch_em <- paste0(ce$season[1], " (", ce$distinct_players[1], " players)")
+      }
+      # Pokedex counts
+      if (!is.null(career_rostered)) {
+        cnt <- career_rostered$distinct_players[career_rostered$owner == o]
+        if (length(cnt) > 0) {
+          for (th in c(200, 300, 400, 500)) {
+            if (cnt[1] >= th) d[[paste0("pokedex_", th)]] <- paste0("Career: ", cnt[1], " players")
+          }
+        }
+      }
+      # Mr. Relevant
+      if (!is.null(mr_relevant_info)) {
+        mr <- mr_relevant_info |> filter(owner == o) |> arrange(season)
+        if (nrow(mr) > 0) d$mr_relevant <- paste0(mr$season[1], ": ", mr$player_name[1], " (", mr$starts[1], " starts)")
+      }
+      # Dream work
+      if (!is.null(dream_events)) {
+        de <- dream_events |> filter(owner == o) |> arrange(season, week)
+        if (nrow(de) > 0) d$dream_work <- paste0(de$season[1], " Wk ", de$week[1], " (", de$team[1], ")")
+      }
+      # Repeat / threepeat
+      if (!is.null(repeat_years[[o]])) d[["repeat"]] <- paste0(repeat_years[[o]][1], "-", repeat_years[[o]][2])
+      if (!is.null(threepeat_years[[o]])) d$threepeat <- paste0(threepeat_years[[o]][1], "-", threepeat_years[[o]][3])
+      # Singled out / benchwarmers
+      if (!is.null(singled_events)) {
+        se <- singled_events |> filter(owner == o) |> arrange(season, week)
+        if (nrow(se) > 0) d$singled_out <- paste0(se$season[1], " Wk ", se$week[1])
+      }
+      if (!is.null(benchwarmers_events)) {
+        be <- benchwarmers_events |> filter(owner == o) |> arrange(season, week)
+        if (nrow(be) > 0) d$benchwarmers <- paste0(be$season[1], " Wk ", be$week[1])
+      }
+      # Negative, Double-negative
+      if (!is.null(negative_events)) {
+        ne <- negative_events |> filter(owner == o) |> arrange(season, week)
+        if (nrow(ne) > 0) d$negative <- paste0(ne$season[1], " Wk ", ne$week[1], ": ", ne$player_name[1], " (", round(ne$player_score[1], 1), " pts)")
+      }
+      if (!is.null(double_neg_events)) {
+        dne <- double_neg_events |> filter(owner == o) |> arrange(season, week)
+        if (nrow(dne) > 0) d$double_negative <- paste0(dne$season[1], " Wk ", dne$week[1])
+      }
+      # Consistency / Is Key / Perfectly Average
+      if (!is.null(consistency_first[[o]])) d$consistency <- paste0("First: ", consistency_first[[o]])
+      if (!is.null(is_key_first[[o]])) d$is_key <- paste0("First: ", is_key_first[[o]])
+      if (!is.null(perfectly_avg_first[[o]])) d$perfectly_avg <- paste0("First: ", perfectly_avg_first[[o]])
+      # Boomer / Boomer Boomer
+      if (!is.null(boomer_info_by_owner[[o]])) {
+        bi <- boomer_info_by_owner[[o]] |> arrange(season)
+        d$boomer <- paste0(bi$season[1], " Wk ", bi$week[1], " (", round(bi$pts[1], 1), " pts)")
+        if (nrow(bi) >= 3) d$boomer_boomer <- paste0("Years: ", paste(head(bi$season, 3), collapse = ", "))
+      }
+      # Late Bloomer / Ran Out of Gas
+      if (!is.null(late_bloomer_seasons[[o]])) d$late_bloomer <- paste0("First: ", sort(late_bloomer_seasons[[o]])[1])
+      if (!is.null(ran_out_of_gas_seasons[[o]])) d$ran_out_of_gas <- paste0("First: ", sort(ran_out_of_gas_seasons[[o]])[1])
+
+      unlocked <- list(
         first_win = career_wins >= 1,
         champion = any(owner_st$league_rank == 1),
         dynasty = sum(owner_st$league_rank == 1, na.rm = TRUE) >= 2,
@@ -3341,10 +3615,11 @@ server <- function(input, output, session) {
         late_bloomer = o %in% late_bloomer_owners,
         ran_out_of_gas = o %in% ran_out_of_gas_owners
       )
+      list(unlocked = unlocked, detail = d)
     }
 
     # Helper: build one Xbox 360 style achievement badge
-    build_badge <- function(ach, unlocked) {
+    build_badge <- function(ach, unlocked, detail = NULL) {
       # Xbox 360 logo: circle with 4 segments split by horizontal and vertical gaps
       # Center circle with icon
       icon_color <- if (unlocked) "#a1c943" else "#444"
@@ -3352,8 +3627,13 @@ server <- function(input, output, session) {
       bg_color <- if (unlocked) "#1a1a1a" else "#0a0a0a"
       text_color <- if (unlocked) "#fff" else "#666"
 
+      tip <- paste0(ach$name, ": ", ach$desc)
+      if (unlocked && !is.null(detail) && nchar(detail) > 0) {
+        tip <- paste0(tip, "\nUnlocked: ", detail)
+      }
+
       div(
-        title = paste0(ach$name, ": ", ach$desc),
+        title = tip,
         style = "display:flex; flex-direction:column; align-items:center; margin:8px; width:85px;",
 
         # Xbox 360 style ring
@@ -3395,9 +3675,11 @@ server <- function(input, output, session) {
 
     # Build owner section
     build_owner_section <- function(o) {
-      status <- compute_achievements(o)
+      result <- compute_achievements(o)
+      status <- result$unlocked
+      details <- result$detail
       badges <- lapply(achievements, function(ach) {
-        build_badge(ach, isTRUE(status[[ach$id]]))
+        build_badge(ach, isTRUE(status[[ach$id]]), details[[ach$id]])
       })
 
       # Owner photo
