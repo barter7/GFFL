@@ -819,15 +819,17 @@ server <- function(input, output, session) {
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-end; padding:4px 2px 6px; overflow:hidden;"
+            "display:flex; align-items:flex-end; padding:4px 2px 6px; overflow:hidden; position:relative;"
           ),
+          div(class = "shelf-label shelf-label-left", "CHAMPIONSHIPS"),
+          div(class = "shelf-label shelf-label-right", "APPEARANCES"),
           div(
-            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden;",
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden; position:relative; z-index:2;",
             HTML(lombardi_imgs)
           ),
-          div(style = "width:1px; background:rgba(255,255,255,0.12); align-self:stretch; margin:2px 1px; flex-shrink:0;"),
+          div(style = "width:1px; background:rgba(255,255,255,0.12); align-self:stretch; margin:2px 1px; flex-shrink:0; z-index:2;"),
           div(
-            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden;",
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden; position:relative; z-index:2;",
             HTML(hunt_imgs)
           )
         ),
@@ -838,15 +840,17 @@ server <- function(input, output, session) {
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-end; padding:4px 4px 6px;"
+            "display:flex; align-items:flex-end; padding:4px 4px 6px; position:relative;"
           ),
+          div(class = "shelf-label shelf-label-left", "BEST RECORD"),
+          div(class = "shelf-label shelf-label-right", "MOST POINTS"),
           div(
-            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; position:relative; z-index:2;",
             HTML(mvp_imgs)
           ),
-          div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
+          div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px; z-index:2;"),
           div(
-            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; position:relative; z-index:2;",
             HTML(gffl_imgs)
           )
         ),
@@ -857,9 +861,11 @@ server <- function(input, output, session) {
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:center; justify-content:center; flex-wrap:wrap; padding:4px 4px;"
+            "display:flex; align-items:center; justify-content:center; flex-wrap:wrap; padding:4px 4px; position:relative;"
           ),
-          HTML(combined_banners)
+          div(class = "shelf-label shelf-label-full", "PLAYOFF APPEARANCES"),
+          div(style = "position:relative; z-index:2; display:flex; flex-wrap:wrap; justify-content:center;",
+              HTML(combined_banners))
         ),
 
         # Sackos shelf (full width)
@@ -868,9 +874,11 @@ server <- function(input, output, session) {
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; padding:4px 4px 6px;"
+            "display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; padding:4px 4px 6px; position:relative;"
           ),
-          HTML(sacko_imgs)
+          div(class = "shelf-label shelf-label-full", "SACKO LAPOS"),
+          div(style = "position:relative; z-index:2; display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-end;",
+              HTML(sacko_imgs))
         ),
 
         # Plaques shelf (bottom, full width - always 6 in one row)
@@ -999,15 +1007,17 @@ server <- function(input, output, session) {
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-end; padding:4px 2px 6px; overflow:hidden;"
+            "display:flex; align-items:flex-end; padding:4px 2px 6px; overflow:hidden; position:relative;"
           ),
+          div(class = "shelf-label shelf-label-left", "CHAMPIONSHIPS"),
+          div(class = "shelf-label shelf-label-right", "APPEARANCES"),
           div(
-            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden;",
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden; position:relative; z-index:2;",
             HTML(fill_html)
           ),
-          div(style = "width:1px; background:rgba(255,255,255,0.12); align-self:stretch; margin:2px 1px; flex-shrink:0;"),
+          div(style = "width:1px; background:rgba(255,255,255,0.12); align-self:stretch; margin:2px 1px; flex-shrink:0; z-index:2;"),
           div(
-            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden;",
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden; position:relative; z-index:2;",
             HTML(fill_html)
           )
         ),
@@ -1018,15 +1028,17 @@ server <- function(input, output, session) {
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-end; padding:4px 4px 6px;"
+            "display:flex; align-items:flex-end; padding:4px 4px 6px; position:relative;"
           ),
+          div(class = "shelf-label shelf-label-left", "BEST RECORD"),
+          div(class = "shelf-label shelf-label-right", "MOST POINTS"),
           div(
-            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; position:relative; z-index:2;",
             HTML(fill_html)
           ),
-          div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
+          div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px; z-index:2;"),
           div(
-            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; position:relative; z-index:2;",
             HTML(fill_html)
           )
         ),
@@ -1037,9 +1049,11 @@ server <- function(input, output, session) {
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:center; justify-content:center; flex-wrap:wrap; padding:4px 4px;"
+            "display:flex; align-items:center; justify-content:center; flex-wrap:wrap; padding:4px 4px; position:relative;"
           ),
-          HTML(fill_html)
+          div(class = "shelf-label shelf-label-full", "PLAYOFF APPEARANCES"),
+          div(style = "position:relative; z-index:2;",
+              HTML(fill_html))
         ),
 
         # Sacko shelf
@@ -1048,9 +1062,11 @@ server <- function(input, output, session) {
           style = paste0(
             "border-bottom:3px solid rgba(255,255,255,0.15); ",
             "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
-            "display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; padding:4px 4px 6px;"
+            "display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; padding:4px 4px 6px; position:relative;"
           ),
-          HTML(fill_html)
+          div(class = "shelf-label shelf-label-full", "SACKO LAPOS"),
+          div(style = "position:relative; z-index:2;",
+              HTML(fill_html))
         ),
 
         # Plaques - all ???
@@ -1092,6 +1108,32 @@ server <- function(input, output, session) {
         .trophy-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
         @media (max-width:768px) { .trophy-grid { grid-template-columns: 1fr; gap:12px; } }
         .photo-shelf-row { display:flex; align-items:center; justify-content:space-around; }
+
+        /* Background shelf labels - subtle engraved look */
+        .shelf-label {
+          position:absolute;
+          top:50%;
+          transform:translateY(-50%);
+          font-family:Georgia,serif;
+          font-weight:bold;
+          letter-spacing:3px;
+          color:rgba(180,180,190,0.18);
+          text-shadow: 0 1px 0 rgba(255,255,255,0.08), 0 -1px 0 rgba(0,0,0,0.5);
+          text-transform:uppercase;
+          pointer-events:none;
+          z-index:1;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:clip;
+          font-size:14px;
+        }
+        .shelf-label-left { left:0; right:50%; text-align:center; padding:0 4px; }
+        .shelf-label-right { right:0; left:50%; text-align:center; padding:0 4px; }
+        .shelf-label-full { left:0; right:0; text-align:center; padding:0 4px; }
+
+        @media (min-width:769px) {
+          .shelf-label { font-size:18px; letter-spacing:5px; }
+        }
 
         /* Mobile sizes */
         .trophy-img { object-fit:contain; }
