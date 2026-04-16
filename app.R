@@ -2688,7 +2688,14 @@ server <- function(input, output, session) {
       list(id = "best_wr", name = "Best WR Group", desc = "Most total WR starter points in a season", icon = "hand"),
       list(id = "best_te", name = "Best TE Group", desc = "Most total TE starter points in a season", icon = "user-large"),
       list(id = "best_k", name = "Best K Group", desc = "Most total K starter points in a season", icon = "futbol"),
-      list(id = "best_dst", name = "Best D/ST Group", desc = "Most total D/ST starter points in a season", icon = "shield")
+      list(id = "best_dst", name = "Best D/ST Group", desc = "Most total D/ST starter points in a season", icon = "shield"),
+      list(id = "skin", name = "By the Skin of his...", desc = "Tied Sacko's record but finished higher on PF", icon = "bone"),
+      list(id = "catch_em", name = "Gotta Catch 'em All", desc = "Roster 50+ different players in a season", icon = "layer-group"),
+      list(id = "pokedex_200", name = "Pokedex 200", desc = "Roster 200+ different players lifetime", icon = "book"),
+      list(id = "pokedex_300", name = "Pokedex 300", desc = "Roster 300+ different players lifetime", icon = "book-open"),
+      list(id = "pokedex_400", name = "Pokedex 400", desc = "Roster 400+ different players lifetime", icon = "book-atlas"),
+      list(id = "pokedex_500", name = "Pokedex 500", desc = "Roster 500+ different players lifetime", icon = "books-medical"),
+      list(id = "mr_relevant", name = "Mr. Relevant", desc = "Start a last-round pick 10+ weeks in a season", icon = "thumbs-up")
     )
 
     # Compute which achievements each owner has unlocked
@@ -2816,6 +2823,67 @@ server <- function(input, output, session) {
             ungroup()
           best_pos_seasons[[position]] <- unique(totals$owner)
         }
+      }
+    }
+
+    # By the Skin of his...: tied sacko record but finished higher on PF
+    skin_owners <- character(0)
+    for (yr in unique(standings$season)) {
+      yr_st <- standings |> filter(season == yr)
+      sacko_row <- yr_st |> arrange(h2h_wins, points_for) |> slice_head(n = 1)
+      if (nrow(sacko_row) == 0) next
+      same_rec <- yr_st |>
+        filter(h2h_wins == sacko_row$h2h_wins,
+               owner != sacko_row$owner,
+               points_for > sacko_row$points_for)
+      skin_owners <- c(skin_owners, same_rec$owner)
+    }
+    skin_owners <- unique(skin_owners)
+
+    # Pokedex: career distinct rostered players
+    career_rostered <- NULL
+    season_rostered <- NULL
+    mr_relevant_owners <- character(0)
+
+    if (!is.null(rv$starters_data) && !is.null(rv$owner_map)) {
+      all_rostered <- rv$starters_data |>
+        left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
+        mutate(owner = ifelse(is.na(owner), franchise_name, owner))
+
+      career_rostered <- all_rostered |>
+        group_by(owner) |>
+        summarise(distinct_players = n_distinct(player_name), .groups = "drop")
+
+      season_rostered <- all_rostered |>
+        group_by(owner, season) |>
+        summarise(distinct_players = n_distinct(player_name), .groups = "drop")
+
+      # Mr. Relevant: last-round pick started 10+ weeks in a season
+      if (!is.null(rv$draft_data)) {
+        drafts_with_owner <- rv$draft_data
+        if (!"owner" %in% names(drafts_with_owner)) {
+          drafts_with_owner <- drafts_with_owner |>
+            left_join(rv$owner_map |> select(season, franchise_id, owner), by = c("season", "franchise_id")) |>
+            mutate(owner = ifelse(is.na(owner), franchise_name, owner))
+        }
+
+        # Find each season's last round picks
+        last_round_picks <- drafts_with_owner |>
+          group_by(season) |>
+          mutate(max_rd = max(round, na.rm = TRUE)) |>
+          filter(round == max_rd) |>
+          ungroup() |>
+          select(season, owner, player_name)
+
+        # Count starts for these players in their draft year
+        starter_only <- all_rostered |> filter(!lineup_slot %in% c("BE", "IR"))
+        relevant_starts <- last_round_picks |>
+          inner_join(starter_only, by = c("season", "owner", "player_name")) |>
+          group_by(season, owner, player_name) |>
+          summarise(starts = n(), .groups = "drop") |>
+          filter(starts >= 10)
+
+        mr_relevant_owners <- unique(relevant_starts$owner)
       }
     }
 
@@ -3022,7 +3090,38 @@ server <- function(input, output, session) {
         best_wr = o %in% best_pos_seasons$WR,
         best_te = o %in% best_pos_seasons$TE,
         best_k = o %in% best_pos_seasons$K,
-        best_dst = o %in% best_pos_seasons$DST
+        best_dst = o %in% best_pos_seasons$DST,
+        skin = o %in% skin_owners,
+        catch_em = {
+          if (!is.null(season_rostered)) {
+            any(season_rostered$owner == o & season_rostered$distinct_players >= 50)
+          } else FALSE
+        },
+        pokedex_200 = {
+          if (!is.null(career_rostered)) {
+            v <- career_rostered$distinct_players[career_rostered$owner == o]
+            length(v) > 0 && v[1] >= 200
+          } else FALSE
+        },
+        pokedex_300 = {
+          if (!is.null(career_rostered)) {
+            v <- career_rostered$distinct_players[career_rostered$owner == o]
+            length(v) > 0 && v[1] >= 300
+          } else FALSE
+        },
+        pokedex_400 = {
+          if (!is.null(career_rostered)) {
+            v <- career_rostered$distinct_players[career_rostered$owner == o]
+            length(v) > 0 && v[1] >= 400
+          } else FALSE
+        },
+        pokedex_500 = {
+          if (!is.null(career_rostered)) {
+            v <- career_rostered$distinct_players[career_rostered$owner == o]
+            length(v) > 0 && v[1] >= 500
+          } else FALSE
+        },
+        mr_relevant = o %in% mr_relevant_owners
       )
     }
 
