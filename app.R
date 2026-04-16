@@ -128,7 +128,7 @@ ui <- page_navbar(
             selectInput("draft_season", label = NULL, choices = NULL, width = "120px")
           )
         ),
-        div(style = "overflow-x:auto;", uiOutput("draft_grid"))
+        div(style = "overflow-x:auto; min-height:800px;", uiOutput("draft_grid"))
       )
     ),
     layout_columns(
@@ -1704,7 +1704,7 @@ server <- function(input, output, session) {
     div(
       style = paste0(
         "padding:20px; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); ",
-        "border-radius:12px; min-height:400px; ",
+        "border-radius:12px; min-height:100vh; ",
         "display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-start; gap:16px;"
       ),
       bust_cards
@@ -3624,6 +3624,8 @@ server <- function(input, output, session) {
           box-shadow: inset 0 0 80px rgba(92,58,16,0.2), 0 10px 40px rgba(0,0,0,0.3);
           border-radius: 4px;
           position: relative;
+          max-width: 900px;
+          margin: 0 auto;
         }
         .record-book::before, .record-book::after {
           content: '';
@@ -3696,10 +3698,11 @@ server <- function(input, output, session) {
           width: 30%;
         }
         .cell-owner {
-          font-size: 18px;
-          font-style: italic;
-          color: #5c3a10;
+          font-size: 20px;
+          font-weight: bold;
+          color: #3d2a10;
           width: 20%;
+          font-family: 'IM Fell English', Georgia, serif;
         }
         .cell-metric {
           font-size: 18px;
