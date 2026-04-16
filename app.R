@@ -891,11 +891,200 @@ server <- function(input, output, session) {
       )
     }
 
+    # Ghost card - for owners without ESPN data (Sean, Kenny, Xing Wei)
+    # fill_all = TRUE fills every shelf with fill_image (for Honorary owners)
+    build_ghost_card <- function(o, fill_all = FALSE, fill_image = NULL) {
+      bronze_style <- list(
+        bg = "linear-gradient(180deg, #a0714a, #cd8c5c, #b07848, #7a5430)",
+        border = "#5c3a20", text = "#2a1a0a", shadow = "rgba(160,113,74,0.3)"
+      )
+      question_plaque <- function(label) build_plaque(label, "???", bronze_style)
+
+      # Find headshot (try with and without spaces)
+      o_clean <- gsub(" ", "", tolower(o))
+      photo_file <- NULL
+      for (name_variant in c(paste0(o_clean, "_headshot"), paste0(tolower(o), "_headshot"), o_clean, tolower(o), o)) {
+        for (ext in c(".png", ".jpg", ".jpeg", ".PNG")) {
+          if (file.exists(file.path("www", "photos", paste0(name_variant, ext)))) {
+            photo_file <- paste0("photos/", name_variant, ext)
+            break
+          }
+        }
+        if (!is.null(photo_file)) break
+      }
+
+      # Find jersey (try with and without spaces)
+      jersey_file <- NULL
+      for (name_variant in c(o_clean, tolower(o), o)) {
+        for (ext in c(".png", ".jpg", ".jpeg", ".PNG")) {
+          f <- file.path("www", "photos", paste0(name_variant, "_jersey", ext))
+          if (file.exists(f)) {
+            jersey_file <- paste0("photos/", name_variant, "_jersey", ext)
+            break
+          }
+        }
+        if (!is.null(jersey_file)) break
+      }
+
+      # Fill images for Honorary cards
+      fill_html <- ""
+      if (fill_all && !is.null(fill_image)) {
+        fill_html <- paste(rep(paste0("<img src='", fill_image, "' class='trophy-img lombardi-img'>"), 3), collapse = "")
+      }
+
+      div(
+        style = paste0(
+          "background: linear-gradient(180deg, #1a1210 0%, #2a1f18 30%, #1a1210 100%); ",
+          "border:3px solid #3d2b1a; ",
+          "border-radius:6px; ",
+          "box-shadow: inset 0 0 30px rgba(0,0,0,0.5), 0 4px 15px rgba(0,0,0,0.5); ",
+          "overflow:hidden; position:relative;"
+        ),
+        div(style = paste0(
+          "position:absolute; top:0; left:0; right:0; bottom:0; ",
+          "background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 50%, rgba(255,255,255,0.03) 100%); ",
+          "pointer-events:none; z-index:1;"
+        )),
+
+        # Top shelf: photo + jersey
+        div(
+          class = "photo-shelf-row",
+          style = paste0(
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "padding:10px 6px 8px;"
+          ),
+          div(
+            style = "flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;",
+            if (!is.null(photo_file)) {
+              div(
+                style = "position:relative; flex-shrink:0;",
+                class = "owner-photo-frame",
+                div(
+                  style = "position:absolute; top:10%; left:10%; width:80%; height:80%; overflow:hidden;",
+                  tags$img(src = photo_file,
+                           style = "width:100%; height:100%; object-fit:cover; object-position:top;")
+                ),
+                tags$img(src = "photos/frame.PNG",
+                         style = "position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;")
+              )
+            } else {
+              div(
+                class = "owner-photo-frame",
+                style = "display:flex; align-items:center; justify-content:center; flex-shrink:0; background:#2a1f18;",
+                tags$span(style = "color:#555; font-size:3rem;", icon("user"))
+              )
+            },
+            div(
+              style = "width:100%; max-width:140px; margin-top:4px;",
+              build_plaque(NULL, o, name_style, wide = TRUE)
+            )
+          ),
+          div(
+            style = "flex:1; display:flex; align-items:center; justify-content:center;",
+            if (!is.null(jersey_file)) {
+              tags$img(src = jersey_file, class = "jersey-img")
+            } else {
+              div(
+                style = "color:#555; font-size:11px; text-align:center; font-style:italic;",
+                "Jersey", tags$br(), "coming soon"
+              )
+            }
+          )
+        ),
+
+        # Lombardi / Hunt split shelf
+        div(
+          class = "trophy-shelf",
+          style = paste0(
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "display:flex; align-items:flex-end; padding:4px 2px 6px; overflow:hidden;"
+          ),
+          div(
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden;",
+            HTML(fill_html)
+          ),
+          div(style = "width:1px; background:rgba(255,255,255,0.12); align-self:stretch; margin:2px 1px; flex-shrink:0;"),
+          div(
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden;",
+            HTML(fill_html)
+          )
+        ),
+
+        # MVP / GFFL split shelf
+        div(
+          class = "trophy-shelf",
+          style = paste0(
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "display:flex; align-items:flex-end; padding:4px 4px 6px;"
+          ),
+          div(
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
+            HTML(fill_html)
+          ),
+          div(style = "width:2px; background:rgba(255,255,255,0.12); align-self:stretch; margin:4px 2px;"),
+          div(
+            style = "flex:1; display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap;",
+            HTML(fill_html)
+          )
+        ),
+
+        # Playoff banners shelf
+        div(
+          class = "banner-shelf",
+          style = paste0(
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "display:flex; align-items:center; justify-content:center; flex-wrap:wrap; padding:4px 4px;"
+          ),
+          HTML(fill_html)
+        ),
+
+        # Sacko shelf
+        div(
+          class = "sacko-shelf",
+          style = paste0(
+            "border-bottom:3px solid rgba(255,255,255,0.15); ",
+            "background: linear-gradient(180deg, transparent 85%, rgba(255,255,255,0.05) 100%); ",
+            "display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; padding:4px 4px 6px;"
+          ),
+          HTML(fill_html)
+        ),
+
+        # Plaques - all ???
+        div(
+          class = "plaque-shelf",
+          style = paste0(
+            "background: linear-gradient(180deg, #1a1210 0%, #2a1f18 50%, #1a1210 100%); ",
+            "display:flex; align-items:center; justify-content:space-around; flex-wrap:nowrap; ",
+            "padding:6px 2px; border-top:2px solid #8b6914; overflow:hidden;"
+          ),
+          question_plaque("Record"),
+          question_plaque("Points"),
+          question_plaque("Best"),
+          question_plaque("Pts (S)"),
+          question_plaque("Pts (W)"),
+          question_plaque("Streak")
+        )
+      )
+    }
+
     # Build active owner cards (sorted by championships desc, sackos asc)
     active_cards <- lapply(active_sorted, build_owner_card)
 
-    # Build legacy owner cards
-    legacy_cards <- lapply(legacy_sorted, build_owner_card)
+    # Build legacy owner cards (existing + ghost cards for Sean/Kenny)
+    legacy_cards <- c(
+      lapply(legacy_sorted, build_owner_card),
+      list(build_ghost_card("Sean")),
+      list(build_ghost_card("Kenny"))
+    )
+
+    # Build honorary cards (Xing Wei with centurion trophies)
+    honorary_cards <- list(
+      build_ghost_card("Xing Wei", fill_all = TRUE, fill_image = "photos/centurion_trophy.png")
+    )
 
     div(
       style = "background:#e8e0d4; padding:20px; border-radius:12px;",
@@ -906,8 +1095,8 @@ server <- function(input, output, session) {
 
         /* Mobile sizes */
         .trophy-img { object-fit:contain; }
-        .lombardi-img { height:28px; margin:0 2px; }
-        .hunt-img { height:32px; margin:0 2px; }
+        .lombardi-img { height:52px; margin:0 5px; }
+        .hunt-img { height:40px; margin:0 4px; }
         .sacko-img { height:40px; width:32px; margin:0 1px; }
         .banner-img { height:50px; margin:2px; }
         .gffl-img { height:45px; margin:0 5px; }
@@ -928,8 +1117,8 @@ server <- function(input, output, session) {
 
         /* Desktop sizes */
         @media (min-width:769px) {
-          .lombardi-img { height:45px; margin:0 4px; }
-          .hunt-img { height:45px; margin:0 4px; }
+          .lombardi-img { height:60px; margin:0 5px; }
+          .hunt-img { height:50px; margin:0 5px; }
           .sacko-img { height:65px; width:50px; margin:0 3px; }
           .banner-img { height:75px; margin:3px; }
           .gffl-img { height:65px; margin:0 6px; }
@@ -958,6 +1147,17 @@ server <- function(input, output, session) {
           div(
             class = "trophy-grid",
             legacy_cards
+          )
+        )
+      },
+      if (length(honorary_cards) > 0) {
+        tagList(
+          tags$hr(style = "border-color:#aaa;"),
+          h4(style = "color:#666; text-align:center; margin-top:16px; margin-bottom:12px;",
+             icon("award"), " Honorary"),
+          div(
+            class = "trophy-grid",
+            honorary_cards
           )
         )
       }
