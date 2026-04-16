@@ -1999,29 +1999,36 @@ server <- function(input, output, session) {
         if (nrow(pick) > 0) {
           p <- pick[1, ]
           bg <- ifelse(p$pos %in% names(pos_colors), pos_colors[p$pos], "#eee")
-          pts_text <- if (!is.null(season_pts) && !is.na(p$total_pts)) paste0(p$total_pts, " pts") else ""
-          rank_text <- if (!is.null(season_pts) && !is.na(p$pos_rank)) paste0(p$pos, p$pos_rank) else p$pos
+          has_pts <- "total_pts" %in% names(p) && !is.na(p$total_pts)
+          has_rank <- "pos_rank" %in% names(p) && !is.na(p$pos_rank)
+          pts_text <- if (has_pts) paste0(p$total_pts, " pts") else ""
+          rank_text <- if (has_rank) paste0(p$pos, p$pos_rank) else p$pos
+
+          cell_content <- list(
+            div(style = "font-weight:bold; font-size:11px; white-space:nowrap;", p$player_name),
+            div(style = "color:#666; font-size:9px;", paste0(p$pos, " - ", p$team))
+          )
+          if (nchar(pts_text) > 0) cell_content <- c(cell_content, list(div(style = "font-weight:bold; font-size:10px; color:#013369; margin-top:2px;", pts_text)))
+          if (nchar(rank_text) > 0) cell_content <- c(cell_content, list(div(style = "font-size:9px; color:#888;", rank_text)))
+
           cells <- c(cells, list(
-            tags$td(
-              style = paste0("padding:4px 6px; background:", bg, "33; border:1px solid #ddd; font-size:10px; text-align:center; vertical-align:top;"),
-              div(style = "font-weight:bold; font-size:11px; white-space:nowrap;", p$player_name),
-              div(style = "color:#666; font-size:9px;", paste0(p$pos, " - ", p$team)),
-              if (nchar(pts_text) > 0) div(style = "font-weight:bold; font-size:10px; color:#013369; margin-top:2px;", pts_text),
-              if (nchar(rank_text) > 0) div(style = "font-size:9px; color:#888;", rank_text)
-            )
+            do.call(tags$td, c(
+              list(style = paste0("padding:4px 6px; background:", bg, "33; border:1px solid #ddd; font-size:10px; text-align:center; vertical-align:top;")),
+              cell_content
+            ))
           ))
         } else {
           cells <- c(cells, list(tags$td(style = "padding:4px 6px; background:#f8f8f8; border:1px solid #ddd;", "")))
         }
       }
-      tags$tr(cells)
+      do.call(tags$tr, cells)
     })
 
     div(
       style = "overflow-x:auto; max-width:100%;",
       tags$table(
         style = "border-collapse:collapse; width:auto;",
-        tags$thead(tags$tr(header_cells)),
+        tags$thead(do.call(tags$tr, header_cells)),
         tags$tbody(body_rows)
       )
     )
