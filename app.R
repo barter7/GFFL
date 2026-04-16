@@ -93,25 +93,6 @@ ui <- page_navbar(
 
   # TROPHY ROOM
   nav_panel(
-    title = "Trophy Room",
-    icon = icon("award"),
-    uiOutput("owners_grid")
-  ),
-
-  # HALL OF FAME
-  nav_panel(
-    title = "Hall of Fame",
-    icon = icon("landmark"),
-    div(
-      class = "text-center my-3",
-      h2(style = "color:#8B6914; font-family:Georgia,serif; letter-spacing:2px;", "GFFL HALL OF FAME"),
-      tags$hr(style = "border-color:#8B6914; width:200px; margin:0 auto;")
-    ),
-    uiOutput("hof_gallery")
-  ),
-
-  # STANDINGS
-  nav_panel(
     title = "Standings",
     icon = icon("trophy"),
     layout_columns(
@@ -134,6 +115,36 @@ ui <- page_navbar(
   ),
 
   # MATCHUPS
+  nav_panel(
+    title = "Drafts",
+    icon = icon("list-ol"),
+    layout_columns(
+      col_widths = c(12),
+      card(
+        card_header(
+          class = "d-flex justify-content-between align-items-center",
+          "Draft Results",
+          div(
+            selectInput("draft_season", label = NULL, choices = NULL, width = "120px")
+          )
+        ),
+        DTOutput("draft_table")
+      )
+    ),
+    layout_columns(
+      col_widths = c(6, 6),
+      card(
+        card_header("Round 1 Pick Distribution by Owner"),
+        plotlyOutput("draft_r1_plot", height = "400px")
+      ),
+      card(
+        card_header("Most Drafted Positions by Owner"),
+        plotlyOutput("draft_pos_plot", height = "400px")
+      )
+    )
+  ),
+
+  # TOP PERFORMANCES
   nav_panel(
     title = "Matchups",
     icon = icon("people-arrows"),
@@ -203,35 +214,49 @@ ui <- page_navbar(
 
   # DRAFT HISTORY
   nav_panel(
-    title = "Drafts",
-    icon = icon("list-ol"),
-    layout_columns(
-      col_widths = c(12),
-      card(
-        card_header(
-          class = "d-flex justify-content-between align-items-center",
-          "Draft Results",
-          div(
-            selectInput("draft_season", label = NULL, choices = NULL, width = "120px")
-          )
-        ),
-        DTOutput("draft_table")
-      )
+    title = "Trophy Room",
+    icon = icon("award"),
+    uiOutput("owners_grid")
+  ),
+
+  # HALL OF FAME
+  nav_panel(
+    title = "Hall of Fame",
+    icon = icon("landmark"),
+    div(
+      class = "text-center my-3",
+      h2(style = "color:#8B6914; font-family:Georgia,serif; letter-spacing:2px;", "GFFL HALL OF FAME"),
+      tags$hr(style = "border-color:#8B6914; width:200px; margin:0 auto;")
     ),
-    layout_columns(
-      col_widths = c(6, 6),
-      card(
-        card_header("Round 1 Pick Distribution by Owner"),
-        plotlyOutput("draft_r1_plot", height = "400px")
-      ),
-      card(
-        card_header("Most Drafted Positions by Owner"),
-        plotlyOutput("draft_pos_plot", height = "400px")
-      )
+    uiOutput("hof_gallery")
+  ),
+
+  # STANDINGS
+  nav_panel(
+    title = "Records",
+    icon = icon("medal"),
+    tags$head(
+      tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap")
+    ),
+    div(
+      class = "record-book",
+      uiOutput("records_book")
     )
   ),
 
-  # TOP PERFORMANCES
+  # PLAYER RECORDS
+  nav_panel(
+    title = "Player Records",
+    icon = icon("star"),
+    tags$head(
+      tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap")
+    ),
+    div(
+      class = "record-book",
+      uiOutput("player_records_book")
+    )
+  ),
+
   nav_panel(
     title = "Top Performances",
     icon = icon("star"),
@@ -281,7 +306,7 @@ ui <- page_navbar(
 
   # COMMISSIONER OF THE YEAR
   nav_panel(
-    title = "Commissioner",
+    title = "Commissioner of the Year",
     icon = icon("gavel"),
     div(
       style = paste0(
@@ -295,31 +320,6 @@ ui <- page_navbar(
   ),
 
   # RECORDS
-  nav_panel(
-    title = "Records",
-    icon = icon("medal"),
-    tags$head(
-      tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap")
-    ),
-    div(
-      class = "record-book",
-      uiOutput("records_book")
-    )
-  ),
-
-  # PLAYER RECORDS
-  nav_panel(
-    title = "Player Records",
-    icon = icon("star"),
-    tags$head(
-      tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap")
-    ),
-    div(
-      class = "record-book",
-      uiOutput("player_records_book")
-    )
-  ),
-
   nav_spacer(),
   nav_item(
     tags$a(
