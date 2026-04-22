@@ -993,7 +993,7 @@ server <- function(input, output, session) {
       )
     }
 
-    # Ghost card - for owners without ESPN data (Sean, Kenny, Xing Wei)
+    # Ghost card - for owners without ESPN data (Sean, Kenny)
     # fill_all = TRUE fills every shelf with fill_image (for Honorary owners)
     build_ghost_card <- function(o, fill_all = FALSE, fill_image = NULL) {
       # Define plaque helpers locally (they're scoped inside build_owner_card)
@@ -1229,11 +1229,6 @@ server <- function(input, output, session) {
       list(build_ghost_card("Kenny"))
     )
 
-    # Build honorary cards (Xing Wei with centurion trophies)
-    honorary_cards <- list(
-      build_ghost_card("Xing Wei", fill_all = TRUE, fill_image = "photos/centurion_trophy.png")
-    )
-
     div(
       style = "background:#e8e0d4; padding:20px; border-radius:12px;",
       tags$style("
@@ -1320,17 +1315,6 @@ server <- function(input, output, session) {
           div(
             class = "trophy-grid",
             legacy_cards
-          )
-        )
-      },
-      if (length(honorary_cards) > 0) {
-        tagList(
-          tags$hr(style = "border-color:#aaa;"),
-          h4(style = "color:#666; text-align:center; margin-top:16px; margin-bottom:12px;",
-             icon("award"), " Honorary"),
-          div(
-            class = "trophy-grid",
-            honorary_cards
           )
         )
       }
