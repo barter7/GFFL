@@ -7,12 +7,18 @@
 //     logged-in browser, which is both the most reliable approach and keeps
 //     this honest: there is no bot-detection-evasion layer here.
 //   * If Target shows a CAPTCHA, a "verify you're human" wall, or a virtual
-//     queue, the script detects it and PAUSES so you can clear it by hand.
-//     You're meant to be watching.
+//     queue, the script detects it and PAUSES (and pings you, if a Discord
+//     webhook is set) so you can clear it. It cannot beat these on its own by
+//     design — so "fully unattended" stalls here until a human shows up.
+//   * keepAwake holds a system stay-awake lock so the machine won't suspend
+//     while watching. You can't run code on a sleeping CPU; this prevents the
+//     sleep. Set keepAwake:false to opt out.
 //   * placeOrder defaults to false. Leave it false until you've watched it
-//     navigate correctly once; flip it to true when you trust it.
+//     navigate correctly once; flip it to true to run unattended.
 
 import { readFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { platform } from "node:os";
 import { chromium } from "playwright";
 
 const cfg = JSON.parse(readFileSync(new URL("./config.json", import.meta.url)));
@@ -20,6 +26,50 @@ const cfg = JSON.parse(readFileSync(new URL("./config.json", import.meta.url)));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const now = () => new Date().toLocaleTimeString();
 const log = (...a) => console.log(`[${now()}]`, ...a);
+
+// Hold a system "stay awake" lock so the machine doesn't sleep while we're
+// watching. The display may still sleep; the OS just won't suspend. Returns a
+// cleanup function. This is the only legitimate way to "run while asleep" —
+// you can't execute code on a suspended CPU, so we prevent the suspend.
+function keepAwake() {
+  const os = platform();
+  try {
+    if (os === "darwin") {
+      // -i prevent idle sleep, -m prevent disk sleep, -s while on AC.
+      const p = spawn("caffeinate", ["-ims"], { stdio: "ignore" });
+      log("keep-awake: caffeinate active (macOS).");
+      return () => p.kill();
+    }
+    if (os === "linux") {
+      // Inhibit sleep for as long as this child sleeps (i.e. forever) — we
+      // kill it on exit.
+      const p = spawn(
+        "systemd-inhibit",
+        ["--what=sleep:idle", "--why=pokemon-card-bot", "sleep", "infinity"],
+        { stdio: "ignore" }
+      );
+      log("keep-awake: systemd-inhibit active (Linux).");
+      return () => p.kill();
+    }
+    if (os === "win32") {
+      // SetThreadExecutionState keeps the system + display awake until the
+      // PowerShell process exits.
+      const ps = [
+        "$sig='[DllImport(\"kernel32.dll\")]public static extern uint SetThreadExecutionState(uint e);';",
+        "$t=Add-Type -MemberDefinition $sig -Name K -Namespace W -PassThru;",
+        // ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED
+        "$t::SetThreadExecutionState(0x80000003);",
+        "while($true){Start-Sleep 60}",
+      ].join("");
+      const p = spawn("powershell", ["-NoProfile", "-Command", ps], { stdio: "ignore" });
+      log("keep-awake: SetThreadExecutionState active (Windows).");
+      return () => p.kill();
+    }
+  } catch (e) {
+    log("keep-awake unavailable:", e.message, "- machine may sleep on its own.");
+  }
+  return () => {};
+}
 
 async function notify(msg) {
   log(msg);
@@ -151,6 +201,11 @@ async function runCheckout(page, buySelector) {
 }
 
 async function main() {
+  const releaseAwake = cfg.keepAwake === false ? () => {} : keepAwake();
+  const cleanup = () => releaseAwake();
+  process.on("exit", cleanup);
+  process.on("SIGINT", () => { cleanup(); process.exit(0); });
+
   log(`Connecting to your Chrome at ${cfg.cdpEndpoint} ...`);
   const browser = await chromium.connectOverCDP(cfg.cdpEndpoint);
   const ctx = browser.contexts()[0];

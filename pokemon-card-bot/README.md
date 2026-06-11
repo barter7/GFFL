@@ -36,6 +36,7 @@ Edit `config.json`:
 | `tcin` | The item's TCIN (the number after `A-` in the URL) |
 | `cdpEndpoint` | Your Chrome's remote-debugging address (default `http://localhost:9222`) |
 | `pollSeconds` / `pollJitterSeconds` | How often to re-check, plus randomness |
+| `keepAwake` | `true` = hold a system stay-awake lock so the machine won't sleep while watching |
 | `placeOrder` | `false` = stop at review (you click buy); `true` = full auto |
 | `confirmDelaySeconds` | Grace period before the final click when `placeOrder` is true (Ctrl+C to abort) |
 | `discordWebhookUrl` | Optional — get phone pings for every step |
@@ -80,6 +81,23 @@ npm run checkout
    review screen, then stop.
 3. Once you trust the navigation, set `placeOrder: true` and `confirmDelaySeconds`
    to whatever reaction time you want before the final click.
+
+## Running while you're away / your machine would sleep
+
+- `keepAwake: true` (default) holds an OS stay-awake lock for as long as the
+  script runs — `caffeinate` (macOS), `systemd-inhibit` (Linux), or
+  `SetThreadExecutionState` (Windows). Your **display** can still sleep; the
+  **system** won't suspend, so the watcher keeps running. The lock is released
+  when the script exits.
+- You genuinely cannot run this on a fully **suspended** machine — there's no
+  CPU to run it. Keep-awake is the legitimate workaround; the alternative
+  (an always-on cloud box) puts you on a datacenter IP with a non-real browser
+  session, which is exactly what Target's bot detection flags. Not built here.
+- For hands-off running, set `placeOrder: true` and a `discordWebhookUrl` so
+  you get a phone ping at every step. **Caveat:** if Target shows a CAPTCHA /
+  "press and hold" / queue while you're away, the script pauses and waits for
+  you — it will not complete that drop until you return and clear it. There is
+  no CAPTCHA-solver here by design.
 
 ## Notes / limits
 

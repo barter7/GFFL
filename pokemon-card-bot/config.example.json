@@ -7,6 +7,7 @@
   "pollSeconds": 6,
   "pollJitterSeconds": 4,
 
+  "keepAwake": true,
   "placeOrder": false,
   "confirmDelaySeconds": 3,
   "maxQuantity": 1,
