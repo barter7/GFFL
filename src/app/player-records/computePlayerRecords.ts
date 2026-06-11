@@ -60,7 +60,7 @@ interface Group3 {
 function groupBy3(data: StarterRow[]): Group3[] {
   const map = new Map<string, Group3>();
   for (const r of data) {
-    const key = `${r.player_name}${r.pos}${r.team ?? ""}`;
+    const key = `${r.player_name}|${r.pos}|${r.team ?? "\u0000"}`;
     let g = map.get(key);
     if (!g) {
       g = { player_name: r.player_name, pos: r.pos, team: r.team, rows: [] };
@@ -119,7 +119,7 @@ function seasonTop(data: StarterRow[], n: number): Top5Row[] {
   }
   const map = new Map<string, SG>();
   for (const r of data) {
-    const key = `${r.player_name}${r.pos}${r.team ?? ""}${r.season}${r.owner}`;
+    const key = `${r.player_name}|${r.pos}|${r.team ?? "\u0000"}|${r.season}|${r.owner}`;
     let g = map.get(key);
     if (!g) {
       g = {
@@ -232,7 +232,7 @@ export function computePlayerRecords(): PlayerRecords {
   }
   const loyaltyMap = new Map<string, LoyaltyG>();
   for (const r of starters) {
-    const key = `${r.player_name}${r.pos}${r.team ?? ""}${r.owner}`;
+    const key = `${r.player_name}|${r.pos}|${r.team ?? "\u0000"}|${r.owner}`;
     let g = loyaltyMap.get(key);
     if (!g) {
       g = {
@@ -326,7 +326,7 @@ export function computePlayerRecords(): PlayerRecords {
   }
   const hopperMap = new Map<string, HopperG>();
   for (const r of starters) {
-    const key = `${r.player_name}${r.pos}`;
+    const key = `${r.player_name}|${r.pos}`;
     let g = hopperMap.get(key);
     if (!g) {
       g = { player_name: r.player_name, pos: r.pos, teams: new Set() };
@@ -389,7 +389,7 @@ export function computePlayerRecords(): PlayerRecords {
   {
     const last = new Map<string, number | null>();
     for (const r of arranged) {
-      const key = `${r.player_name}${r.pos}${r.team ?? ""}`;
+      const key = `${r.player_name}|${r.pos}|${r.team ?? "\u0000"}`;
       const prev = last.get(key);
       if (last.has(key) && prev != null && r.player_score != null) {
         lagged.push({ r, prev });
