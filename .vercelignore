@@ -1,0 +1,8 @@
+# Source data and originals not needed in the deployment
+www/
+data/
+*.R
+*.Rproj
+.Renviron.example
+scripts/
+.github/
