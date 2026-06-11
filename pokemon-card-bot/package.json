@@ -1,0 +1,12 @@
+{
+  "name": "pokemon-card-bot",
+  "version": "1.0.0",
+  "description": "Personal-use restock monitor + assisted fast-checkout for Target, driven through your own logged-in Chrome.",
+  "type": "module",
+  "scripts": {
+    "checkout": "node checkout.js"
+  },
+  "dependencies": {
+    "playwright": "^1.44.0"
+  }
+}

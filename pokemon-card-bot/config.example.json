@@ -1,0 +1,15 @@
+{
+  "productUrl": "https://www.target.com/p/restocks/-/A-1011483413",
+  "tcin": "1011483413",
+
+  "cdpEndpoint": "http://localhost:9222",
+
+  "pollSeconds": 6,
+  "pollJitterSeconds": 4,
+
+  "placeOrder": false,
+  "confirmDelaySeconds": 3,
+  "maxQuantity": 1,
+
+  "discordWebhookUrl": ""
+}
