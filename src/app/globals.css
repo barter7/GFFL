@@ -1,0 +1,75 @@
+:root {
+  --gffl-navy: #013369;
+  --gffl-red: #d50a0a;
+  --gffl-gold: #d4a84b;
+  --gffl-gold-bright: #f0d675;
+  --gffl-gold-dark: #8b6914;
+}
+
+body {
+  background-color: #f5f6f8;
+}
+
+.gffl-navbar {
+  background-color: var(--gffl-navy);
+}
+
+.gffl-navbar .nav-link.active {
+  color: #fff;
+  font-weight: 600;
+}
+
+.card {
+  border: none;
+  box-shadow: 0 1px 4px rgba(1, 51, 105, 0.12);
+  margin-bottom: 1rem;
+}
+
+.card-header {
+  background-color: #fff;
+  font-weight: 600;
+  color: var(--gffl-navy);
+}
+
+.btn-primary {
+  background-color: var(--gffl-navy);
+  border-color: var(--gffl-navy);
+}
+
+/* Sortable data tables (DT replacement) */
+.gffl-table {
+  font-size: 0.875rem;
+}
+
+.gffl-table th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  color: var(--gffl-navy);
+}
+
+.gffl-table th .sort-arrow {
+  font-size: 0.7em;
+  margin-left: 4px;
+  opacity: 0.6;
+}
+
+.gffl-table td {
+  vertical-align: middle;
+}
+
+/* Record-book styling (Records + Player Records tabs) */
+.record-book {
+  font-family: "Cormorant Garamond", Georgia, serif;
+}
+
+.record-book h2,
+.record-book h3 {
+  font-family: "IM Fell English", Georgia, serif;
+}
+
+/* Dark page sections (home, achievements, commissioner) */
+.dark-section {
+  border-radius: 12px;
+  overflow: hidden;
+}
