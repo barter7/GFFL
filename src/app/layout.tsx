@@ -4,8 +4,20 @@ import "./globals.css";
 import Nav from "@/components/Nav";
 
 export const metadata: Metadata = {
-  title: "GFFL Archives",
+  title: {
+    default: "GFFL Archives",
+    template: "%s | GFFL Archives",
+  },
   description: "Groupies Fantasy Football League — historical archives, est. 2016",
+  openGraph: {
+    title: "GFFL Archives",
+    description: "Groupies Fantasy Football League — historical archives, est. 2016",
+    type: "website",
+  },
+};
+
+export const viewport = {
+  themeColor: "#013369",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
