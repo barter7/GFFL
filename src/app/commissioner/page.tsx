@@ -2,6 +2,7 @@
 // 2568-2641 (output$commish_gallery). Static content, rendered on the server.
 
 import { photoUrl } from "@/lib/data";
+import CommishPhoto from "./CommishPhoto";
 
 const COMMISSIONERS: { year: number; name: string }[] = [
   ...Array.from({ length: 9 }, (_, i) => ({ year: 2016 + i, name: "Harry" })),
@@ -28,45 +29,14 @@ function CommishCard({ year, name }: { year: number; name: string }) {
         width: 140,
       }}
     >
-      {/* Photo */}
+      {/* Photo — tappable, opens full size in a modal (see CommishPhoto) */}
       {photoFile ? (
-        <div style={{ position: "relative", width: 120, height: 140, margin: "0 auto" }}>
-          <div
-            style={{
-              position: "absolute",
-              top: "10%",
-              left: "10%",
-              width: "80%",
-              height: "80%",
-              overflow: "hidden",
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photoUrl(photoFile)}
-              alt={name}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                objectPosition: "top",
-              }}
-            />
-          </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={photoUrl("photos/frame.PNG")}
-            alt=""
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              pointerEvents: "none",
-            }}
-          />
-        </div>
+        <CommishPhoto
+          photoSrc={photoUrl(photoFile)}
+          frameSrc={photoUrl("photos/frame.PNG")}
+          name={name}
+          year={year}
+        />
       ) : (
         <div
           style={{

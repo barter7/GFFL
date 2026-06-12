@@ -36,6 +36,54 @@
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
 }
 
+.lightboxNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 60px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 48px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+}
+
+.lightboxNav:hover,
+.lightboxNav:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.lightboxPrev {
+  left: 8px;
+}
+
+.lightboxNext {
+  right: 8px;
+}
+
+.lightboxCounter {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 14px;
+  letter-spacing: 1px;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 4px 14px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
 .lightboxClose {
   position: absolute;
   top: 20px;

@@ -26,9 +26,17 @@ interface Props {
   drafts: DraftRow[];
   starters: StarterRow[];
   season: number;
+  /** When set (e.g. "RB"), matching picks are highlighted and others dimmed. */
+  posFilter?: string | null;
 }
 
-export default function DraftGrid({ drafts, starters, season }: Props) {
+// D/ST appears under a few different codes in the data
+function matchesPos(pos: string, filter: string): boolean {
+  if (filter === "DST") return ["DST", "D/ST", "DEF"].includes(pos);
+  return pos === filter;
+}
+
+export default function DraftGrid({ drafts, starters, season, posFilter = null }: Props) {
   const grid = useMemo(() => {
     const draft = drafts.filter((d) => d.season === season);
     if (draft.length === 0) return null;
@@ -81,7 +89,13 @@ export default function DraftGrid({ drafts, starters, season }: Props) {
   const rounds = Array.from({ length: maxRound }, (_, i) => i + 1);
 
   return (
-    <div style={{ overflowX: "auto", maxWidth: "100%" }}>
+    <div
+      style={{
+        overflowX: "auto",
+        maxWidth: "100%",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
       <table style={{ borderCollapse: "collapse", width: "auto" }}>
         <thead>
           <tr>

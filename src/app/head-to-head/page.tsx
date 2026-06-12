@@ -1,11 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Card from "@/components/Card";
 import DataTable, { Column } from "@/components/DataTable";
 import Plot from "@/components/Plot";
 import { getLeagueData, fmt } from "@/lib/data";
 import { computeOwnerVsOwner } from "@/lib/league";
+
+// Sync selector state into the query string without triggering navigation
+// (history.replaceState keeps scroll position; router.push would not).
+function updateQuery(params: Record<string, string | null>) {
+  if (typeof window === "undefined") return;
+  const sp = new URLSearchParams(window.location.search);
+  for (const [k, v] of Object.entries(params)) {
+    if (v === null) sp.delete(k);
+    else sp.set(k, v);
+  }
+  const qs = sp.toString();
+  window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+}
 
 interface DetailRow {
   season: number;
@@ -26,30 +40,51 @@ interface MatrixRow {
   avgMargin: number;
 }
 
-export default function HeadToHeadPage() {
+function HeadToHeadInner() {
   const { schedule, owners } = getLeagueData();
 
-  // Selector state (the original applies on the "Compare" button press;
-  // here results pre-populate with the defaults and update on Compare)
-  const [team1, setTeam1] = useState<string>(owners[0] ?? "");
-  const [team2, setTeam2] = useState<string>(owners[Math.min(1, owners.length - 1)] ?? "");
-  const [regOnly, setRegOnly] = useState<boolean>(true);
-  const [applied, setApplied] = useState({
-    team1: owners[0] ?? "",
-    team2: owners[Math.min(1, owners.length - 1)] ?? "",
-    regOnly: true,
+  const defaultTeam1 = owners[0] ?? "";
+  const defaultTeam2 = owners[Math.min(1, owners.length - 1)] ?? "";
+
+  // Initial state from the URL (?a=Tom&b=Mike&reg=0), validated against
+  // known owners; results now update live as the selectors change.
+  const searchParams = useSearchParams();
+  const [team1, setTeam1] = useState<string>(() => {
+    const a = searchParams.get("a");
+    return a !== null && owners.includes(a) ? a : defaultTeam1;
   });
+  const [team2, setTeam2] = useState<string>(() => {
+    const b = searchParams.get("b");
+    return b !== null && owners.includes(b) ? b : defaultTeam2;
+  });
+  const [regOnly, setRegOnly] = useState<boolean>(
+    () => searchParams.get("reg") !== "0"
+  );
+
+  // Keep the URL shareable as selectors change (defaults omitted)
+  useEffect(() => {
+    updateQuery({
+      a: team1 === defaultTeam1 ? null : team1,
+      b: team2 === defaultTeam2 ? null : team2,
+      reg: regOnly ? null : "0",
+    });
+  }, [team1, team2, regOnly, defaultTeam1, defaultTeam2]);
+
+  const swapOwners = () => {
+    setTeam1(team2);
+    setTeam2(team1);
+  };
 
   const h2hGames = useMemo(() => {
     return schedule
       .filter(
         (g) =>
-          g.team_owner === applied.team1 &&
-          g.opponent_owner === applied.team2 &&
-          (!applied.regOnly || g.game_type === "Regular Season")
+          g.team_owner === team1 &&
+          g.opponent_owner === team2 &&
+          (!regOnly || g.game_type === "Regular Season")
       )
       .sort((a, b) => a.season - b.season || a.week - b.week);
-  }, [schedule, applied]);
+  }, [schedule, team1, team2, regOnly]);
 
   // ---- Summary --------------------------------------------------------------
   const summary = useMemo(() => {
@@ -104,10 +139,24 @@ export default function HeadToHeadPage() {
   const detailColumns: Column<DetailRow>[] = [
     { key: "season", label: "Season", numeric: true },
     { key: "week", label: "Week", numeric: true },
-    { key: "score1", label: applied.team1, numeric: true, render: (r) => fmt(r.score1, 2) },
-    { key: "score2", label: applied.team2, numeric: true, render: (r) => fmt(r.score2, 2) },
+    { key: "score1", label: team1, numeric: true, render: (r) => fmt(r.score1, 2) },
+    { key: "score2", label: team2, numeric: true, render: (r) => fmt(r.score2, 2) },
     { key: "margin", label: "Margin", numeric: true, render: (r) => fmt(r.margin, 2) },
-    { key: "result", label: "Result" },
+    {
+      key: "result",
+      label: "Result",
+      render: (r) => (
+        <span
+          style={{
+            fontWeight: "bold",
+            color:
+              r.result === "W" ? "#28a745" : r.result === "L" ? "#dc3545" : undefined,
+          }}
+        >
+          {r.result}
+        </span>
+      ),
+    },
   ];
 
   // ---- Owner vs Owner matrix (regular season) --------------------------------
@@ -153,6 +202,17 @@ export default function HeadToHeadPage() {
                 ))}
               </select>
             </div>
+            <div className="text-center mb-3">
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm"
+                onClick={swapOwners}
+                title="Swap owners"
+                aria-label="Swap owners"
+              >
+                ⇄ Swap
+              </button>
+            </div>
             <div className="mb-3">
               <label className="form-label" htmlFor="h2h-team2">
                 Owner 2
@@ -180,13 +240,9 @@ export default function HeadToHeadPage() {
                 Regular Season Only
               </label>
             </div>
-            <button
-              type="button"
-              className="btn btn-primary w-100 mt-2"
-              onClick={() => setApplied({ team1, team2, regOnly })}
-            >
-              Compare
-            </button>
+            <p className="text-muted small mb-0 mt-2">
+              Results update automatically.
+            </p>
           </Card>
         </div>
         <div className="col-md-8">
@@ -197,7 +253,7 @@ export default function HeadToHeadPage() {
               <>
                 <div className="text-center mb-3">
                   <h4>
-                    {applied.team1} vs {applied.team2}
+                    {team1} vs {team2}
                   </h4>
                   <h5>
                     {summary.wins}W - {summary.losses}L
@@ -233,5 +289,15 @@ export default function HeadToHeadPage() {
         </div>
       </div>
     </>
+  );
+}
+
+// Static export requires useSearchParams() to live inside a <Suspense>
+// boundary, otherwise the build fails with missing-suspense-with-csr-bailout.
+export default function HeadToHeadPage() {
+  return (
+    <Suspense fallback={null}>
+      <HeadToHeadInner />
+    </Suspense>
   );
 }

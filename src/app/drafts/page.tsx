@@ -2,13 +2,39 @@
 
 // "Drafts" tab — port of app.R UI lines 118-176 / server lines 1952-2300.
 
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Card from "@/components/Card";
 import DataTable, { Column } from "@/components/DataTable";
 import { getLeagueData } from "@/lib/data";
 import DraftGrid from "./DraftGrid";
 import PosBreakdownPlot from "./PosBreakdownPlot";
 import { computeDraftValueData, DraftValueRow } from "./draftValue";
+
+// Sync selector state into the query string without triggering navigation
+// (history.replaceState keeps scroll position; router.push would not).
+function updateQuery(params: Record<string, string | null>) {
+  if (typeof window === "undefined") return;
+  const sp = new URLSearchParams(window.location.search);
+  for (const [k, v] of Object.entries(params)) {
+    if (v === null) sp.delete(k);
+    else sp.set(k, v);
+  }
+  const qs = sp.toString();
+  window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+}
+
+// Position filter for highlighting picks on the board ("DST" kept slash-free
+// so the URL param stays clean)
+const POS_FILTERS = [
+  { label: "All", value: "All" },
+  { label: "QB", value: "QB" },
+  { label: "RB", value: "RB" },
+  { label: "WR", value: "WR" },
+  { label: "TE", value: "TE" },
+  { label: "K", value: "K" },
+  { label: "D/ST", value: "DST" },
+];
 
 interface DraftListRow {
   round: number;
@@ -70,13 +96,34 @@ function toValueRow(d: DraftValueRow): ValueRow {
   };
 }
 
-export default function DraftsPage() {
+function DraftsInner() {
   const { drafts, starters, seasons } = getLeagueData();
   const seasonChoices = useMemo(
     () => [...seasons].sort((a, b) => b - a),
     [seasons]
   );
-  const [season, setSeason] = useState(seasonChoices[0]);
+
+  // Initial state from the URL (?season=2021&pos=RB), validated
+  const searchParams = useSearchParams();
+  const [season, setSeason] = useState(() => {
+    const s = searchParams.get("season");
+    if (s !== null && seasons.some((yr) => String(yr) === s)) return Number(s);
+    return seasonChoices[0];
+  });
+  const [posFilter, setPosFilter] = useState<string>(() => {
+    const p = searchParams.get("pos");
+    return p !== null && POS_FILTERS.some((f) => f.value === p && p !== "All")
+      ? p
+      : "All";
+  });
+
+  // Keep the URL shareable as the selectors change (defaults omitted)
+  useEffect(() => {
+    updateQuery({
+      season: season === seasonChoices[0] ? null : String(season),
+      pos: posFilter === "All" ? null : posFilter,
+    });
+  }, [season, posFilter, seasonChoices]);
 
   const draftList = useMemo<DraftListRow[]>(
     () =>
@@ -162,8 +209,37 @@ export default function DraftsPage() {
               </select>
             }
           >
-            <div style={{ overflowX: "auto", minHeight: 800 }}>
-              <DraftGrid drafts={drafts} starters={starters} season={season} />
+            <div
+              className="btn-group btn-group-sm mb-2 flex-wrap"
+              role="group"
+              aria-label="Highlight position"
+            >
+              {POS_FILTERS.map((f) => (
+                <button
+                  key={f.value}
+                  type="button"
+                  className={`btn ${
+                    posFilter === f.value ? "btn-primary" : "btn-outline-secondary"
+                  }`}
+                  onClick={() => setPosFilter(f.value)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <div
+              style={{
+                overflowX: "auto",
+                WebkitOverflowScrolling: "touch",
+                minHeight: 800,
+              }}
+            >
+              <DraftGrid
+                drafts={drafts}
+                starters={starters}
+                season={season}
+                posFilter={posFilter === "All" ? null : posFilter}
+              />
             </div>
           </Card>
         </div>
@@ -241,5 +317,15 @@ export default function DraftsPage() {
         </div>
       </div>
     </>
+  );
+}
+
+// Static export requires useSearchParams() to live inside a <Suspense>
+// boundary, otherwise the build fails with missing-suspense-with-csr-bailout.
+export default function DraftsPage() {
+  return (
+    <Suspense fallback={null}>
+      <DraftsInner />
+    </Suspense>
   );
 }

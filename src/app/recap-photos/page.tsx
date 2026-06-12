@@ -4,7 +4,7 @@
 // (output$recap_gallery). The R code listed www/recaps at runtime; the actual
 // directory contents are hardcoded here (README.txt excluded, as in the R code).
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { photoUrl } from "@/lib/data";
 import styles from "./styles.module.css";
 
@@ -95,24 +95,52 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 }
 
 const SHUFFLED_FILES = seededShuffle(RECAP_FILES, 42);
+const SRCS = SHUFFLED_FILES.map((f) => encodeURI(photoUrl(`recaps/${f}`)));
 
 export default function RecapPhotosPage() {
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  // Lightbox now tracks an index into SRCS (null = closed) so we can step
+  // prev/next, show a counter, and preload neighbors.
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const touchStartX = useRef<number | null>(null);
+  const swiped = useRef(false);
+  const total = SRCS.length;
+
+  const step = useCallback(
+    (delta: number) => {
+      setLightboxIdx((cur) =>
+        cur === null ? null : (cur + delta + total) % total,
+      );
+    },
+    [total],
+  );
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setLightboxSrc(null);
+      if (e.key === "Escape") setLightboxIdx(null);
+      else if (e.key === "ArrowLeft") step(-1);
+      else if (e.key === "ArrowRight") step(1);
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [step]);
 
   useEffect(() => {
-    document.body.style.overflow = lightboxSrc ? "hidden" : "";
+    document.body.style.overflow = lightboxIdx !== null ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [lightboxSrc]);
+  }, [lightboxIdx]);
+
+  // Preload the adjacent images so prev/next feels instant.
+  useEffect(() => {
+    if (lightboxIdx === null || total < 2) return;
+    [(lightboxIdx + 1) % total, (lightboxIdx - 1 + total) % total].forEach(
+      (i) => {
+        const img = new window.Image();
+        img.src = SRCS[i];
+      },
+    );
+  }, [lightboxIdx, total]);
 
   return (
     <div>
@@ -129,27 +157,74 @@ export default function RecapPhotosPage() {
         <>
           {/* Lightbox overlay */}
           <div
-            className={`${styles.lightbox}${lightboxSrc ? ` ${styles.open}` : ""}`}
-            onClick={() => setLightboxSrc(null)}
+            className={`${styles.lightbox}${lightboxIdx !== null ? ` ${styles.open}` : ""}`}
+            onClick={() => {
+              // Don't treat the tail end of a swipe as a "close" tap.
+              if (swiped.current) {
+                swiped.current = false;
+                return;
+              }
+              setLightboxIdx(null);
+            }}
+            onTouchStart={(e) => {
+              touchStartX.current = e.touches[0].clientX;
+            }}
+            onTouchEnd={(e) => {
+              if (touchStartX.current === null) return;
+              const dx = e.changedTouches[0].clientX - touchStartX.current;
+              touchStartX.current = null;
+              if (Math.abs(dx) > 50) {
+                swiped.current = true;
+                step(dx < 0 ? 1 : -1);
+              }
+            }}
           >
             <span className={styles.lightboxClose}>&times;</span>
-            {lightboxSrc != null && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={lightboxSrc} alt="" />
+            {lightboxIdx !== null && (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={SRCS[lightboxIdx]} alt="" />
+                <button
+                  type="button"
+                  className={`${styles.lightboxNav} ${styles.lightboxPrev}`}
+                  aria-label="Previous photo"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    step(-1);
+                  }}
+                >
+                  &#8249;
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.lightboxNav} ${styles.lightboxNext}`}
+                  aria-label="Next photo"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    step(1);
+                  }}
+                >
+                  &#8250;
+                </button>
+                <div className={styles.lightboxCounter}>
+                  {lightboxIdx + 1} / {total}
+                </div>
+              </>
             )}
           </div>
 
           <div style={{ padding: 12, background: "#1a1a2e", borderRadius: 12 }}>
             <div className={styles.recapCollage}>
-              {SHUFFLED_FILES.map((f) => {
-                const src = encodeURI(photoUrl(`recaps/${f}`));
+              {SHUFFLED_FILES.map((f, idx) => {
+                const src = SRCS[idx];
                 return (
                   <div key={f} style={{ breakInside: "avoid", marginBottom: 12 }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={src}
                       alt={f}
-                      onClick={() => setLightboxSrc(src)}
+                      loading="lazy"
+                      onClick={() => setLightboxIdx(idx)}
                       style={{
                         width: "100%",
                         borderRadius: 6,

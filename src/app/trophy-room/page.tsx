@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { getLeagueData, photoUrl, fmt, ScheduleRow, StandingRow } from "@/lib/data";
 import { computeAlltimeStandings } from "@/lib/league";
 import { findPhoto } from "./photos";
+import Tap, { TapInfo, TapLine } from "./Tap";
 import styles from "./styles.module.css";
 
 export const metadata = { title: "Trophy Room — GFFL Archives" };
@@ -224,7 +225,15 @@ function UserIcon({ size = 48 }: { size?: number }) {
   );
 }
 
-function PhotoBlock({ o, photoFile }: { o: string; photoFile: string | null }) {
+function PhotoBlock({
+  o,
+  photoFile,
+  lazy = false,
+}: {
+  o: string;
+  photoFile: string | null;
+  lazy?: boolean;
+}) {
   if (photoFile == null) {
     return (
       <div

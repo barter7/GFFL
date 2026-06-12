@@ -325,3 +325,13 @@ function StandingsInner() {
     </div>
   );
 }
+
+// Static export requires useSearchParams() to live inside a <Suspense>
+// boundary, otherwise the build fails with missing-suspense-with-csr-bailout.
+export default function StandingsPage() {
+  return (
+    <Suspense fallback={null}>
+      <StandingsInner />
+    </Suspense>
+  );
+}
