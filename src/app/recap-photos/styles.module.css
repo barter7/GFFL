@@ -1,0 +1,49 @@
+/* Ported from the inline <style> block in app.R output$recap_gallery (lines 2528-2538). */
+
+/* CSS: 2 columns desktop, 1 column mobile (much bigger images) */
+.recapCollage {
+  column-count: 2;
+  column-gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .recapCollage {
+    column-count: 1;
+  }
+}
+
+.lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  padding: 20px;
+}
+
+.lightbox.open {
+  display: flex;
+}
+
+.lightbox img {
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+}
+
+.lightboxClose {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  color: #fff;
+  font-size: 40px;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+}
