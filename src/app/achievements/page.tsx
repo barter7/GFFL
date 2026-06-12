@@ -44,9 +44,8 @@ export default function AchievementsPage() {
     <div
       style={{
         background: "#0a0a0a",
-        padding: 20,
+        padding: "clamp(10px, 3vw, 20px)",
         borderRadius: 12,
-        minHeight: "80vh",
       }}
     >
       <h2
@@ -55,7 +54,8 @@ export default function AchievementsPage() {
           fontFamily: "Arial,sans-serif",
           textAlign: "center",
           letterSpacing: 3,
-          marginBottom: 20,
+          margin: "0 0 12px",
+          fontSize: "clamp(20px, 5.5vw, 28px)",
         }}
       >
         GFFL ACHIEVEMENTS
