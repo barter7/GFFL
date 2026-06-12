@@ -832,25 +832,39 @@ export default function TrophyRoomPage() {
             }}
           >
             {sackoYears.map((yr) => (
-              <img
-                key={yr}
-                src={photoUrl("photos/sacko.png")}
-                alt=""
-                className={`${styles.trophyImg} ${styles.sackoImg}`}
-                title={seasonTooltip(yr, "Sacko ")}
-              />
+              <Tap key={yr} info={sackoInfo(yr)}>
+                <img
+                  src={photoUrl("photos/sacko.png")}
+                  alt={`Sacko ${yr}`}
+                  loading="lazy"
+                  className={`${styles.trophyImg} ${styles.sackoImg}`}
+                  title={seasonTooltip(yr, "Sacko ")}
+                />
+              </Tap>
             ))}
           </div>
         </div>
 
         {/* Plaques shelf (bottom, full width - always 6 in one row) */}
         <div className={styles.plaqueShelf} style={plaqueShelfStyle}>
-          <Plaque label="Record" value={record} style={wpStyle} />
-          <Plaque label="Points" value={pf} style={pfStyle} />
-          <Plaque label="Best" value={bestRecordStr} style={getPlaqueStyle(bestRecRank.get(o))} />
-          <Plaque label="Pts (S)" value={mostPfStr} style={getPlaqueStyle(bestPfRank.get(o))} />
-          <Plaque label="Pts (W)" value={mostPwStr} style={getPlaqueStyle(bestWkRank.get(o))} />
-          <Plaque label="Streak" value={winStreakStr} style={getPlaqueStyle(wstreakRank.get(o))} />
+          <Tap info={recordPlaqueInfo}>
+            <Plaque label="Record" value={record} style={wpStyle} />
+          </Tap>
+          <Tap info={pointsPlaqueInfo}>
+            <Plaque label="Points" value={pf} style={pfStyle} />
+          </Tap>
+          <Tap info={bestRecordPlaqueInfo}>
+            <Plaque label="Best" value={bestRecordStr} style={getPlaqueStyle(bestRecRank.get(o))} />
+          </Tap>
+          <Tap info={bestPfPlaqueInfo}>
+            <Plaque label="Pts (S)" value={mostPfStr} style={getPlaqueStyle(bestPfRank.get(o))} />
+          </Tap>
+          <Tap info={bestWeekPlaqueInfo}>
+            <Plaque label="Pts (W)" value={mostPwStr} style={getPlaqueStyle(bestWkRank.get(o))} />
+          </Tap>
+          <Tap info={streakPlaqueInfo}>
+            <Plaque label="Streak" value={winStreakStr} style={getPlaqueStyle(wstreakRank.get(o))} />
+          </Tap>
         </div>
       </div>
     );
@@ -877,6 +891,7 @@ export default function TrophyRoomPage() {
               key={i}
               src={fillImage}
               alt=""
+              loading="lazy"
               className={`${styles.trophyImg} ${styles.lombardiImg}`}
             />
           ))
@@ -901,12 +916,12 @@ export default function TrophyRoomPage() {
               justifyContent: "center",
             }}
           >
-            <PhotoBlock o={o} photoFile={photoFile} />
+            <PhotoBlock o={o} photoFile={photoFile} lazy />
             <div style={{ width: "100%", maxWidth: 140, marginTop: 4 }}>
               <Plaque label={null} value={o} style={NAME_STYLE} wide />
             </div>
           </div>
-          <JerseyBlock jerseyFile={jerseyFile} />
+          <JerseyBlock jerseyFile={jerseyFile} lazy />
         </div>
 
         {/* Lombardi / Hunt split shelf */}
@@ -970,7 +985,7 @@ export default function TrophyRoomPage() {
   }
 
   // Build active owner cards (sorted by championships desc, sackos asc)
-  const activeCards = activeSorted.map((o) => buildOwnerCard(o));
+  const activeCards = activeSorted.map((o, i) => buildOwnerCard(o, i === 0));
 
   // Build legacy owner cards (existing + ghost cards for Sean/Kenny)
   const legacyCards = [
@@ -981,6 +996,17 @@ export default function TrophyRoomPage() {
 
   return (
     <div style={{ background: "#e8e0d4", padding: 20, borderRadius: 12 }}>
+      <p
+        style={{
+          textAlign: "center",
+          color: "#7a6a4f",
+          fontStyle: "italic",
+          fontSize: 13,
+          margin: "0 0 12px",
+        }}
+      >
+        Tap any trophy for details
+      </p>
       <div className={styles.trophyGrid}>{activeCards}</div>
       {legacyCards.length > 0 && (
         <>
