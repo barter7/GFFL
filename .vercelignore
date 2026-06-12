@@ -1,0 +1,9 @@
+# Source data and originals not needed in the deployment
+# (patterns are root-anchored so src/data is NOT excluded)
+/www/
+/data/
+/scripts/
+/.github/
+*.R
+*.Rproj
+/.Renviron.example

@@ -1,0 +1,187 @@
+/* Ported verbatim from the tags$style block in app.R output$owners_grid. */
+
+.trophyGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 768px) {
+  .trophyGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.photoShelfRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+/* Background shelf labels - subtle engraved look at top of shelf */
+.shelfLabel {
+  position: absolute;
+  top: 2px;
+  font-family: Georgia, serif;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: rgba(100, 100, 110, 0.25);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.05), 0 -1px 0 rgba(0, 0, 0, 0.5);
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  font-size: 9px;
+}
+.shelfLabelLeft {
+  left: 2px;
+  right: 50%;
+  text-align: center;
+  padding: 0 2px;
+}
+.shelfLabelRight {
+  right: 2px;
+  left: 50%;
+  text-align: center;
+  padding: 0 2px;
+}
+.shelfLabelFull {
+  left: 0;
+  right: 0;
+  text-align: center;
+  padding: 0 2px;
+}
+
+@media (min-width: 769px) {
+  .shelfLabel {
+    font-size: 12px;
+    letter-spacing: 3px;
+  }
+}
+
+/* Mobile sizes */
+.trophyImg {
+  object-fit: contain;
+}
+.lombardiImg {
+  height: 52px;
+  margin: 0 5px;
+}
+.huntImg {
+  height: 40px;
+  margin: 0 4px;
+}
+.sackoImg {
+  height: 40px;
+  width: 32px;
+  margin: 0 1px;
+}
+.bannerImg {
+  height: 50px;
+  margin: 2px;
+}
+.gfflImg {
+  height: 45px;
+  margin: 0 5px;
+}
+.mvpImg {
+  height: 30px;
+  margin: 0 2px;
+}
+.jerseyImg {
+  max-width: 100%;
+  max-height: 124px;
+  object-fit: contain;
+}
+
+.trophyShelf {
+  height: 60px;
+}
+.bannerShelf {
+  height: 60px;
+}
+.sackoShelf {
+  height: 60px;
+}
+.plaqueShelf {
+  min-height: 40px;
+  padding: 4px 2px;
+}
+.ownerPhotoFrame {
+  width: 100px;
+  height: 118px;
+}
+
+/* Plaques scale to fit */
+.plaqueStat {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.plaqueStat > div {
+  padding: 3px 2px !important;
+}
+.plaqueLabel {
+  font-size: 8px;
+}
+.plaqueValue {
+  font-size: 12px;
+  overflow: hidden;
+}
+
+/* Desktop sizes */
+@media (min-width: 769px) {
+  .lombardiImg {
+    height: 60px;
+    margin: 0 5px;
+  }
+  .huntImg {
+    height: 50px;
+    margin: 0 5px;
+  }
+  .sackoImg {
+    height: 65px;
+    width: 50px;
+    margin: 0 3px;
+  }
+  .bannerImg {
+    height: 75px;
+    margin: 3px;
+  }
+  .gfflImg {
+    height: 65px;
+    margin: 0 6px;
+  }
+  .mvpImg {
+    height: 42px;
+    margin: 0 3px;
+  }
+  .jerseyImg {
+    max-height: 180px;
+  }
+
+  .trophyShelf {
+    height: 90px;
+  }
+  .bannerShelf {
+    height: 95px;
+  }
+  .sackoShelf {
+    height: 90px;
+  }
+  .ownerPhotoFrame {
+    width: 140px;
+    height: 170px;
+  }
+
+  .plaqueStat > div {
+    padding: 5px 6px !important;
+  }
+  .plaqueLabel {
+    font-size: 9px;
+  }
+  .plaqueValue {
+    font-size: 14px;
+  }
+}

@@ -1,0 +1,157 @@
+:root {
+  --gffl-navy: #013369;
+  --gffl-red: #d50a0a;
+  --gffl-gold: #d4a84b;
+  --gffl-gold-bright: #f0d675;
+  --gffl-gold-dark: #8b6914;
+}
+
+body {
+  background-color: #f5f6f8;
+}
+
+.gffl-navbar {
+  background-color: var(--gffl-navy);
+}
+
+/* All tabs visible in one horizontally scrollable strip */
+.gffl-tabstrip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 8px 8px;
+  white-space: nowrap;
+}
+
+.gffl-tabstrip::-webkit-scrollbar {
+  display: none;
+}
+
+.gffl-tab {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.78);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+.gffl-tab:hover {
+  color: #fff;
+}
+
+.gffl-tab.active {
+  color: #fff;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.card {
+  border: none;
+  box-shadow: 0 1px 4px rgba(1, 51, 105, 0.12);
+  margin-bottom: 1rem;
+}
+
+.card-header {
+  background-color: #fff;
+  font-weight: 600;
+  color: var(--gffl-navy);
+}
+
+.btn-primary {
+  background-color: var(--gffl-navy);
+  border-color: var(--gffl-navy);
+}
+
+/* Sortable data tables (DT replacement) */
+.gffl-table {
+  font-size: 0.875rem;
+}
+
+.gffl-table th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  color: var(--gffl-navy);
+}
+
+.gffl-table th .sort-arrow {
+  font-size: 0.7em;
+  margin-left: 4px;
+  opacity: 0.6;
+}
+
+.gffl-table td {
+  vertical-align: middle;
+}
+
+/* Record-book styling (Records + Player Records tabs) */
+.record-book {
+  font-family: "Cormorant Garamond", Georgia, serif;
+}
+
+.record-book h2,
+.record-book h3 {
+  font-family: "IM Fell English", Georgia, serif;
+}
+
+/* Dark page sections (home, achievements, commissioner) */
+.dark-section {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Scrollable wrapper for long summary lists/tables */
+.scroll-panel {
+  max-height: 320px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile-first compaction */
+@media (max-width: 576px) {
+  main.container-fluid {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    padding-top: 0.5rem !important;
+  }
+
+  .card {
+    margin-bottom: 0.6rem;
+  }
+
+  .card-body {
+    padding: 0.6rem;
+  }
+
+  .card-header {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.95rem;
+  }
+
+  .gffl-table {
+    font-size: 0.75rem;
+  }
+
+  .gffl-table td,
+  .gffl-table th {
+    padding: 0.3rem 0.4rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+  }
+}
