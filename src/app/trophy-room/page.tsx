@@ -267,6 +267,7 @@ function PhotoBlock({
         <img
           src={photoFile}
           alt={o}
+          loading={lazy ? "lazy" : undefined}
           style={{
             width: "100%",
             height: "100%",
@@ -278,6 +279,7 @@ function PhotoBlock({
       <img
         src={photoUrl("photos/frame.PNG")}
         alt=""
+        loading={lazy ? "lazy" : undefined}
         style={{
           position: "absolute",
           top: 0,
@@ -291,11 +293,11 @@ function PhotoBlock({
   );
 }
 
-function JerseyBlock({ jerseyFile }: { jerseyFile: string | null }) {
+function JerseyBlock({ jerseyFile, lazy = false }: { jerseyFile: string | null; lazy?: boolean }) {
   return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
       {jerseyFile != null ? (
-        <img src={jerseyFile} alt="" className={styles.jerseyImg} />
+        <img src={jerseyFile} alt="" className={styles.jerseyImg} loading={lazy ? "lazy" : undefined} />
       ) : (
         <div style={{ color: "#555", fontSize: 11, textAlign: "center", fontStyle: "italic" }}>
           Jersey
@@ -428,6 +430,20 @@ export default function TrophyRoomPage() {
     return { season, owner: rows[0].owner };
   });
 
+  // Final week of each season (championship week) for title-game details
+  const finalWeekBySeason = new Map<number, number>();
+  for (const g of schedule) {
+    const cur = finalWeekBySeason.get(g.season);
+    if (cur == null || g.week > cur) finalWeekBySeason.set(g.season, g.week);
+  }
+
+  // Rank of an owner's points_for within one season
+  const seasonPfRank = (yr: number, owner: string): number =>
+    standings
+      .filter((s) => s.season === yr)
+      .sort((a, b) => b.points_for - a.points_for)
+      .findIndex((r) => r.owner === owner) + 1;
+
   // Legacy owners (no longer in the league)
   const legacyOwners = ["Joe"];
 
@@ -492,6 +508,148 @@ export default function TrophyRoomPage() {
       const s = ownerSeasons.find((r) => r.season === yr);
       if (!s) return "";
       return `${prefix}${yr} | ${s.h2h_wins}-${s.h2h_losses} | #${s.league_rank}`;
+    };
+
+    // -----------------------------------------------------------------
+    // Tap-modal info builders (plain serializable data for <Tap>)
+    // -----------------------------------------------------------------
+    const preData = (yr: number) => !ownerSeasons.some((r) => r.season === yr);
+
+    const seasonLines = (yr: number): TapLine[] => {
+      const s = ownerSeasons.find((r) => r.season === yr);
+      if (!s) return [];
+      return [
+        { label: "Record", value: `${s.h2h_wins}-${s.h2h_losses}` },
+        { label: "Final Rank", value: `#${s.league_rank}` },
+        { label: "Points For", value: `${fmt(s.points_for)} (#${seasonPfRank(yr, o)} in PF)` },
+        { label: "Points Against", value: fmt(s.points_against) },
+      ];
+    };
+
+    const playoffGameLines = (yr: number): TapLine[] =>
+      ownerWeeks
+        .filter((g) => g.season === yr && g.game_type === "Playoffs" && g.result != null)
+        .map((g) => ({
+          label: `Week ${g.week} (${g.result})`,
+          value: `${fmt(g.franchise_score)}–${fmt(g.opponent_score)} vs ${g.opponent_owner}`,
+        }));
+
+    const ringInfo = (yr: number): TapInfo => ({
+      title: `${yr} League Champion`,
+      subtitle: `${o} — Championship Ring`,
+      lines: [...seasonLines(yr), ...playoffGameLines(yr)],
+      note: preData(yr)
+        ? "Won before the recorded-data era — box scores lost to history."
+        : "Won the GFFL championship game.",
+    });
+
+    const huntInfo = (yr: number): TapInfo => {
+      const s = ownerSeasons.find((r) => r.season === yr);
+      const finalWk = finalWeekBySeason.get(yr);
+      const titleGame = ownerWeeks.find((g) => g.season === yr && g.week === finalWk);
+      const lines = seasonLines(yr);
+      if (titleGame != null && titleGame.result != null) {
+        lines.push({
+          label: `Title Game (${titleGame.result})`,
+          value: `${fmt(titleGame.franchise_score)}–${fmt(titleGame.opponent_score)} vs ${titleGame.opponent_owner}`,
+        });
+      }
+      return {
+        title: `${yr} Title Game`,
+        subtitle: `${o} — Hunt Trophy (championship appearance)`,
+        lines,
+        note: s?.league_rank === 1 ? "Won it all this season." : "Runner-up.",
+      };
+    };
+
+    const mvpInfo = (yr: number): TapInfo => ({
+      title: `${yr} #1 Seed`,
+      subtitle: `${o} — MVP Trophy (best regular-season record)`,
+      lines: seasonLines(yr),
+    });
+
+    const gfflInfo = (yr: number): TapInfo => ({
+      title: `${yr} Scoring Champion`,
+      subtitle: `${o} — GFFL Trophy (most regular-season points)`,
+      lines: seasonLines(yr),
+    });
+
+    const bannerInfo = (yr: number, isOneseed: boolean): TapInfo => ({
+      title: isOneseed ? `${yr} #1 Seed` : `${yr} Playoffs`,
+      subtitle: `${o} — ${isOneseed ? "#1-seed banner" : "playoff banner"}`,
+      lines: [...seasonLines(yr), ...playoffGameLines(yr)],
+    });
+
+    const sackoInfo = (yr: number): TapInfo => ({
+      title: `${yr} Sacko Lapos`,
+      subtitle: `${o} — last place`,
+      lines: seasonLines(yr),
+      note: preData(yr)
+        ? "Earned before the recorded-data era — the shame endures."
+        : "Worst regular-season record in the league.",
+    });
+
+    const ownerCount = owners.length;
+    const recordPlaqueInfo: TapInfo = {
+      title: `${o} — All-Time Record`,
+      lines: [
+        { label: "Record", value: record },
+        { label: "Win %", value: stats ? `${(stats.winPct * 100).toFixed(1)}%` : "N/A" },
+        { label: "Seasons", value: String(stats?.seasons ?? 0) },
+        { label: "League Rank (win %)", value: `#${winpctRank.get(o) ?? "?"} of ${ownerCount}` },
+      ],
+    };
+    const pointsPlaqueInfo: TapInfo = {
+      title: `${o} — All-Time Points`,
+      lines: [
+        { label: "Points For", value: stats ? fmt(stats.pf) : "0" },
+        { label: "Points Against", value: stats ? fmt(stats.pa) : "0" },
+        { label: "PF / Game", value: stats ? fmt(stats.pfPerGame) : "0" },
+        { label: "League Rank (PF)", value: `#${pfRank.get(o) ?? "?"} of ${ownerCount}` },
+      ],
+    };
+    const bestRecordPlaqueInfo: TapInfo = {
+      title: `${o} — Best Season Record`,
+      lines: bestSeason
+        ? [
+            { label: "Season", value: String(bestSeason.season) },
+            { label: "Record", value: bestRecordStr },
+            { label: "Final Rank", value: `#${bestSeason.league_rank}` },
+            { label: "League Rank (best record)", value: `#${bestRecRank.get(o) ?? "?"} of ${ownerCount}` },
+          ]
+        : [],
+    };
+    const bestPfPlaqueInfo: TapInfo = {
+      title: `${o} — Best Scoring Season`,
+      lines: mostPfSeason
+        ? [
+            { label: "Season", value: String(mostPfSeason.season) },
+            { label: "Points For", value: fmt(mostPfSeason.points_for) },
+            { label: "Record", value: `${mostPfSeason.h2h_wins}-${mostPfSeason.h2h_losses}` },
+            { label: "League Rank (season PF)", value: `#${bestPfRank.get(o) ?? "?"} of ${ownerCount}` },
+          ]
+        : [],
+    };
+    const bestWeekPlaqueInfo: TapInfo = {
+      title: `${o} — Best Week`,
+      lines: bestWeek
+        ? [
+            { label: "When", value: `Week ${bestWeek.week}, ${bestWeek.season}` },
+            { label: "Score", value: fmt(bestWeek.franchise_score) },
+            {
+              label: "Opponent",
+              value: `${bestWeek.opponent_owner} (${fmt(bestWeek.opponent_score)})`,
+            },
+            { label: "League Rank (best week)", value: `#${bestWkRank.get(o) ?? "?"} of ${ownerCount}` },
+          ]
+        : [],
+    };
+    const streakPlaqueInfo: TapInfo = {
+      title: `${o} — Longest Win Streak`,
+      lines: [
+        { label: "Streak", value: `${winStreakStr} games` },
+        { label: "League Rank (streak)", value: `#${wstreakRank.get(o) ?? "?"} of ${ownerCount}` },
+      ],
     };
 
     // Championship trophies with tooltips

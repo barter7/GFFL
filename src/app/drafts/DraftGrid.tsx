@@ -163,16 +163,22 @@ export default function DraftGrid({ drafts, starters, season, posFilter = null }
                 const bg = POS_COLORS[p.pos] ?? "#eee";
                 const ptsText = `${p.total_pts} pts`;
                 const rankText = `${p.pos ?? ""}${p.pos_rank}`;
+                const highlighted =
+                  posFilter !== null && matchesPos(p.pos, posFilter);
+                const dimmed = posFilter !== null && !highlighted;
                 return (
                   <td
                     key={o}
                     style={{
                       padding: "4px 6px",
-                      background: `${bg}33`,
-                      border: "1px solid #ddd",
+                      // Highlighted picks get a stronger position tint
+                      background: highlighted ? `${bg}88` : `${bg}33`,
+                      border: highlighted ? "2px solid #013369" : "1px solid #ddd",
                       fontSize: 10,
                       textAlign: "center",
                       verticalAlign: "top",
+                      opacity: dimmed ? 0.25 : 1,
+                      transition: "opacity 0.15s",
                     }}
                   >
                     <div

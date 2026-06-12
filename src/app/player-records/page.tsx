@@ -6,14 +6,25 @@ import { headshotUrl } from "@/lib/data";
 import { FLEURON, FLEURON_TRIPLE, RECORD_BOOK_CSS } from "../records/recordBookCss";
 import { computePlayerRecords, Top5Row } from "./computePlayerRecords";
 import Headshot from "./Headshot";
+import Toc, { TocItem } from "./Toc";
+import BackToTop from "../records/BackToTop";
 
 export const metadata: Metadata = { title: "Player Records — GFFL Archives" };
+
+/** Anchor id for a section title (shared by the headings and the TOC). */
+function slug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 // Port of build_top5() (app.R lines 4197-4224)
 function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
   return (
     <>
-      <div style={{ margin: "25px 20px 10px" }}>
+      {/* scrollMarginTop keeps anchored headings clear of the sticky navbar */}
+      <div id={slug(title)} style={{ margin: "25px 20px 10px", scrollMarginTop: 72 }}>
         <div
           style={{
             fontFamily: "'IM Fell English',Georgia,serif",
@@ -29,13 +40,21 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
           {title}
         </div>
       </div>
-      <table
+      {/* Horizontal-scroll guard for narrow phones: invisible when the table
+          fits; otherwise the table scrolls inside instead of the whole page. */}
+      <div
         style={{
-          width: "calc(100% - 40px)",
           margin: "0 20px",
-          borderCollapse: "collapse",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
         }}
       >
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+          }}
+        >
         <tbody>
           {rows.slice(0, 20).map((r, i) => {
             const hsUrl = headshotUrl(r.player_name);
@@ -111,8 +130,9 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
               </tr>
             );
           })}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
       <hr
         style={{
           border: "none",

@@ -2,13 +2,31 @@
 
 // "Top Performances" tab — ported from app.R lines 301-334 (UI) and 2301-2456 (server).
 
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Card from "@/components/Card";
 import DataTable, { Column } from "@/components/DataTable";
 import Plot from "@/components/Plot";
 import { getLeagueData, headshotUrl, fmt, BENCH_SLOTS, StarterRow } from "@/lib/data";
 
 const POS_CHOICES = ["All", "QB", "RB", "WR", "TE", "K", "D/ST"];
+
+// "D/ST" is written to the URL as "DST" to keep the query string slash-free
+const posToParam = (p: string) => (p === "D/ST" ? "DST" : p);
+const paramToPos = (p: string) => (p === "DST" ? "D/ST" : p);
+
+// Sync selector state into the query string without triggering navigation
+// (history.replaceState keeps scroll position; router.push would not).
+function updateQuery(params: Record<string, string | null>) {
+  if (typeof window === "undefined") return;
+  const sp = new URLSearchParams(window.location.search);
+  for (const [k, v] of Object.entries(params)) {
+    if (v === null) sp.delete(k);
+    else sp.set(k, v);
+  }
+  const qs = sp.toString();
+  window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+}
 
 // ggplot2's default discrete fill palette (scales::hue_pal): evenly spaced
 // hues in HCL space with c = 100, l = 65 — converted to sRGB hex.
@@ -151,15 +169,35 @@ function PerformanceRow({ row, rank }: { row: StarterRow; rank: number }) {
   );
 }
 
-export default function TopPerformancesPage() {
+function TopPerformancesInner() {
   const { starters, seasons } = getLeagueData();
-  const [perfPos, setPerfPos] = useState("All");
-  const [perfSeason, setPerfSeason] = useState("All-Time");
 
   const seasonChoices = useMemo(
     () => ["All-Time", ...[...seasons].sort((a, b) => b - a).map(String)],
     [seasons]
   );
+
+  // Initial state from the URL (?pos=RB&season=2023), validated
+  const searchParams = useSearchParams();
+  const [perfPos, setPerfPos] = useState(() => {
+    const p = searchParams.get("pos");
+    if (p !== null && POS_CHOICES.includes(paramToPos(p))) return paramToPos(p);
+    return "All";
+  });
+  const [perfSeason, setPerfSeason] = useState(() => {
+    const s = searchParams.get("season");
+    if (s !== null && (s === "All-Time" || seasons.some((yr) => String(yr) === s)))
+      return s;
+    return "All-Time";
+  });
+
+  // Keep the URL shareable as the selectors change (defaults omitted)
+  useEffect(() => {
+    updateQuery({
+      pos: perfPos === "All" ? null : posToParam(perfPos),
+      season: perfSeason === "All-Time" ? null : perfSeason,
+    });
+  }, [perfPos, perfSeason]);
 
   const activeStarters = useMemo(
     () => starters.filter((s) => !BENCH_SLOTS.has(s.lineup_slot)),
@@ -323,5 +361,15 @@ export default function TopPerformancesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Static export requires useSearchParams() to live inside a <Suspense>
+// boundary, otherwise the build fails with missing-suspense-with-csr-bailout.
+export default function TopPerformancesPage() {
+  return (
+    <Suspense fallback={null}>
+      <TopPerformancesInner />
+    </Suspense>
   );
 }
