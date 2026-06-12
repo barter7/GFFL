@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 
 const LINKS: [string, string][] = [
   ["/", "GFFL"],
@@ -20,47 +20,38 @@ const LINKS: [string, string][] = [
   ["/commissioner", "Commissioner of the Year"],
 ];
 
+/** Always-visible horizontally scrollable tab strip (no hamburger). */
 export default function Nav() {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLAnchorElement>(null);
+
+  // Keep the active tab in view when navigating.
+  useEffect(() => {
+    const strip = stripRef.current;
+    const active = activeRef.current;
+    if (!strip || !active) return;
+    const target =
+      active.offsetLeft - strip.clientWidth / 2 + active.clientWidth / 2;
+    strip.scrollTo({ left: Math.max(0, target) });
+  }, [pathname]);
 
   return (
-    <nav className="navbar navbar-expand-xl navbar-dark gffl-navbar sticky-top">
-      <div className="container-fluid">
-        <Link className="navbar-brand fw-bold" href="/">
-          GFFL Archives
-        </Link>
-        <button
-          className="navbar-toggler"
-          type="button"
-          aria-label="Toggle navigation"
-          onClick={() => setOpen(!open)}
-        >
-          <span className="navbar-toggler-icon" />
-        </button>
-        <div className={`collapse navbar-collapse${open ? " show" : ""}`}>
-          <ul className="navbar-nav me-auto">
-            {LINKS.map(([href, label]) => (
-              <li className="nav-item" key={href}>
-                <Link
-                  className={`nav-link${pathname === href ? " active" : ""}`}
-                  href={href}
-                  onClick={() => setOpen(false)}
-                >
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <a
-            className="nav-link text-light"
-            href="https://github.com/barter7/gffl"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Source
-          </a>
-        </div>
+    <nav className="gffl-navbar sticky-top">
+      <div className="gffl-tabstrip" ref={stripRef}>
+        {LINKS.map(([href, label]) => {
+          const active = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              ref={active ? activeRef : undefined}
+              className={`gffl-tab${active ? " active" : ""}`}
+            >
+              {label}
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );
