@@ -8,7 +8,6 @@ export const RECORD_BOOK_CSS = `
             radial-gradient(ellipse at top, rgba(139,105,20,0.12), transparent 60%),
             radial-gradient(ellipse at bottom, rgba(139,105,20,0.15), transparent 60%);
           padding: 40px 30px;
-          min-height: 80vh;
           border: 8px double #5c3a10;
           box-shadow: inset 0 0 80px rgba(92,58,16,0.2), 0 10px 40px rgba(0,0,0,0.3);
           border-radius: 4px;
@@ -113,6 +112,24 @@ export const RECORD_BOOK_CSS = `
           .cell-record { font-size: 13px; }
           .cell-owner { font-size: 14px; }
           .cell-metric { font-size: 14px; }
+          .cell-season { font-size: 12px; }
+        }
+        @media (max-width:576px) {
+          .record-book {
+            padding: 14px 6px;
+            border-width: 6px;
+            box-shadow: inset 0 0 40px rgba(92,58,16,0.2), 0 6px 24px rgba(0,0,0,0.25);
+          }
+          .record-book::before { left: 5px; top: 10px; bottom: 10px; }
+          .record-book::after { right: 5px; top: 10px; bottom: 10px; }
+          .record-book h1 { font-size: 22px; letter-spacing: 1px; margin-bottom: 6px; }
+          .record-book .subtitle { font-size: 12px; letter-spacing: 1px; margin-bottom: 10px; }
+          .record-book .fleuron { font-size: 16px; letter-spacing: 10px; margin: 6px 0 10px; }
+          .record-table th { padding: 5px 3px; letter-spacing: 1px; }
+          .record-table td { padding: 6px 3px; }
+          .cell-record { font-size: 12px; letter-spacing: 0; }
+          .cell-owner { font-size: 13px; }
+          .cell-metric { font-size: 13px; }
           .cell-season { font-size: 12px; }
         }
 `;

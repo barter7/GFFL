@@ -73,3 +73,53 @@ body {
   border-radius: 12px;
   overflow: hidden;
 }
+
+/* Scrollable wrapper for long summary lists/tables */
+.scroll-panel {
+  max-height: 320px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile-first compaction */
+@media (max-width: 576px) {
+  main.container-fluid {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    padding-top: 0.5rem !important;
+  }
+
+  .card {
+    margin-bottom: 0.6rem;
+  }
+
+  .card-body {
+    padding: 0.6rem;
+  }
+
+  .card-header {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.95rem;
+  }
+
+  .gffl-table {
+    font-size: 0.75rem;
+  }
+
+  .gffl-table td,
+  .gffl-table th {
+    padding: 0.3rem 0.4rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+  }
+}

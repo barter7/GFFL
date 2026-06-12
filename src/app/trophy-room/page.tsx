@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { getLeagueData, photoUrl, fmt, ScheduleRow, StandingRow } from "@/lib/data";
 import { computeAlltimeStandings } from "@/lib/league";
 import { findPhoto } from "./photos";
+import Tap, { TapInfo, TapLine } from "./Tap";
 import styles from "./styles.module.css";
 
 export const metadata = { title: "Trophy Room — GFFL Archives" };
@@ -224,7 +225,15 @@ function UserIcon({ size = 48 }: { size?: number }) {
   );
 }
 
-function PhotoBlock({ o, photoFile }: { o: string; photoFile: string | null }) {
+function PhotoBlock({
+  o,
+  photoFile,
+  lazy = false,
+}: {
+  o: string;
+  photoFile: string | null;
+  lazy?: boolean;
+}) {
   if (photoFile == null) {
     return (
       <div
@@ -258,6 +267,7 @@ function PhotoBlock({ o, photoFile }: { o: string; photoFile: string | null }) {
         <img
           src={photoFile}
           alt={o}
+          loading={lazy ? "lazy" : undefined}
           style={{
             width: "100%",
             height: "100%",
@@ -269,6 +279,7 @@ function PhotoBlock({ o, photoFile }: { o: string; photoFile: string | null }) {
       <img
         src={photoUrl("photos/frame.PNG")}
         alt=""
+        loading={lazy ? "lazy" : undefined}
         style={{
           position: "absolute",
           top: 0,
@@ -282,11 +293,11 @@ function PhotoBlock({ o, photoFile }: { o: string; photoFile: string | null }) {
   );
 }
 
-function JerseyBlock({ jerseyFile }: { jerseyFile: string | null }) {
+function JerseyBlock({ jerseyFile, lazy = false }: { jerseyFile: string | null; lazy?: boolean }) {
   return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
       {jerseyFile != null ? (
-        <img src={jerseyFile} alt="" className={styles.jerseyImg} />
+        <img src={jerseyFile} alt="" className={styles.jerseyImg} loading={lazy ? "lazy" : undefined} />
       ) : (
         <div style={{ color: "#555", fontSize: 11, textAlign: "center", fontStyle: "italic" }}>
           Jersey
@@ -419,6 +430,20 @@ export default function TrophyRoomPage() {
     return { season, owner: rows[0].owner };
   });
 
+  // Final week of each season (championship week) for title-game details
+  const finalWeekBySeason = new Map<number, number>();
+  for (const g of schedule) {
+    const cur = finalWeekBySeason.get(g.season);
+    if (cur == null || g.week > cur) finalWeekBySeason.set(g.season, g.week);
+  }
+
+  // Rank of an owner's points_for within one season
+  const seasonPfRank = (yr: number, owner: string): number =>
+    standings
+      .filter((s) => s.season === yr)
+      .sort((a, b) => b.points_for - a.points_for)
+      .findIndex((r) => r.owner === owner) + 1;
+
   // Legacy owners (no longer in the league)
   const legacyOwners = ["Joe"];
 
@@ -442,7 +467,9 @@ export default function TrophyRoomPage() {
   const legacySorted = ownerStats.filter((s) => legacyOwners.includes(s.owner)).map((s) => s.owner);
 
   // Function to build a trophy case for one owner
-  function buildOwnerCard(o: string): ReactNode {
+  // `eager` keeps above-the-fold images (first card) loading immediately;
+  // everything else gets loading="lazy".
+  function buildOwnerCard(o: string, eager = false): ReactNode {
     const stats = alltime.find((r) => r.team === o);
     const ownerSeasons = byOwnerStandings.get(o) ?? [];
     const ownerWeeks = byOwnerSchedule.get(o) ?? [];
@@ -483,6 +510,148 @@ export default function TrophyRoomPage() {
       const s = ownerSeasons.find((r) => r.season === yr);
       if (!s) return "";
       return `${prefix}${yr} | ${s.h2h_wins}-${s.h2h_losses} | #${s.league_rank}`;
+    };
+
+    // -----------------------------------------------------------------
+    // Tap-modal info builders (plain serializable data for <Tap>)
+    // -----------------------------------------------------------------
+    const preData = (yr: number) => !ownerSeasons.some((r) => r.season === yr);
+
+    const seasonLines = (yr: number): TapLine[] => {
+      const s = ownerSeasons.find((r) => r.season === yr);
+      if (!s) return [];
+      return [
+        { label: "Record", value: `${s.h2h_wins}-${s.h2h_losses}` },
+        { label: "Final Rank", value: `#${s.league_rank}` },
+        { label: "Points For", value: `${fmt(s.points_for)} (#${seasonPfRank(yr, o)} in PF)` },
+        { label: "Points Against", value: fmt(s.points_against) },
+      ];
+    };
+
+    const playoffGameLines = (yr: number): TapLine[] =>
+      ownerWeeks
+        .filter((g) => g.season === yr && g.game_type === "Playoffs" && g.result != null)
+        .map((g) => ({
+          label: `Week ${g.week} (${g.result})`,
+          value: `${fmt(g.franchise_score)}–${fmt(g.opponent_score)} vs ${g.opponent_owner}`,
+        }));
+
+    const ringInfo = (yr: number): TapInfo => ({
+      title: `${yr} League Champion`,
+      subtitle: `${o} — Championship Ring`,
+      lines: [...seasonLines(yr), ...playoffGameLines(yr)],
+      note: preData(yr)
+        ? "Won before the recorded-data era — box scores lost to history."
+        : "Won the GFFL championship game.",
+    });
+
+    const huntInfo = (yr: number): TapInfo => {
+      const s = ownerSeasons.find((r) => r.season === yr);
+      const finalWk = finalWeekBySeason.get(yr);
+      const titleGame = ownerWeeks.find((g) => g.season === yr && g.week === finalWk);
+      const lines = seasonLines(yr);
+      if (titleGame != null && titleGame.result != null) {
+        lines.push({
+          label: `Title Game (${titleGame.result})`,
+          value: `${fmt(titleGame.franchise_score)}–${fmt(titleGame.opponent_score)} vs ${titleGame.opponent_owner}`,
+        });
+      }
+      return {
+        title: `${yr} Title Game`,
+        subtitle: `${o} — Hunt Trophy (championship appearance)`,
+        lines,
+        note: s?.league_rank === 1 ? "Won it all this season." : "Runner-up.",
+      };
+    };
+
+    const mvpInfo = (yr: number): TapInfo => ({
+      title: `${yr} #1 Seed`,
+      subtitle: `${o} — MVP Trophy (best regular-season record)`,
+      lines: seasonLines(yr),
+    });
+
+    const gfflInfo = (yr: number): TapInfo => ({
+      title: `${yr} Scoring Champion`,
+      subtitle: `${o} — GFFL Trophy (most regular-season points)`,
+      lines: seasonLines(yr),
+    });
+
+    const bannerInfo = (yr: number, isOneseed: boolean): TapInfo => ({
+      title: isOneseed ? `${yr} #1 Seed` : `${yr} Playoffs`,
+      subtitle: `${o} — ${isOneseed ? "#1-seed banner" : "playoff banner"}`,
+      lines: [...seasonLines(yr), ...playoffGameLines(yr)],
+    });
+
+    const sackoInfo = (yr: number): TapInfo => ({
+      title: `${yr} Sacko Lapos`,
+      subtitle: `${o} — last place`,
+      lines: seasonLines(yr),
+      note: preData(yr)
+        ? "Earned before the recorded-data era — the shame endures."
+        : "Worst regular-season record in the league.",
+    });
+
+    const ownerCount = owners.length;
+    const recordPlaqueInfo: TapInfo = {
+      title: `${o} — All-Time Record`,
+      lines: [
+        { label: "Record", value: record },
+        { label: "Win %", value: stats ? `${(stats.winPct * 100).toFixed(1)}%` : "N/A" },
+        { label: "Seasons", value: String(stats?.seasons ?? 0) },
+        { label: "League Rank (win %)", value: `#${winpctRank.get(o) ?? "?"} of ${ownerCount}` },
+      ],
+    };
+    const pointsPlaqueInfo: TapInfo = {
+      title: `${o} — All-Time Points`,
+      lines: [
+        { label: "Points For", value: stats ? fmt(stats.pf) : "0" },
+        { label: "Points Against", value: stats ? fmt(stats.pa) : "0" },
+        { label: "PF / Game", value: stats ? fmt(stats.pfPerGame) : "0" },
+        { label: "League Rank (PF)", value: `#${pfRank.get(o) ?? "?"} of ${ownerCount}` },
+      ],
+    };
+    const bestRecordPlaqueInfo: TapInfo = {
+      title: `${o} — Best Season Record`,
+      lines: bestSeason
+        ? [
+            { label: "Season", value: String(bestSeason.season) },
+            { label: "Record", value: bestRecordStr },
+            { label: "Final Rank", value: `#${bestSeason.league_rank}` },
+            { label: "League Rank (best record)", value: `#${bestRecRank.get(o) ?? "?"} of ${ownerCount}` },
+          ]
+        : [],
+    };
+    const bestPfPlaqueInfo: TapInfo = {
+      title: `${o} — Best Scoring Season`,
+      lines: mostPfSeason
+        ? [
+            { label: "Season", value: String(mostPfSeason.season) },
+            { label: "Points For", value: fmt(mostPfSeason.points_for) },
+            { label: "Record", value: `${mostPfSeason.h2h_wins}-${mostPfSeason.h2h_losses}` },
+            { label: "League Rank (season PF)", value: `#${bestPfRank.get(o) ?? "?"} of ${ownerCount}` },
+          ]
+        : [],
+    };
+    const bestWeekPlaqueInfo: TapInfo = {
+      title: `${o} — Best Week`,
+      lines: bestWeek
+        ? [
+            { label: "When", value: `Week ${bestWeek.week}, ${bestWeek.season}` },
+            { label: "Score", value: fmt(bestWeek.franchise_score) },
+            {
+              label: "Opponent",
+              value: `${bestWeek.opponent_owner} (${fmt(bestWeek.opponent_score)})`,
+            },
+            { label: "League Rank (best week)", value: `#${bestWkRank.get(o) ?? "?"} of ${ownerCount}` },
+          ]
+        : [],
+    };
+    const streakPlaqueInfo: TapInfo = {
+      title: `${o} — Longest Win Streak`,
+      lines: [
+        { label: "Streak", value: `${winStreakStr} games` },
+        { label: "League Rank (streak)", value: `#${wstreakRank.get(o) ?? "?"} of ${ownerCount}` },
+      ],
     };
 
     // Championship trophies with tooltips
@@ -526,13 +695,13 @@ export default function TrophyRoomPage() {
               justifyContent: "center",
             }}
           >
-            <PhotoBlock o={o} photoFile={photoFile} />
+            <PhotoBlock o={o} photoFile={photoFile} lazy={!eager} />
             <div style={{ width: "100%", maxWidth: 140, marginTop: 4 }}>
               <Plaque label={null} value={o} style={NAME_STYLE} wide />
             </div>
           </div>
           {/* Right: jersey */}
-          <JerseyBlock jerseyFile={jerseyFile} />
+          <JerseyBlock jerseyFile={jerseyFile} lazy={!eager} />
         </div>
 
         {/* Lombardi / Hunt split shelf */}
@@ -541,13 +710,15 @@ export default function TrophyRoomPage() {
           <div className={`${styles.shelfLabel} ${styles.shelfLabelRight}`}>APPEARANCES</div>
           <div style={halfShelfStyle}>
             {champYears.map((yr) => (
-              <img
-                key={yr}
-                src={photoUrl("photos/champion_ring.png")}
-                alt=""
-                className={`${styles.trophyImg} ${styles.lombardiImg}`}
-                title={seasonTooltip(yr, "Champion ")}
-              />
+              <Tap key={yr} info={ringInfo(yr)}>
+                <img
+                  src={photoUrl("photos/champion_ring.png")}
+                  alt={`Championship ring ${yr}`}
+                  loading="lazy"
+                  className={`${styles.trophyImg} ${styles.lombardiImg}`}
+                  title={seasonTooltip(yr, "Champion ")}
+                />
+              </Tap>
             ))}
           </div>
           <div
@@ -562,13 +733,15 @@ export default function TrophyRoomPage() {
           />
           <div style={halfShelfStyle}>
             {appearYears.map((yr) => (
-              <img
-                key={yr}
-                src={photoUrl("photos/Hunt.png")}
-                alt=""
-                className={`${styles.trophyImg} ${styles.huntImg}`}
-                title={seasonTooltip(yr, "Title Game ")}
-              />
+              <Tap key={yr} info={huntInfo(yr)}>
+                <img
+                  src={photoUrl("photos/Hunt.png")}
+                  alt={`Title game appearance ${yr}`}
+                  loading="lazy"
+                  className={`${styles.trophyImg} ${styles.huntImg}`}
+                  title={seasonTooltip(yr, "Title Game ")}
+                />
+              </Tap>
             ))}
           </div>
         </div>
@@ -579,13 +752,15 @@ export default function TrophyRoomPage() {
           <div className={`${styles.shelfLabel} ${styles.shelfLabelRight}`}>MOST POINTS</div>
           <div style={halfShelfWrapStyle}>
             {oneseedYears.map((yr) => (
-              <img
-                key={yr}
-                src={photoUrl("photos/mvp.png")}
-                alt=""
-                className={`${styles.trophyImg} ${styles.mvpImg}`}
-                title={seasonTooltip(yr, "MVP ")}
-              />
+              <Tap key={yr} info={mvpInfo(yr)}>
+                <img
+                  src={photoUrl("photos/mvp.png")}
+                  alt={`Best record ${yr}`}
+                  loading="lazy"
+                  className={`${styles.trophyImg} ${styles.mvpImg}`}
+                  title={seasonTooltip(yr, "MVP ")}
+                />
+              </Tap>
             ))}
           </div>
           <div
@@ -599,13 +774,15 @@ export default function TrophyRoomPage() {
           />
           <div style={halfShelfWrapStyle}>
             {gfflPfYears.map((yr) => (
-              <img
-                key={yr}
-                src={photoUrl("photos/GFFL.png")}
-                alt=""
-                className={`${styles.trophyImg} ${styles.gfflImg}`}
-                title={seasonTooltip(yr, "Most PF ")}
-              />
+              <Tap key={yr} info={gfflInfo(yr)}>
+                <img
+                  src={photoUrl("photos/GFFL.png")}
+                  alt={`Most points ${yr}`}
+                  loading="lazy"
+                  className={`${styles.trophyImg} ${styles.gfflImg}`}
+                  title={seasonTooltip(yr, "Most PF ")}
+                />
+              </Tap>
             ))}
           </div>
         </div>
@@ -627,13 +804,15 @@ export default function TrophyRoomPage() {
               const src = findPhoto(`${isOneseed ? "oneseed" : "playoffs"}_${yr}`);
               if (!src) return null;
               return (
-                <img
-                  key={yr}
-                  src={src}
-                  alt=""
-                  className={`${styles.trophyImg} ${styles.bannerImg}`}
-                  title={seasonTooltip(yr, isOneseed ? "#1 Seed " : "Playoffs ")}
-                />
+                <Tap key={yr} info={bannerInfo(yr, isOneseed)}>
+                  <img
+                    src={src}
+                    alt={`${isOneseed ? "#1 seed" : "Playoffs"} ${yr}`}
+                    loading="lazy"
+                    className={`${styles.trophyImg} ${styles.bannerImg}`}
+                    title={seasonTooltip(yr, isOneseed ? "#1 Seed " : "Playoffs ")}
+                  />
+                </Tap>
               );
             })}
           </div>
@@ -653,25 +832,39 @@ export default function TrophyRoomPage() {
             }}
           >
             {sackoYears.map((yr) => (
-              <img
-                key={yr}
-                src={photoUrl("photos/sacko.png")}
-                alt=""
-                className={`${styles.trophyImg} ${styles.sackoImg}`}
-                title={seasonTooltip(yr, "Sacko ")}
-              />
+              <Tap key={yr} info={sackoInfo(yr)}>
+                <img
+                  src={photoUrl("photos/sacko.png")}
+                  alt={`Sacko ${yr}`}
+                  loading="lazy"
+                  className={`${styles.trophyImg} ${styles.sackoImg}`}
+                  title={seasonTooltip(yr, "Sacko ")}
+                />
+              </Tap>
             ))}
           </div>
         </div>
 
         {/* Plaques shelf (bottom, full width - always 6 in one row) */}
         <div className={styles.plaqueShelf} style={plaqueShelfStyle}>
-          <Plaque label="Record" value={record} style={wpStyle} />
-          <Plaque label="Points" value={pf} style={pfStyle} />
-          <Plaque label="Best" value={bestRecordStr} style={getPlaqueStyle(bestRecRank.get(o))} />
-          <Plaque label="Pts (S)" value={mostPfStr} style={getPlaqueStyle(bestPfRank.get(o))} />
-          <Plaque label="Pts (W)" value={mostPwStr} style={getPlaqueStyle(bestWkRank.get(o))} />
-          <Plaque label="Streak" value={winStreakStr} style={getPlaqueStyle(wstreakRank.get(o))} />
+          <Tap info={recordPlaqueInfo}>
+            <Plaque label="Record" value={record} style={wpStyle} />
+          </Tap>
+          <Tap info={pointsPlaqueInfo}>
+            <Plaque label="Points" value={pf} style={pfStyle} />
+          </Tap>
+          <Tap info={bestRecordPlaqueInfo}>
+            <Plaque label="Best" value={bestRecordStr} style={getPlaqueStyle(bestRecRank.get(o))} />
+          </Tap>
+          <Tap info={bestPfPlaqueInfo}>
+            <Plaque label="Pts (S)" value={mostPfStr} style={getPlaqueStyle(bestPfRank.get(o))} />
+          </Tap>
+          <Tap info={bestWeekPlaqueInfo}>
+            <Plaque label="Pts (W)" value={mostPwStr} style={getPlaqueStyle(bestWkRank.get(o))} />
+          </Tap>
+          <Tap info={streakPlaqueInfo}>
+            <Plaque label="Streak" value={winStreakStr} style={getPlaqueStyle(wstreakRank.get(o))} />
+          </Tap>
         </div>
       </div>
     );
@@ -698,6 +891,7 @@ export default function TrophyRoomPage() {
               key={i}
               src={fillImage}
               alt=""
+              loading="lazy"
               className={`${styles.trophyImg} ${styles.lombardiImg}`}
             />
           ))
@@ -722,12 +916,12 @@ export default function TrophyRoomPage() {
               justifyContent: "center",
             }}
           >
-            <PhotoBlock o={o} photoFile={photoFile} />
+            <PhotoBlock o={o} photoFile={photoFile} lazy />
             <div style={{ width: "100%", maxWidth: 140, marginTop: 4 }}>
               <Plaque label={null} value={o} style={NAME_STYLE} wide />
             </div>
           </div>
-          <JerseyBlock jerseyFile={jerseyFile} />
+          <JerseyBlock jerseyFile={jerseyFile} lazy />
         </div>
 
         {/* Lombardi / Hunt split shelf */}
@@ -791,7 +985,7 @@ export default function TrophyRoomPage() {
   }
 
   // Build active owner cards (sorted by championships desc, sackos asc)
-  const activeCards = activeSorted.map((o) => buildOwnerCard(o));
+  const activeCards = activeSorted.map((o, i) => buildOwnerCard(o, i === 0));
 
   // Build legacy owner cards (existing + ghost cards for Sean/Kenny)
   const legacyCards = [
@@ -801,12 +995,31 @@ export default function TrophyRoomPage() {
   ];
 
   return (
-    <div style={{ background: "#e8e0d4", padding: 20, borderRadius: 12 }}>
+    <div style={{ background: "#e8e0d4", padding: "clamp(8px, 2.5vw, 20px)", borderRadius: 12 }}>
+      <p
+        style={{
+          textAlign: "center",
+          color: "#7a6a4f",
+          fontStyle: "italic",
+          fontSize: 13,
+          margin: "0 0 8px",
+        }}
+      >
+        Tap any trophy for details
+      </p>
       <div className={styles.trophyGrid}>{activeCards}</div>
       {legacyCards.length > 0 && (
         <>
-          <hr style={{ borderColor: "#aaa" }} />
-          <h4 style={{ color: "#666", textAlign: "center", marginTop: 16, marginBottom: 12 }}>
+          <hr style={{ borderColor: "#aaa", margin: "14px 0 0" }} />
+          <h4
+            style={{
+              color: "#666",
+              textAlign: "center",
+              marginTop: 8,
+              marginBottom: 10,
+              fontSize: "clamp(16px, 4.5vw, 20px)",
+            }}
+          >
             <svg
               width="20"
               height="20"

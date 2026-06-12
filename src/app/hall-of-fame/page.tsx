@@ -4,8 +4,10 @@
 // plus the tab header (app.R UI lines 254-263). Championship rosters use
 // get_championship_rosters from helpers.R (lines 279-319), inlined below.
 
+import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { getLeagueData, headshotUrl, BENCH_SLOTS, StarterRow } from "@/lib/data";
+import { getLeagueData, headshotUrl, fmt, BENCH_SLOTS, StarterRow } from "@/lib/data";
+import Modal from "@/components/Modal";
 import { findPhoto } from "../trophy-room/photos";
 
 const POS_ORDER = ["QB", "RB", "WR", "TE", "K", "DST", "D/ST", "DEF"];
@@ -54,269 +56,153 @@ function UserIcon({ size = 64 }: { size?: number }) {
   );
 }
 
-export default function HallOfFamePage() {
-  const { standings, schedule, drafts, starters } = getLeagueData();
+/** Championship roster table (shared by the dropdown and the tap modal). */
+function RosterTable({ roster, totalScore }: { roster: StarterRow[]; totalScore: number }) {
+  return (
+    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <tbody>
+        {roster.map((p, j) => {
+          const hs = headshotUrl(p.player_name);
+          return (
+            <tr key={j}>
+              <td style={{ width: 40, padding: 3 }}>
+                {hs != null && (
+                  <img
+                    src={hs}
+                    alt=""
+                    loading="lazy"
+                    style={headshotStyle(32)}
+                    onError={hideOnError}
+                  />
+                )}
+              </td>
+              <td
+                style={{
+                  color: "#d4a84b",
+                  fontSize: 11,
+                  textAlign: "left",
+                  padding: 3,
+                }}
+              >
+                <span style={{ fontWeight: "bold" }}>{p.player_name}</span>
+                <br />
+                <span style={{ color: "#8b6914", fontSize: 9 }}>
+                  {p.pos} - {p.team ?? "NA"}
+                </span>
+              </td>
+              <td
+                style={{
+                  color: "#d4a84b",
+                  fontWeight: "bold",
+                  fontSize: 12,
+                  textAlign: "right",
+                  padding: 3,
+                }}
+              >
+                {Math.round(p.player_score ?? 0)}
+              </td>
+            </tr>
+          );
+        })}
+        <tr style={{ borderTop: "1px solid #c9a84c" }}>
+          <td style={{ padding: 3 }} />
+          <td
+            style={{
+              color: "#d4a84b",
+              fontWeight: "bold",
+              fontSize: 11,
+              textAlign: "left",
+              padding: 3,
+            }}
+          >
+            TOTAL
+          </td>
+          <td
+            style={{
+              color: "#d4a84b",
+              fontWeight: "bold",
+              fontSize: 13,
+              textAlign: "right",
+              padding: 3,
+            }}
+          >
+            {totalScore}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
 
-  // Get champion for each season using league_rank == 1
-  const champRows = standings
-    .filter((s) => s.league_rank === 1)
-    .sort((a, b) => a.season - b.season);
+interface SummaryLine {
+  label: string;
+  value: string;
+}
 
-  // Championship week = final week of each season's schedule
-  const champWeekBySeason = new Map<number, number>();
-  for (const g of schedule) {
-    const cur = champWeekBySeason.get(g.season);
-    if (cur == null || g.week > cur) champWeekBySeason.set(g.season, g.week);
-  }
+/**
+ * One champion's alcove. Tapping the bust/alcove opens a dark Modal with the
+ * championship summary and the title-winning roster (the hover-free,
+ * touch-first replacement for tooltips). The <details> dropdowns below the
+ * pedestal are kept as-is.
+ */
+function BustCard({
+  owner,
+  yr,
+  bustFile,
+  photoFile,
+  lazy,
+  summary,
+  roster,
+  totalScore,
+  rosterHtml,
+  draftHtml,
+}: {
+  owner: string;
+  yr: number;
+  bustFile: string | null;
+  photoFile: string | null;
+  lazy: boolean;
+  summary: SummaryLine[];
+  roster: StarterRow[];
+  totalScore: number;
+  rosterHtml: ReactNode;
+  draftHtml: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasBust = bustFile != null;
 
-  const bustCards = champRows.map((row) => {
-    const owner = row.owner;
-    const yr = row.season;
-    const champFid = row.franchise_id;
-    const champWeek = champWeekBySeason.get(yr) ?? 0;
-
-    // Check for bust image (bust2 first, then bust, lowercase and capitalized)
-    const bustFile = findPhoto(
-      `${owner.toLowerCase()}_bust2`,
-      `${owner}_bust2`,
-      `${owner.toLowerCase()}_bust`,
-      `${owner}_bust`
-    );
-    // Check for regular photo (headshot first, then name)
-    const photoFile = findPhoto(`${owner.toLowerCase()}_headshot`, owner.toLowerCase(), owner);
-
-    const hasBust = bustFile != null;
-
-    // -------------------------------------------------------------------
-    // Championship roster dropdown (get_championship_rosters, helpers.R)
-    // -------------------------------------------------------------------
-    let rosterHtml: ReactNode = null;
-    const roster: StarterRow[] = starters
-      .filter(
-        (s) =>
-          s.season === yr &&
-          s.franchise_id === champFid &&
-          s.week === champWeek &&
-          !BENCH_SLOTS.has(s.lineup_slot)
-      )
-      .sort(
-        (a, b) =>
-          posIndex(a.pos) - posIndex(b.pos) || (b.player_score ?? 0) - (a.player_score ?? 0)
-      );
-
-    if (roster.length > 0) {
-      const totalScore = Math.round(
-        roster.reduce((acc, p) => acc + (p.player_score ?? 0), 0)
-      );
-
-      rosterHtml = (
-        <div style={{ marginTop: 6 }}>
-          <details style={{ cursor: "pointer" }}>
-            <summary style={summaryStyle}>
-              <span style={{ borderBottom: "1px solid #c9a84c" }}>View Roster</span>
-            </summary>
-            <div style={dropdownBoxStyle}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
-                  {roster.map((p, j) => {
-                    const hs = headshotUrl(p.player_name);
-                    return (
-                      <tr key={j}>
-                        <td style={{ width: 40, padding: 3 }}>
-                          {hs != null && (
-                            <img src={hs} alt="" style={headshotStyle(32)} onError={hideOnError} />
-                          )}
-                        </td>
-                        <td
-                          style={{
-                            color: "#d4a84b",
-                            fontSize: 11,
-                            textAlign: "left",
-                            padding: 3,
-                          }}
-                        >
-                          <span style={{ fontWeight: "bold" }}>{p.player_name}</span>
-                          <br />
-                          <span style={{ color: "#8b6914", fontSize: 9 }}>
-                            {p.pos} - {p.team ?? "NA"}
-                          </span>
-                        </td>
-                        <td
-                          style={{
-                            color: "#d4a84b",
-                            fontWeight: "bold",
-                            fontSize: 12,
-                            textAlign: "right",
-                            padding: 3,
-                          }}
-                        >
-                          {Math.round(p.player_score ?? 0)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  <tr style={{ borderTop: "1px solid #c9a84c" }}>
-                    <td style={{ padding: 3 }} />
-                    <td
-                      style={{
-                        color: "#d4a84b",
-                        fontWeight: "bold",
-                        fontSize: 11,
-                        textAlign: "left",
-                        padding: 3,
-                      }}
-                    >
-                      TOTAL
-                    </td>
-                    <td
-                      style={{
-                        color: "#d4a84b",
-                        fontWeight: "bold",
-                        fontSize: 13,
-                        textAlign: "right",
-                        padding: 3,
-                      }}
-                    >
-                      {totalScore}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </details>
-        </div>
-      );
-    }
-
-    // -------------------------------------------------------------------
-    // Draft results dropdown
-    // -------------------------------------------------------------------
-    let draftHtml: ReactNode = null;
-    const champDraft = drafts
-      .filter((d) => d.season === yr && d.franchise_id === champFid)
-      .sort((a, b) => a.round - b.round || a.pick - b.pick);
-
-    if (champDraft.length > 0) {
-      // Compute starter stats per drafted player
-      const ownerStarters = starters.filter(
-        (s) => s.season === yr && s.franchise_id === champFid && !BENCH_SLOTS.has(s.lineup_slot)
-      );
-
-      draftHtml = (
-        <div style={{ marginTop: 4 }}>
-          <details style={{ cursor: "pointer" }}>
-            <summary style={summaryStyle}>
-              <span style={{ borderBottom: "1px solid #c9a84c" }}>View Draft</span>
-            </summary>
-            <div style={dropdownBoxStyle}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid #c9a84c" }}>
-                    <th style={{ color: "#8b6914", fontSize: 8, padding: 2, textAlign: "left" }}>
-                      Rd
-                    </th>
-                    <th style={{ color: "#8b6914", fontSize: 8, padding: 2, textAlign: "left" }} />
-                    <th style={{ color: "#8b6914", fontSize: 8, padding: 2, textAlign: "left" }}>
-                      Player
-                    </th>
-                    <th style={{ color: "#8b6914", fontSize: 8, padding: 2, textAlign: "center" }}>
-                      Wks
-                    </th>
-                    <th style={{ color: "#8b6914", fontSize: 8, padding: 2, textAlign: "right" }}>
-                      Pts
-                    </th>
-                    <th style={{ color: "#8b6914", fontSize: 8, padding: 2, textAlign: "right" }}>
-                      Chp
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {champDraft.map((d, j) => {
-                    const playerStarts = ownerStarters.filter(
-                      (s) => s.player_name === d.player_name
-                    );
-                    const weeksStarted = playerStarts.length;
-                    const totalPts = Math.round(
-                      playerStarts.reduce((acc, s) => acc + (s.player_score ?? 0), 0)
-                    );
-                    const champGamePts = Math.round(
-                      playerStarts
-                        .filter((s) => s.week === champWeek)
-                        .reduce((acc, s) => acc + (s.player_score ?? 0), 0)
-                    );
-                    const hs = headshotUrl(d.player_name);
-
-                    return (
-                      <tr key={j}>
-                        <td style={{ color: "#8b6914", fontSize: 9, padding: 3, width: 22 }}>
-                          R{d.round}
-                        </td>
-                        <td style={{ width: 36, padding: 3 }}>
-                          {hs != null && (
-                            <img src={hs} alt="" style={headshotStyle(28)} onError={hideOnError} />
-                          )}
-                        </td>
-                        <td
-                          style={{
-                            color: "#d4a84b",
-                            fontSize: 10,
-                            textAlign: "left",
-                            padding: 3,
-                          }}
-                        >
-                          <span style={{ fontWeight: "bold" }}>{d.player_name}</span>
-                          <br />
-                          <span style={{ color: "#8b6914", fontSize: 8 }}>
-                            {d.pos} - {d.team ?? "NA"}
-                          </span>
-                        </td>
-                        <td
-                          style={{
-                            color: "#d4a84b",
-                            fontSize: 10,
-                            textAlign: "center",
-                            padding: 3,
-                          }}
-                        >
-                          {weeksStarted}
-                        </td>
-                        <td
-                          style={{ color: "#d4a84b", fontSize: 10, textAlign: "right", padding: 3 }}
-                        >
-                          {totalPts}
-                        </td>
-                        <td
-                          style={{ color: "#d4a84b", fontSize: 10, textAlign: "right", padding: 3 }}
-                        >
-                          {champGamePts > 0 ? champGamePts : "-"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </details>
-        </div>
-      );
-    }
-
-    return (
+  return (
+    <div
+      className="d-inline-block text-center"
+      style={{
+        // calc keeps two cards + the flex gap fitting per row on phones
+        width: "calc(50% - 6px)",
+        minWidth: 150,
+        maxWidth: 220,
+        verticalAlign: "top",
+        margin: 0,
+      }}
+    >
+      {/* Tappable alcove + pedestal (cursor + title kept as a desktop bonus) */}
       <div
-        key={yr}
-        className="d-inline-block text-center mb-4"
-        style={{
-          width: "48%",
-          minWidth: 160,
-          maxWidth: 220,
-          verticalAlign: "top",
-          margin: "0 1%",
+        role="button"
+        tabIndex={0}
+        aria-label={`${yr} champion ${owner} — tap for details`}
+        title={`${yr} Champion — ${owner} | Tap for details`}
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen(true);
+          }
         }}
+        style={{ cursor: "pointer" }}
       >
         {/* Elegant Canton alcove with warm spotlight */}
         <div
           style={{
-            width: 190,
+            width: "100%",
+            maxWidth: 190,
             margin: "0 auto",
             background:
               "radial-gradient(ellipse at 50% 0%, #3a2a1a 0%, #1a1008 40%, #0a0804 100%)",
@@ -341,8 +227,10 @@ export default function HallOfFamePage() {
               <img
                 src={bustFile!}
                 alt={owner}
+                loading={lazy ? "lazy" : undefined}
                 style={{
                   width: 160,
+                  maxWidth: "100%",
                   margin: "0 auto",
                   display: "block",
                   filter:
@@ -366,6 +254,7 @@ export default function HallOfFamePage() {
                 <img
                   src={photoFile}
                   alt={owner}
+                  loading={lazy ? "lazy" : undefined}
                   style={{
                     width: "100%",
                     height: "100%",
@@ -398,7 +287,8 @@ export default function HallOfFamePage() {
         {/* Marble pedestal with plaques */}
         <div
           style={{
-            width: 190,
+            width: "100%",
+            maxWidth: 190,
             margin: "0 auto",
             background:
               "linear-gradient(180deg, #2a2018, #1a1510 30%, #0f0c08 70%, #1a1510)",
@@ -480,34 +370,335 @@ export default function HallOfFamePage() {
             </div>
           </div>
         </div>
-
-        {/* Championship roster dropdown */}
-        {rosterHtml}
-        {/* Draft results dropdown */}
-        {draftHtml}
       </div>
+
+      {/* Championship roster dropdown */}
+      {rosterHtml}
+      {/* Draft results dropdown */}
+      {draftHtml}
+
+      {/* Tap modal: championship summary + title-winning roster */}
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={`${yr} Champion — ${owner}`}
+        dark
+        maxWidth={420}
+      >
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <tbody>
+            {summary.map((l, i) => (
+              <tr
+                key={i}
+                style={{
+                  borderBottom: i < summary.length - 1 ? "1px solid #2a2a3a" : "none",
+                }}
+              >
+                <td
+                  style={{
+                    padding: "6px 8px 6px 0",
+                    opacity: 0.65,
+                    fontSize: 13,
+                    whiteSpace: "nowrap",
+                    verticalAlign: "top",
+                  }}
+                >
+                  {l.label}
+                </td>
+                <td style={{ padding: "6px 0", fontWeight: 600, fontSize: 13, textAlign: "right" }}>
+                  {l.value}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {roster.length > 0 && (
+          <>
+            <div
+              style={{
+                marginTop: 14,
+                marginBottom: 6,
+                color: "#d4a84b",
+                fontFamily: "Georgia,serif",
+                fontSize: 12,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+              }}
+            >
+              Championship Roster
+            </div>
+            <div style={dropdownBoxStyle}>
+              <RosterTable roster={roster} totalScore={totalScore} />
+            </div>
+          </>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+export default function HallOfFamePage() {
+  const { standings, schedule, drafts, starters } = getLeagueData();
+
+  // Get champion for each season using league_rank == 1
+  const champRows = standings
+    .filter((s) => s.league_rank === 1)
+    .sort((a, b) => a.season - b.season);
+
+  // Championship week = final week of each season's schedule
+  const champWeekBySeason = new Map<number, number>();
+  for (const g of schedule) {
+    const cur = champWeekBySeason.get(g.season);
+    if (cur == null || g.week > cur) champWeekBySeason.set(g.season, g.week);
+  }
+
+  const bustCards = champRows.map((row, idx) => {
+    const owner = row.owner;
+    const yr = row.season;
+    const champFid = row.franchise_id;
+    const champWeek = champWeekBySeason.get(yr) ?? 0;
+
+    // Check for bust image (bust2 first, then bust, lowercase and capitalized)
+    const bustFile = findPhoto(
+      `${owner.toLowerCase()}_bust2`,
+      `${owner}_bust2`,
+      `${owner.toLowerCase()}_bust`,
+      `${owner}_bust`
+    );
+    // Check for regular photo (headshot first, then name)
+    const photoFile = findPhoto(`${owner.toLowerCase()}_headshot`, owner.toLowerCase(), owner);
+
+    // -------------------------------------------------------------------
+    // Championship roster dropdown (get_championship_rosters, helpers.R)
+    // -------------------------------------------------------------------
+    let rosterHtml: ReactNode = null;
+    const roster: StarterRow[] = starters
+      .filter(
+        (s) =>
+          s.season === yr &&
+          s.franchise_id === champFid &&
+          s.week === champWeek &&
+          !BENCH_SLOTS.has(s.lineup_slot)
+      )
+      .sort(
+        (a, b) =>
+          posIndex(a.pos) - posIndex(b.pos) || (b.player_score ?? 0) - (a.player_score ?? 0)
+      );
+
+    const totalScore = Math.round(roster.reduce((acc, p) => acc + (p.player_score ?? 0), 0));
+
+    if (roster.length > 0) {
+      rosterHtml = (
+        <div style={{ marginTop: 6 }}>
+          <details style={{ cursor: "pointer" }}>
+            <summary style={summaryStyle}>
+              <span style={{ borderBottom: "1px solid #c9a84c" }}>View Roster</span>
+            </summary>
+            <div style={dropdownBoxStyle}>
+              <RosterTable roster={roster} totalScore={totalScore} />
+            </div>
+          </details>
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------------------
+    // Draft results dropdown
+    // -------------------------------------------------------------------
+    let draftHtml: ReactNode = null;
+    const champDraft = drafts
+      .filter((d) => d.season === yr && d.franchise_id === champFid)
+      .sort((a, b) => a.round - b.round || a.pick - b.pick);
+
+    if (champDraft.length > 0) {
+      // Compute starter stats per drafted player
+      const ownerStarters = starters.filter(
+        (s) => s.season === yr && s.franchise_id === champFid && !BENCH_SLOTS.has(s.lineup_slot)
+      );
+
+      draftHtml = (
+        <div style={{ marginTop: 4 }}>
+          <details style={{ cursor: "pointer" }}>
+            <summary style={summaryStyle}>
+              <span style={{ borderBottom: "1px solid #c9a84c" }}>View Draft</span>
+            </summary>
+            <div style={dropdownBoxStyle}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #c9a84c" }}>
+                    <th style={{ color: "#8b6914", fontSize: 10, padding: 2, textAlign: "left" }}>
+                      Rd
+                    </th>
+                    <th style={{ color: "#8b6914", fontSize: 10, padding: 2, textAlign: "left" }} />
+                    <th style={{ color: "#8b6914", fontSize: 10, padding: 2, textAlign: "left" }}>
+                      Player
+                    </th>
+                    <th style={{ color: "#8b6914", fontSize: 10, padding: 2, textAlign: "center" }}>
+                      Wks
+                    </th>
+                    <th style={{ color: "#8b6914", fontSize: 10, padding: 2, textAlign: "right" }}>
+                      Pts
+                    </th>
+                    <th style={{ color: "#8b6914", fontSize: 10, padding: 2, textAlign: "right" }}>
+                      Chp
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {champDraft.map((d, j) => {
+                    const playerStarts = ownerStarters.filter(
+                      (s) => s.player_name === d.player_name
+                    );
+                    const weeksStarted = playerStarts.length;
+                    const totalPts = Math.round(
+                      playerStarts.reduce((acc, s) => acc + (s.player_score ?? 0), 0)
+                    );
+                    const champGamePts = Math.round(
+                      playerStarts
+                        .filter((s) => s.week === champWeek)
+                        .reduce((acc, s) => acc + (s.player_score ?? 0), 0)
+                    );
+                    const hs = headshotUrl(d.player_name);
+
+                    return (
+                      <tr key={j}>
+                        <td style={{ color: "#8b6914", fontSize: 9, padding: 3, width: 22 }}>
+                          R{d.round}
+                        </td>
+                        <td style={{ width: 36, padding: 3 }}>
+                          {hs != null && (
+                            <img
+                              src={hs}
+                              alt=""
+                              loading="lazy"
+                              style={headshotStyle(28)}
+                              onError={hideOnError}
+                            />
+                          )}
+                        </td>
+                        <td
+                          style={{
+                            color: "#d4a84b",
+                            fontSize: 10,
+                            textAlign: "left",
+                            padding: 3,
+                          }}
+                        >
+                          <span style={{ fontWeight: "bold" }}>{d.player_name}</span>
+                          <br />
+                          <span style={{ color: "#8b6914", fontSize: 8 }}>
+                            {d.pos} - {d.team ?? "NA"}
+                          </span>
+                        </td>
+                        <td
+                          style={{
+                            color: "#d4a84b",
+                            fontSize: 10,
+                            textAlign: "center",
+                            padding: 3,
+                          }}
+                        >
+                          {weeksStarted}
+                        </td>
+                        <td
+                          style={{ color: "#d4a84b", fontSize: 10, textAlign: "right", padding: 3 }}
+                        >
+                          {totalPts}
+                        </td>
+                        <td
+                          style={{ color: "#d4a84b", fontSize: 10, textAlign: "right", padding: 3 }}
+                        >
+                          {champGamePts > 0 ? champGamePts : "-"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------------------
+    // Championship summary for the tap modal
+    // -------------------------------------------------------------------
+    const seasonRows = standings.filter((s) => s.season === yr);
+    const pfRankSeason =
+      [...seasonRows]
+        .sort((a, b) => b.points_for - a.points_for)
+        .findIndex((s) => s.franchise_id === champFid) + 1;
+    const finalGame = schedule.find(
+      (g) => g.season === yr && g.franchise_id === champFid && g.week === champWeek
+    );
+    const summary: SummaryLine[] = [
+      { label: "Season", value: String(yr) },
+      { label: "Owner", value: owner },
+      { label: "Record", value: `${row.h2h_wins}-${row.h2h_losses}` },
+      { label: "Points For", value: fmt(row.points_for) },
+      { label: "League Rank (PF)", value: `#${pfRankSeason} of ${seasonRows.length}` },
+    ];
+    if (finalGame != null) {
+      summary.push({
+        label: `Title Game (Week ${finalGame.week})`,
+        value: `${fmt(finalGame.franchise_score)}–${fmt(finalGame.opponent_score)} vs ${finalGame.opponent_owner}`,
+      });
+    }
+
+    return (
+      <BustCard
+        key={yr}
+        owner={owner}
+        yr={yr}
+        bustFile={bustFile}
+        photoFile={photoFile}
+        lazy={idx >= 2}
+        summary={summary}
+        roster={roster}
+        totalScore={totalScore}
+        rosterHtml={rosterHtml}
+        draftHtml={draftHtml}
+      />
     );
   });
 
   return (
     <>
-      <div className="text-center my-3">
-        <h2 style={{ color: "#8B6914", fontFamily: "Georgia,serif", letterSpacing: 2 }}>
+      <div className="text-center" style={{ margin: "4px 0 10px" }}>
+        <h2
+          style={{
+            color: "#8B6914",
+            fontFamily: "Georgia,serif",
+            letterSpacing: 2,
+            margin: "0 0 4px",
+            fontSize: "clamp(20px, 5.5vw, 28px)",
+          }}
+        >
           GFFL HALL OF FAME
         </h2>
-        <hr style={{ borderColor: "#8B6914", width: 200, margin: "0 auto" }} />
+        <hr style={{ borderColor: "#8B6914", width: 200, margin: "0 auto 4px" }} />
+        <p
+          style={{
+            color: "#8B6914",
+            fontStyle: "italic",
+            fontSize: 13,
+            margin: 0,
+          }}
+        >
+          Tap a champion for season details
+        </p>
       </div>
       <div
         style={{
-          padding: 20,
+          padding: "clamp(10px, 3vw, 20px)",
           background: "linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
           borderRadius: 12,
-          minHeight: "100vh",
           display: "flex",
           flexWrap: "wrap",
           justifyContent: "center",
           alignItems: "flex-start",
-          gap: 16,
+          gap: 12,
         }}
       >
         {bustCards}

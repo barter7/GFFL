@@ -14,6 +14,7 @@ export default function Headshot({
     <img
       src={src}
       alt=""
+      loading="lazy"
       style={style}
       onError={(e) => {
         e.currentTarget.style.display = "none";

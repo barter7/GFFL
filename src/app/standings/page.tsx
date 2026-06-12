@@ -1,11 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Card from "@/components/Card";
 import DataTable, { Column } from "@/components/DataTable";
 import Plot from "@/components/Plot";
 import { getLeagueData, fmt } from "@/lib/data";
 import { computeAlltimeStandings } from "@/lib/league";
+
+// Sync selector state into the query string without triggering navigation
+// (history.replaceState keeps scroll position; router.push would not).
+function updateQuery(params: Record<string, string | null>) {
+  if (typeof window === "undefined") return;
+  const sp = new URLSearchParams(window.location.search);
+  for (const [k, v] of Object.entries(params)) {
+    if (v === null) sp.delete(k);
+    else sp.set(k, v);
+  }
+  const qs = sp.toString();
+  window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+}
 
 // styleInterval colors from app.R (good = green, mid = yellow, bad = red)
 const GOOD = "rgba(40,167,69,0.2)";
@@ -83,12 +97,31 @@ function computeBreaks(rows: { w: number; pf: number; pa: number; pfg: number }[
   };
 }
 
-export default function StandingsPage() {
+function StandingsInner() {
   const { standings, seasons } = getLeagueData();
   const seasonsDesc = useMemo(() => [...seasons].sort((a, b) => b - a), [seasons]);
-  const [season, setSeason] = useState<string>("All-Time");
+
+  // Initial state from the URL (?season=2023), validated against known seasons
+  const searchParams = useSearchParams();
+  const [season, setSeason] = useState<string>(() => {
+    const s = searchParams.get("season");
+    if (s !== null && seasons.some((yr) => String(yr) === s)) return s;
+    return "All-Time";
+  });
+
+  // Keep the URL shareable as the selector changes (default omitted)
+  useEffect(() => {
+    updateQuery({ season: season === "All-Time" ? null : season });
+  }, [season]);
 
   const isAllTime = season === "All-Time";
+
+  // Actual season champion (league_rank 1), shown with a trophy in season view
+  const championOwner = useMemo(() => {
+    if (isAllTime) return null;
+    const yr = parseInt(season, 10);
+    return standings.find((s) => s.season === yr && s.league_rank === 1)?.owner ?? null;
+  }, [standings, season, isAllTime]);
 
   const standingsTitle = isAllTime ? "All-Time Standings" : `${season} Standings`;
   const boxPlotTitle = isAllTime
@@ -180,7 +213,21 @@ export default function StandingsPage() {
 
   const seasonColumns: Column<SeasonTableRow>[] = [
     { key: "rank", label: "Rank", numeric: true },
-    { key: "team", label: "Team" },
+    {
+      key: "team",
+      label: "Team",
+      render: (r) =>
+        r.team === championOwner ? (
+          <span style={{ whiteSpace: "nowrap" }}>
+            {r.team}{" "}
+            <span title="League Champion" aria-label="League Champion">
+              🏆
+            </span>
+          </span>
+        ) : (
+          r.team
+        ),
+    },
     ...statColumns<SeasonTableRow>(),
   ];
 
@@ -233,7 +280,7 @@ export default function StandingsPage() {
   const seasonSelect = (
     <select
       className="form-select form-select-sm"
-      style={{ width: 140 }}
+      style={{ width: "auto" }}
       value={season}
       onChange={(e) => setSeason(e.target.value)}
       aria-label="Season"
@@ -248,7 +295,7 @@ export default function StandingsPage() {
   );
 
   return (
-    <div className="row g-3">
+    <div className="row">
       <div className="col-md-8">
         <Card header={standingsTitle} headerExtra={seasonSelect}>
           {isAllTime ? (
@@ -272,9 +319,23 @@ export default function StandingsPage() {
       </div>
       <div className="col-md-4">
         <Card header={boxPlotTitle}>
-          <Plot data={boxPlot.traces} layout={boxPlot.layout} style={{ height: 400 }} />
+          <Plot
+            data={boxPlot.traces}
+            layout={boxPlot.layout}
+            style={{ height: "clamp(300px, 85vw, 400px)" }}
+          />
         </Card>
       </div>
     </div>
+  );
+}
+
+// Static export requires useSearchParams() to live inside a <Suspense>
+// boundary, otherwise the build fails with missing-suspense-with-csr-bailout.
+export default function StandingsPage() {
+  return (
+    <Suspense fallback={null}>
+      <StandingsInner />
+    </Suspense>
   );
 }

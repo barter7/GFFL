@@ -6,21 +6,38 @@ import { headshotUrl } from "@/lib/data";
 import { FLEURON, FLEURON_TRIPLE, RECORD_BOOK_CSS } from "../records/recordBookCss";
 import { computePlayerRecords, Top5Row } from "./computePlayerRecords";
 import Headshot from "./Headshot";
+import Toc, { TocItem } from "./Toc";
+import BackToTop from "../records/BackToTop";
 
 export const metadata: Metadata = { title: "Player Records — GFFL Archives" };
+
+/** Anchor id for a section title (shared by the headings and the TOC). */
+function slug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 // Port of build_top5() (app.R lines 4197-4224)
 function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
   return (
     <>
-      <div style={{ margin: "25px 20px 10px" }}>
+      {/* scrollMarginTop keeps anchored headings clear of the sticky navbar */}
+      <div
+        id={slug(title)}
+        style={{
+          margin: "clamp(14px, 4vw, 25px) clamp(6px, 2.5vw, 20px) 8px",
+          scrollMarginTop: 72,
+        }}
+      >
         <div
           style={{
             fontFamily: "'IM Fell English',Georgia,serif",
-            fontSize: 20,
+            fontSize: "clamp(15px, 4.2vw, 20px)",
             color: "#3d2a10",
             fontWeight: "bold",
-            letterSpacing: 2,
+            letterSpacing: 1.5,
             textTransform: "uppercase",
             borderBottom: "2px solid #5c3a10",
             paddingBottom: 4,
@@ -29,13 +46,21 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
           {title}
         </div>
       </div>
-      <table
+      {/* Horizontal-scroll guard for narrow phones: invisible when the table
+          fits; otherwise the table scrolls inside instead of the whole page. */}
+      <div
         style={{
-          width: "calc(100% - 40px)",
-          margin: "0 20px",
-          borderCollapse: "collapse",
+          margin: "0 clamp(6px, 2.5vw, 20px)",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
         }}
       >
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+          }}
+        >
         <tbody>
           {rows.slice(0, 20).map((r, i) => {
             const hsUrl = headshotUrl(r.player_name);
@@ -44,21 +69,21 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
                 <td
                   style={{
                     color: "#8b6914",
-                    fontSize: 14,
-                    padding: "4px 6px",
-                    width: 30,
+                    fontSize: "clamp(12px, 3.2vw, 14px)",
+                    padding: "3px 4px",
+                    width: 28,
                     verticalAlign: "middle",
                   }}
                 >
                   #{i + 1}
                 </td>
-                <td style={{ width: 40, padding: 4 }}>
+                <td style={{ width: 36, padding: 3 }}>
                   {hsUrl && (
                     <Headshot
                       src={hsUrl}
                       style={{
-                        width: 32,
-                        height: 32,
+                        width: 30,
+                        height: 30,
                         borderRadius: "50%",
                         objectFit: "cover",
                         border: "2px solid #8b6914",
@@ -70,9 +95,9 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
                   style={{
                     color: "#3d2a10",
                     fontFamily: "'Cormorant Garamond',Georgia,serif",
-                    fontSize: 16,
+                    fontSize: "clamp(13px, 3.6vw, 16px)",
                     fontWeight: 600,
-                    padding: 4,
+                    padding: "3px 4px",
                     verticalAlign: "middle",
                   }}
                 >
@@ -85,11 +110,12 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
                   style={{
                     color: "#3d2a10",
                     fontFamily: "'Cormorant Garamond',Georgia,serif",
-                    fontSize: 18,
+                    fontSize: "clamp(14px, 4vw, 18px)",
                     fontWeight: "bold",
                     textAlign: "right",
-                    padding: 4,
+                    padding: "3px 4px",
                     verticalAlign: "middle",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {r.value}
@@ -98,10 +124,10 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
                   <td
                     style={{
                       color: "#5c3a10",
-                      fontSize: 13,
+                      fontSize: 12,
                       fontStyle: "italic",
                       textAlign: "right",
-                      padding: 4,
+                      padding: "3px 4px",
                       verticalAlign: "middle",
                     }}
                   >
@@ -111,13 +137,14 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
               </tr>
             );
           })}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
       <hr
         style={{
           border: "none",
           borderTop: "1px dashed rgba(92,58,16,0.25)",
-          margin: "10px 20px",
+          margin: "8px clamp(6px, 2.5vw, 20px)",
         }}
       />
     </>
@@ -128,6 +155,58 @@ const Fleuron = () => <div className="fleuron">{FLEURON}</div>;
 
 export default function PlayerRecordsPage() {
   const rec = computePlayerRecords();
+
+  // Section titles in render order (must mirror the <Top5Section> calls
+  // below); drives the table of contents.
+  const sectionTitles: string[] = [
+    "Highest Single-Game Score",
+    "Most Games Scoring 50+ Points",
+    "Most Games Scoring 40+ Points",
+    "Most Games Scoring 30+ Points",
+    "Most Total Fantasy Points (Career)",
+    "Highest Avg Points Per Start (min 10)",
+    "Most Starts Across All Seasons",
+    "Highest Score Left on Bench",
+    "Most Weeks Spent on the Bench",
+    "Most Goose Eggs (0 pts as starter)",
+    "Most Loyal: Seasons with Same Owner",
+    "Most Nomadic: Different Owners",
+    "Most NFL Teams Played For",
+    "Highest Scoring QB (Single Game)",
+    "Highest Scoring RB (Single Game)",
+    "Highest Scoring WR (Single Game)",
+    "Highest Scoring TE (Single Game)",
+    "Most Games Scoring 20+ Points",
+    "Most Games Under 5 Points (as starter)",
+    "Most Points in a Single Season",
+    "Most Popular Starter (Times Started)",
+    "Most Consistent (Lowest Variability, min 20 starts)",
+    "Most Boom-or-Bust (Highest Variability, min 20 starts)",
+    "Biggest Week-to-Week Jump",
+    "Biggest Week-to-Week Drop",
+    ...(rec.busts !== null
+      ? [
+          "Biggest Busts (Projected vs Actual)",
+          "Biggest Booms (Over-Performed Projection)",
+        ]
+      : []),
+    "Most Career Bench Points",
+    "Highest Non-QB Single-Game Score",
+    "Highest Non-QB Score Left on Bench",
+    "Non-QB: Most Games Scoring 30+",
+    "Non-QB: Most Games Scoring 20+",
+    "Non-QB: Highest Avg Per Start (min 10)",
+    "Non-QB: Most Career Starter Points",
+    "Non-QB: Most Points in a Season",
+    "QB: Most Points in a Season (Top 20)",
+    "RB: Most Points in a Season (Top 20)",
+    "WR: Most Points in a Season (Top 20)",
+    "TE: Most Points in a Season (Top 20)",
+  ];
+  const tocItems: TocItem[] = sectionTitles.map((t) => ({
+    id: slug(t),
+    title: t,
+  }));
 
   return (
     <div className="record-book">
@@ -140,6 +219,8 @@ export default function PlayerRecordsPage() {
         A Catalogue of Heroes, Villains &amp; Benchwarming Legends
       </div>
       <div className="fleuron">{FLEURON_TRIPLE}</div>
+
+      <Toc items={tocItems} />
 
       <Top5Section title="Highest Single-Game Score" rows={rec.topScores} />
       <Top5Section title="Most Games Scoring 50+ Points" rows={rec.above50} />
@@ -216,12 +297,14 @@ export default function PlayerRecordsPage() {
       <Fleuron />
 
       <h2
+        id="seasonal-records-by-position"
         style={{
           fontFamily: "'IM Fell English',Georgia,serif",
           color: "#3d2a10",
           textAlign: "center",
           letterSpacing: 3,
           margin: "20px 0 10px",
+          scrollMarginTop: 72,
         }}
       >
         SEASONAL RECORDS BY POSITION
@@ -233,6 +316,7 @@ export default function PlayerRecordsPage() {
       <Top5Section title="TE: Most Points in a Season (Top 20)" rows={rec.teSeason} />
 
       <div className="fleuron">{FLEURON_TRIPLE}</div>
+      <BackToTop />
     </div>
   );
 }

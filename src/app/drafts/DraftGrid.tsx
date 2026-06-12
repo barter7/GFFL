@@ -26,9 +26,17 @@ interface Props {
   drafts: DraftRow[];
   starters: StarterRow[];
   season: number;
+  /** When set (e.g. "RB"), matching picks are highlighted and others dimmed. */
+  posFilter?: string | null;
 }
 
-export default function DraftGrid({ drafts, starters, season }: Props) {
+// D/ST appears under a few different codes in the data
+function matchesPos(pos: string, filter: string): boolean {
+  if (filter === "DST") return ["DST", "D/ST", "DEF"].includes(pos);
+  return pos === filter;
+}
+
+export default function DraftGrid({ drafts, starters, season, posFilter = null }: Props) {
   const grid = useMemo(() => {
     const draft = drafts.filter((d) => d.season === season);
     if (draft.length === 0) return null;
@@ -81,13 +89,19 @@ export default function DraftGrid({ drafts, starters, season }: Props) {
   const rounds = Array.from({ length: maxRound }, (_, i) => i + 1);
 
   return (
-    <div style={{ overflowX: "auto", maxWidth: "100%" }}>
+    <div
+      style={{
+        overflowX: "auto",
+        maxWidth: "100%",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
       <table style={{ borderCollapse: "collapse", width: "auto" }}>
         <thead>
           <tr>
             <th
               style={{
-                padding: "4px 6px",
+                padding: "3px 4px",
                 background: "#222",
                 color: "#fff",
                 fontSize: 11,
@@ -102,12 +116,12 @@ export default function DraftGrid({ drafts, starters, season }: Props) {
               <th
                 key={o}
                 style={{
-                  padding: "4px 6px",
+                  padding: "3px 5px",
                   background: "#013369",
                   color: "#fff",
                   fontSize: 10,
                   textAlign: "center",
-                  minWidth: 100,
+                  minWidth: 84,
                   whiteSpace: "nowrap",
                 }}
               >
@@ -121,13 +135,14 @@ export default function DraftGrid({ drafts, starters, season }: Props) {
             <tr key={rd}>
               <td
                 style={{
-                  padding: "4px 6px",
+                  padding: "3px 4px",
                   fontWeight: "bold",
                   background: "#f0f0f0",
-                  fontSize: 12,
+                  fontSize: 11,
                   position: "sticky",
                   left: 0,
                   zIndex: 2,
+                  whiteSpace: "nowrap",
                 }}
               >
                 RD {rd}
@@ -139,7 +154,7 @@ export default function DraftGrid({ drafts, starters, season }: Props) {
                     <td
                       key={o}
                       style={{
-                        padding: "4px 6px",
+                        padding: "3px 4px",
                         background: "#f8f8f8",
                         border: "1px solid #ddd",
                       }}
@@ -149,16 +164,22 @@ export default function DraftGrid({ drafts, starters, season }: Props) {
                 const bg = POS_COLORS[p.pos] ?? "#eee";
                 const ptsText = `${p.total_pts} pts`;
                 const rankText = `${p.pos ?? ""}${p.pos_rank}`;
+                const highlighted =
+                  posFilter !== null && matchesPos(p.pos, posFilter);
+                const dimmed = posFilter !== null && !highlighted;
                 return (
                   <td
                     key={o}
                     style={{
-                      padding: "4px 6px",
-                      background: `${bg}33`,
-                      border: "1px solid #ddd",
+                      padding: "3px 4px",
+                      // Highlighted picks get a stronger position tint
+                      background: highlighted ? `${bg}88` : `${bg}33`,
+                      border: highlighted ? "2px solid #013369" : "1px solid #ddd",
                       fontSize: 10,
                       textAlign: "center",
                       verticalAlign: "top",
+                      opacity: dimmed ? 0.25 : 1,
+                      transition: "opacity 0.15s",
                     }}
                   >
                     <div

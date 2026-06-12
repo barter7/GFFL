@@ -2,13 +2,31 @@
 
 // "Top Performances" tab — ported from app.R lines 301-334 (UI) and 2301-2456 (server).
 
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Card from "@/components/Card";
 import DataTable, { Column } from "@/components/DataTable";
 import Plot from "@/components/Plot";
 import { getLeagueData, headshotUrl, fmt, BENCH_SLOTS, StarterRow } from "@/lib/data";
 
 const POS_CHOICES = ["All", "QB", "RB", "WR", "TE", "K", "D/ST"];
+
+// "D/ST" is written to the URL as "DST" to keep the query string slash-free
+const posToParam = (p: string) => (p === "D/ST" ? "DST" : p);
+const paramToPos = (p: string) => (p === "DST" ? "D/ST" : p);
+
+// Sync selector state into the query string without triggering navigation
+// (history.replaceState keeps scroll position; router.push would not).
+function updateQuery(params: Record<string, string | null>) {
+  if (typeof window === "undefined") return;
+  const sp = new URLSearchParams(window.location.search);
+  for (const [k, v] of Object.entries(params)) {
+    if (v === null) sp.delete(k);
+    else sp.set(k, v);
+  }
+  const qs = sp.toString();
+  window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+}
 
 // ggplot2's default discrete fill palette (scales::hue_pal): evenly spaced
 // hues in HCL space with c = 100, l = 65 — converted to sRGB hex.
@@ -68,8 +86,9 @@ function PerformanceRow({ row, rank }: { row: StarterRow; rank: number }) {
 
   return (
     <div
-      className="d-flex align-items-center p-2 mb-1"
+      className="d-flex align-items-center"
       style={{
+        padding: "4px 2px",
         borderBottom: "1px solid #eee",
         ...(rank <= 3 ? { background: "#f8f9fa" } : {}),
       }}
@@ -77,8 +96,9 @@ function PerformanceRow({ row, rank }: { row: StarterRow; rank: number }) {
       {/* Rank */}
       <div
         style={{
-          width: 40,
-          fontSize: 20,
+          width: 32,
+          flex: "0 0 auto",
+          fontSize: 14,
           fontWeight: "bold",
           color: rankColor,
           textAlign: "center",
@@ -88,18 +108,18 @@ function PerformanceRow({ row, rank }: { row: StarterRow; rank: number }) {
       </div>
 
       {/* Headshot */}
-      <div style={{ width: 80, display: "flex", justifyContent: "center" }}>
+      <div style={{ width: 48, flex: "0 0 auto", display: "flex", justifyContent: "center" }}>
         {url != null && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={url}
             alt={row.player_name}
             style={{
-              width: 70,
-              height: 70,
+              width: 44,
+              height: 44,
               objectFit: "cover",
               borderRadius: "50%",
-              border: "3px solid #013369",
+              border: "2px solid #013369",
               background: "#eee",
             }}
             onError={(e) => {
@@ -111,16 +131,16 @@ function PerformanceRow({ row, rank }: { row: StarterRow; rank: number }) {
         )}
         <div
           style={{
-            width: 70,
-            height: 70,
+            width: 44,
+            height: 44,
             borderRadius: "50%",
             background: "#e9ecef",
-            border: "3px solid #013369",
+            border: "2px solid #013369",
             alignItems: "center",
             justifyContent: "center",
             display: url == null ? "flex" : "none",
             color: "#6c757d",
-            fontSize: "1.5rem",
+            fontSize: "1rem",
           }}
         >
           🏈
@@ -128,19 +148,30 @@ function PerformanceRow({ row, rank }: { row: StarterRow; rank: number }) {
       </div>
 
       {/* Player info */}
-      <div style={{ flex: 1, marginLeft: 12 }}>
-        <div style={{ fontWeight: "bold", fontSize: 16 }}>{row.player_name}</div>
-        <div style={{ color: "#666", fontSize: 13 }}>
-          {row.pos} - {row.team ?? ""} | {row.season} Week {row.week} | Owner: {row.owner}
+      <div style={{ flex: 1, minWidth: 0, marginLeft: 8 }}>
+        <div
+          style={{
+            fontWeight: "bold",
+            fontSize: 14,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {row.player_name}
+        </div>
+        <div style={{ color: "#666", fontSize: 11.5, lineHeight: 1.3 }}>
+          {row.pos} - {row.team ?? ""} | {row.season} Wk {row.week} | {row.owner}
         </div>
       </div>
 
       {/* Score */}
       <div
         style={{
-          width: 80,
+          width: 56,
+          flex: "0 0 auto",
           textAlign: "right",
-          fontSize: 22,
+          fontSize: 17,
           fontWeight: "bold",
           color: "#013369",
         }}
@@ -151,15 +182,35 @@ function PerformanceRow({ row, rank }: { row: StarterRow; rank: number }) {
   );
 }
 
-export default function TopPerformancesPage() {
+function TopPerformancesInner() {
   const { starters, seasons } = getLeagueData();
-  const [perfPos, setPerfPos] = useState("All");
-  const [perfSeason, setPerfSeason] = useState("All-Time");
 
   const seasonChoices = useMemo(
     () => ["All-Time", ...[...seasons].sort((a, b) => b - a).map(String)],
     [seasons]
   );
+
+  // Initial state from the URL (?pos=RB&season=2023), validated
+  const searchParams = useSearchParams();
+  const [perfPos, setPerfPos] = useState(() => {
+    const p = searchParams.get("pos");
+    if (p !== null && POS_CHOICES.includes(paramToPos(p))) return paramToPos(p);
+    return "All";
+  });
+  const [perfSeason, setPerfSeason] = useState(() => {
+    const s = searchParams.get("season");
+    if (s !== null && (s === "All-Time" || seasons.some((yr) => String(yr) === s)))
+      return s;
+    return "All-Time";
+  });
+
+  // Keep the URL shareable as the selectors change (defaults omitted)
+  useEffect(() => {
+    updateQuery({
+      pos: perfPos === "All" ? null : posToParam(perfPos),
+      season: perfSeason === "All-Time" ? null : perfSeason,
+    });
+  }, [perfPos, perfSeason]);
 
   const activeStarters = useMemo(
     () => starters.filter((s) => !BENCH_SLOTS.has(s.lineup_slot)),
@@ -244,15 +295,15 @@ export default function TopPerformancesPage() {
 
   return (
     <div>
-      <div className="row g-3">
+      <div className="row">
         <div className="col-12">
           <Card
             header="Top Player Performances (All-Time)"
             headerExtra={
-              <div className="d-flex gap-2">
+              <div className="d-flex gap-1 flex-wrap align-items-center">
                 <select
-                  className="form-select"
-                  style={{ width: 100 }}
+                  className="form-select form-select-sm"
+                  style={{ width: "auto" }}
                   value={perfPos}
                   onChange={(e) => setPerfPos(e.target.value)}
                   aria-label="Position"
@@ -264,8 +315,8 @@ export default function TopPerformancesPage() {
                   ))}
                 </select>
                 <select
-                  className="form-select"
-                  style={{ width: 120 }}
+                  className="form-select form-select-sm"
+                  style={{ width: "auto" }}
                   value={perfSeason}
                   onChange={(e) => setPerfSeason(e.target.value)}
                   aria-label="Season"
@@ -284,7 +335,13 @@ export default function TopPerformancesPage() {
                 No data available. Run fetch_data.R to cache starters data.
               </h5>
             ) : (
-              <div style={{ maxHeight: 700, overflowY: "auto" }}>
+              <div
+                style={{
+                  maxHeight: "min(700px, 75vh)",
+                  overflowY: "auto",
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
                 {top25.map((row, i) => (
                   <PerformanceRow
                     key={`${row.season}-${row.week}-${row.franchise_id}-${row.player_id}-${i}`}
@@ -297,7 +354,7 @@ export default function TopPerformancesPage() {
           </Card>
         </div>
       </div>
-      <div className="row g-3 mt-0">
+      <div className="row">
         <div className="col-md-6">
           <Card header="Top Performers by Position">
             <DataTable
@@ -317,11 +374,21 @@ export default function TopPerformancesPage() {
                 xaxis: { title: { text: "Appearances in Top 100 Scores" } },
                 yaxis: { autorange: "reversed", automargin: true },
               }}
-              style={{ height: 400 }}
+              style={{ height: "clamp(320px, 95vw, 400px)" }}
             />
           </Card>
         </div>
       </div>
     </div>
+  );
+}
+
+// Static export requires useSearchParams() to live inside a <Suspense>
+// boundary, otherwise the build fails with missing-suspense-with-csr-bailout.
+export default function TopPerformancesPage() {
+  return (
+    <Suspense fallback={null}>
+      <TopPerformancesInner />
+    </Suspense>
   );
 }
