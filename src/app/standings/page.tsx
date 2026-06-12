@@ -280,7 +280,7 @@ function StandingsInner() {
   const seasonSelect = (
     <select
       className="form-select form-select-sm"
-      style={{ width: 140 }}
+      style={{ width: "auto" }}
       value={season}
       onChange={(e) => setSeason(e.target.value)}
       aria-label="Season"
@@ -295,7 +295,7 @@ function StandingsInner() {
   );
 
   return (
-    <div className="row g-3">
+    <div className="row">
       <div className="col-md-8">
         <Card header={standingsTitle} headerExtra={seasonSelect}>
           {isAllTime ? (
@@ -319,7 +319,11 @@ function StandingsInner() {
       </div>
       <div className="col-md-4">
         <Card header={boxPlotTitle}>
-          <Plot data={boxPlot.traces} layout={boxPlot.layout} style={{ height: 400 }} />
+          <Plot
+            data={boxPlot.traces}
+            layout={boxPlot.layout}
+            style={{ height: "clamp(300px, 85vw, 400px)" }}
+          />
         </Card>
       </div>
     </div>

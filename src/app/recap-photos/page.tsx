@@ -144,8 +144,15 @@ export default function RecapPhotosPage() {
 
   return (
     <div>
-      <div className="text-center my-3">
-        <h2 style={{ color: "#013369", fontFamily: "Georgia,serif" }}>
+      <div className="text-center" style={{ margin: "4px 0 10px" }}>
+        <h2
+          style={{
+            color: "#013369",
+            fontFamily: "Georgia,serif",
+            margin: "0 0 4px",
+            fontSize: "clamp(20px, 5.5vw, 28px)",
+          }}
+        >
           GFFL Through The Years
         </h2>
         <hr style={{ borderColor: "#013369", width: 200, margin: "0 auto" }} />
@@ -213,12 +220,18 @@ export default function RecapPhotosPage() {
             )}
           </div>
 
-          <div style={{ padding: 12, background: "#1a1a2e", borderRadius: 12 }}>
+          <div
+            style={{
+              padding: "clamp(6px, 2vw, 12px)",
+              background: "#1a1a2e",
+              borderRadius: 12,
+            }}
+          >
             <div className={styles.recapCollage}>
               {SHUFFLED_FILES.map((f, idx) => {
                 const src = SRCS[idx];
                 return (
-                  <div key={f} style={{ breakInside: "avoid", marginBottom: 12 }}>
+                  <div key={f} className={styles.recapItem} style={{ breakInside: "avoid" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={src}

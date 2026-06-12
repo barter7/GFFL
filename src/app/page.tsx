@@ -25,16 +25,19 @@ export default function Home() {
     <div
       className="dark-section"
       style={{
-        minHeight: "85vh",
+        // Fill the first screen (minus nav + page padding) without forcing
+        // a blank scroll region past the title on phones.
+        minHeight: "min(80vh, calc(100svh - 160px))",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         background:
           "radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a14 70%, #000 100%)",
-        padding: "40px 20px",
+        padding: "clamp(24px, 6vw, 40px) 16px",
         textAlign: "center",
         position: "relative",
+        overflow: "hidden",
       }}
     >
       <div
@@ -46,27 +49,27 @@ export default function Home() {
           pointerEvents: "none",
         }}
       />
-      <div style={{ ...goldLine, marginBottom: 30 }} />
-      <h1 style={{ ...titleBase, color: "#d4a84b", letterSpacing: 8, fontSize: "clamp(32px, 8vw, 80px)" }}>
+      <div style={{ ...goldLine, marginBottom: "clamp(16px, 4vw, 30px)" }} />
+      <h1 style={{ ...titleBase, color: "#d4a84b", letterSpacing: "clamp(4px, 1.5vw, 8px)", fontSize: "clamp(32px, 8vw, 80px)" }}>
         GROUPIES
       </h1>
-      <h1 style={{ ...titleBase, color: "#f0d675", letterSpacing: 10, fontSize: "clamp(40px, 10vw, 100px)", margin: "10px 0" }}>
+      <h1 style={{ ...titleBase, color: "#f0d675", letterSpacing: "clamp(5px, 1.8vw, 10px)", fontSize: "clamp(40px, 10vw, 100px)", margin: "8px 0" }}>
         FANTASY
       </h1>
-      <h1 style={{ ...titleBase, color: "#d4a84b", letterSpacing: 8, fontSize: "clamp(32px, 8vw, 80px)" }}>
+      <h1 style={{ ...titleBase, color: "#d4a84b", letterSpacing: "clamp(4px, 1.5vw, 8px)", fontSize: "clamp(32px, 8vw, 80px)" }}>
         FUCKBOI
       </h1>
-      <h1 style={{ ...titleBase, color: "#d4a84b", letterSpacing: 12, fontSize: "clamp(28px, 7vw, 70px)", margin: "10px 0 0" }}>
+      <h1 style={{ ...titleBase, color: "#d4a84b", letterSpacing: "clamp(6px, 2vw, 12px)", fontSize: "clamp(28px, 7vw, 70px)", margin: "8px 0 0" }}>
         LEAGUE
       </h1>
-      <div style={{ ...goldLine, marginTop: 30 }} />
+      <div style={{ ...goldLine, marginTop: "clamp(16px, 4vw, 30px)" }} />
       <div
         style={{
           color: "#8b6914",
           fontFamily: "Georgia, serif",
           fontStyle: "italic",
           letterSpacing: 4,
-          marginTop: 20,
+          marginTop: 16,
           fontSize: "clamp(12px, 2vw, 18px)",
           zIndex: 2,
           position: "relative",

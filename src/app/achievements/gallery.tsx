@@ -86,9 +86,10 @@ function Badge({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        margin: 8,
-        width: 85,
-        minHeight: 100,
+        margin: 0,
+        width: "100%",
+        maxWidth: 96,
+        minHeight: 96,
         padding: 0,
         background: "none",
         border: "none",
@@ -145,8 +146,8 @@ function Badge({
       {/* Label below */}
       <div
         style={{
-          marginTop: 8,
-          fontSize: 10,
+          marginTop: 6,
+          fontSize: 11,
           textAlign: "center",
           color: textColor,
           fontFamily: "Arial,sans-serif",
@@ -178,10 +179,11 @@ function QuickJumpBar({ owners, photos }: { owners: string[]; photos: OwnerPhoto
         backdropFilter: "blur(4px)",
         WebkitBackdropFilter: "blur(4px)",
         borderBottom: "1px solid #2a2a2a",
-        margin: "0 -20px 16px",
-        padding: "8px 12px",
+        // Bleed exactly to the page-padding edge (page padding is the same clamp)
+        margin: "0 calc(-1 * clamp(10px, 3vw, 20px)) 12px",
+        padding: "6px clamp(10px, 3vw, 20px)",
         display: "flex",
-        gap: 8,
+        gap: 6,
         overflowX: "auto",
         WebkitOverflowScrolling: "touch",
       }}
@@ -197,17 +199,17 @@ function QuickJumpBar({ owners, photos }: { owners: string[]; photos: OwnerPhoto
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 6,
+              gap: 5,
               flex: "0 0 auto",
-              minHeight: 44,
-              padding: "4px 12px 4px 6px",
+              minHeight: 38,
+              padding: "3px 10px 3px 5px",
               background: "#1a1a1a",
               border: "1px solid #3a3a3a",
-              borderRadius: 22,
+              borderRadius: 19,
               color: "#e8e8e8",
               fontFamily: "'Courier New',monospace",
               fontWeight: "bold",
-              fontSize: 13,
+              fontSize: 12,
               letterSpacing: 1,
               cursor: "pointer",
               whiteSpace: "nowrap",
@@ -219,11 +221,11 @@ function QuickJumpBar({ owners, photos }: { owners: string[]; photos: OwnerPhoto
               <img
                 src={photo}
                 alt=""
-                width={28}
-                height={28}
+                width={24}
+                height={24}
                 style={{
-                  width: 28,
-                  height: 28,
+                  width: 24,
+                  height: 24,
                   borderRadius: "50%",
                   objectFit: "cover",
                   objectPosition: "top",
@@ -234,15 +236,15 @@ function QuickJumpBar({ owners, photos }: { owners: string[]; photos: OwnerPhoto
             ) : (
               <span
                 style={{
-                  width: 28,
-                  height: 28,
+                  width: 24,
+                  height: 24,
                   borderRadius: "50%",
                   background: "#333",
                   border: "1px solid #a1c943",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 14,
+                  fontSize: 13,
                 }}
               >
                 {"\u{1F464}"}
@@ -403,10 +405,10 @@ export function OwnerSection({
         background: "linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%)",
         border: "2px solid #a1c943",
         borderRadius: 8,
-        padding: 15,
-        marginBottom: 20,
+        padding: "clamp(8px, 2.5vw, 15px)",
+        marginBottom: 14,
         boxShadow: "0 4px 12px rgba(0,0,0,0.5), 0 0 20px rgba(161,201,67,0.15)",
-        scrollMarginTop: 70,
+        scrollMarginTop: 64,
       }}
     >
       {/* Xbox 360 style gamer card header */}
@@ -414,8 +416,8 @@ export function OwnerSection({
         style={{
           display: "flex",
           alignItems: "center",
-          marginBottom: 12,
-          paddingBottom: 12,
+          marginBottom: 10,
+          paddingBottom: 10,
           borderBottom: "2px solid #a1c943",
         }}
       >
@@ -430,13 +432,13 @@ export function OwnerSection({
             width={110}
             height={110}
             style={{
-              width: 110,
-              height: 110,
+              width: "clamp(72px, 22vw, 110px)",
+              height: "clamp(72px, 22vw, 110px)",
               objectFit: "cover",
               objectPosition: "top",
               imageRendering: "pixelated",
               border: "3px solid #a1c943",
-              marginRight: 20,
+              marginRight: "clamp(10px, 3vw, 20px)",
               boxShadow: "0 0 12px rgba(161,201,67,0.4)",
               filter: "contrast(1.1) saturate(1.2)",
             }}
@@ -444,11 +446,11 @@ export function OwnerSection({
         ) : (
           <div
             style={{
-              width: 110,
-              height: 110,
+              width: "clamp(72px, 22vw, 110px)",
+              height: "clamp(72px, 22vw, 110px)",
               background: "#333",
               border: "3px solid #a1c943",
-              marginRight: 20,
+              marginRight: "clamp(10px, 3vw, 20px)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -465,10 +467,10 @@ export function OwnerSection({
               color: "#a1c943",
               fontFamily: "'Courier New',monospace",
               fontWeight: "bold",
-              fontSize: 28,
+              fontSize: "clamp(18px, 5.5vw, 28px)",
               textShadow: "2px 2px 0 #000",
               letterSpacing: 2,
-              marginBottom: 8,
+              marginBottom: 6,
             }}
           >
             {owner.toUpperCase()}
@@ -477,13 +479,13 @@ export function OwnerSection({
           <table
             style={{
               fontFamily: "'Courier New',monospace",
-              fontSize: 16,
+              fontSize: "clamp(13px, 3.6vw, 16px)",
               borderCollapse: "collapse",
             }}
           >
             <tbody>
               <tr>
-                <td style={{ color: "#a1c943", padding: "2px 20px 2px 0", fontWeight: "bold" }}>
+                <td style={{ color: "#a1c943", padding: "2px 14px 2px 0", fontWeight: "bold" }}>
                   Games
                 </td>
                 <td style={{ color: "#fff", padding: "2px 0", fontWeight: "bold", textAlign: "right" }}>
@@ -491,7 +493,7 @@ export function OwnerSection({
                 </td>
               </tr>
               <tr>
-                <td style={{ color: "#a1c943", padding: "2px 20px 2px 0", fontWeight: "bold" }}>
+                <td style={{ color: "#a1c943", padding: "2px 14px 2px 0", fontWeight: "bold" }}>
                   Gamerscore
                 </td>
                 <td style={{ color: "#fff", padding: "2px 0", fontWeight: "bold", textAlign: "right" }}>
@@ -500,7 +502,7 @@ export function OwnerSection({
                 </td>
               </tr>
               <tr>
-                <td style={{ color: "#a1c943", padding: "2px 20px 2px 0", fontWeight: "bold" }}>
+                <td style={{ color: "#a1c943", padding: "2px 14px 2px 0", fontWeight: "bold" }}>
                   Achievements
                 </td>
                 <td style={{ color: "#fff", padding: "2px 0", fontWeight: "bold", textAlign: "right" }}>
@@ -568,8 +570,8 @@ export function OwnerSection({
               onClick={() => setFilter(f.key)}
               aria-pressed={active}
               style={{
-                minHeight: 44,
-                padding: "6px 14px",
+                minHeight: 38,
+                padding: "4px 12px",
                 borderRadius: 6,
                 border: `1px solid ${active ? "#a1c943" : "#3a3a3a"}`,
                 background: active ? "#a1c943" : "#141414",
@@ -588,8 +590,15 @@ export function OwnerSection({
         })}
       </div>
 
-      {/* Badge grid */}
-      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-start" }}>
+      {/* Badge grid — auto-fill columns use the full card width with even gaps */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(76px, 1fr))",
+          gap: "10px 4px",
+          justifyItems: "center",
+        }}
+      >
         {visible.length === 0 ? (
           <div style={{ color: "#666", fontFamily: "'Courier New',monospace", padding: 12 }}>
             Nothing here.
@@ -619,11 +628,18 @@ export function SummarySection({
 }) {
   const { allOwners, results, achValues } = model;
 
+  // Sticky header cells: stay pinned while the capped-height panel scrolls.
   const thLeft: React.CSSProperties = {
-    padding: "8px 10px",
+    padding: "6px 8px",
     textAlign: "left",
     color: "#a1c943",
-    fontSize: 13,
+    fontSize: 12,
+    position: "sticky",
+    top: 0,
+    zIndex: 2,
+    background: "#161616",
+    boxShadow: "inset 0 -2px 0 #a1c943",
+    whiteSpace: "nowrap",
   };
   const thCenter: React.CSSProperties = { ...thLeft, textAlign: "center" };
 
@@ -633,10 +649,9 @@ export function SummarySection({
         background: "linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%)",
         border: "2px solid #a1c943",
         borderRadius: 8,
-        padding: 15,
-        marginBottom: 30,
+        padding: "10px 10px 6px",
+        marginBottom: 16,
         boxShadow: "0 4px 12px rgba(0,0,0,0.5), 0 0 20px rgba(161,201,67,0.15)",
-        overflowX: "auto",
       }}
     >
       <h3
@@ -645,25 +660,35 @@ export function SummarySection({
           fontFamily: "Arial,sans-serif",
           textAlign: "center",
           letterSpacing: 2,
-          marginBottom: 12,
+          margin: "0 0 2px",
+          fontSize: "clamp(16px, 4.5vw, 20px)",
         }}
       >
         ACHIEVEMENT SUMMARY
       </h3>
       <div
         style={{
-          color: "#666",
+          color: "#777",
           fontSize: 11,
           textAlign: "center",
           fontFamily: "Arial,sans-serif",
-          marginBottom: 8,
+          marginBottom: 6,
         }}
       >
-        Tap a row for details
+        Tap a row for details · scroll for more
       </div>
+      {/* Capped-height scroll panel keeps this section short on phones */}
+      <div
+        className="scroll-panel"
+        style={{
+          overflowX: "auto",
+          border: "1px solid #2a2a2a",
+          borderRadius: 6,
+        }}
+      >
       <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Arial,sans-serif" }}>
         <thead>
-          <tr style={{ borderBottom: "2px solid #a1c943" }}>
+          <tr>
             <th style={thLeft}>Achievement</th>
             <th style={thLeft}>Description</th>
             <th style={thCenter}>Unlocked</th>
@@ -696,7 +721,7 @@ export function SummarySection({
               >
                 <td
                   style={{
-                    padding: "10px",
+                    padding: "7px 8px",
                     borderBottom: "1px solid #333",
                     whiteSpace: "nowrap",
                   }}
@@ -710,7 +735,7 @@ export function SummarySection({
                 </td>
                 <td
                   style={{
-                    padding: "10px",
+                    padding: "7px 8px",
                     borderBottom: "1px solid #333",
                     color: "#aaa",
                     fontSize: 12,
@@ -720,7 +745,7 @@ export function SummarySection({
                 </td>
                 <td
                   style={{
-                    padding: "10px",
+                    padding: "7px 8px",
                     borderBottom: "1px solid #333",
                     textAlign: "center",
                     fontWeight: "bold",
@@ -731,7 +756,7 @@ export function SummarySection({
                 </td>
                 <td
                   style={{
-                    padding: "10px",
+                    padding: "7px 8px",
                     borderBottom: "1px solid #333",
                     textAlign: "center",
                     fontSize: 10,
@@ -743,7 +768,7 @@ export function SummarySection({
                 </td>
                 <td
                   style={{
-                    padding: "10px",
+                    padding: "7px 8px",
                     borderBottom: "1px solid #333",
                     textAlign: "center",
                     color: "#a1c943",
@@ -755,7 +780,7 @@ export function SummarySection({
                 </td>
                 <td
                   style={{
-                    padding: "10px",
+                    padding: "7px 8px",
                     borderBottom: "1px solid #333",
                     color: "#ccc",
                     fontSize: 12,
@@ -768,6 +793,7 @@ export function SummarySection({
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

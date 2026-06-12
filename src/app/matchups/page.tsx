@@ -200,10 +200,10 @@ function MatchupsInner() {
   ];
 
   const filterSelects = (
-    <div className="d-flex gap-2 flex-wrap">
+    <div className="d-flex gap-1 flex-wrap align-items-center">
       <select
         className="form-select form-select-sm"
-        style={{ width: 100 }}
+        style={{ width: "auto" }}
         value={matchupSeason}
         onChange={(e) => setMatchupSeason(e.target.value)}
         aria-label="Season"
@@ -216,7 +216,7 @@ function MatchupsInner() {
       </select>
       <select
         className="form-select form-select-sm"
-        style={{ width: 150 }}
+        style={{ width: "auto" }}
         value={matchupType}
         onChange={(e) => setMatchupType(e.target.value)}
         aria-label="Game type"
@@ -227,7 +227,7 @@ function MatchupsInner() {
       </select>
       <select
         className="form-select form-select-sm"
-        style={{ width: 90 }}
+        style={{ width: "auto" }}
         value={matchupWeek}
         onChange={(e) => setMatchupWeek(e.target.value)}
         aria-label="Week"
@@ -244,14 +244,14 @@ function MatchupsInner() {
 
   return (
     <>
-      <div className="row g-3">
+      <div className="row">
         <div className="col-12">
           <Card header="Weekly Matchup Results" headerExtra={filterSelects}>
             <DataTable columns={matchupColumns} rows={matchupRows} pageSize={25} />
           </Card>
         </div>
       </div>
-      <div className="row g-3 mt-0">
+      <div className="row">
         <div className="col-md-6">
           <Card header="Highest Scoring Weeks (All-Time)">
             <DataTable

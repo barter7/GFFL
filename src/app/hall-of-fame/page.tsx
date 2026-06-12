@@ -173,13 +173,14 @@ function BustCard({
 
   return (
     <div
-      className="d-inline-block text-center mb-4"
+      className="d-inline-block text-center"
       style={{
-        width: "48%",
-        minWidth: 160,
+        // calc keeps two cards + the flex gap fitting per row on phones
+        width: "calc(50% - 6px)",
+        minWidth: 150,
         maxWidth: 220,
         verticalAlign: "top",
-        margin: "0 1%",
+        margin: 0,
       }}
     >
       {/* Tappable alcove + pedestal (cursor + title kept as a desktop bonus) */}
@@ -525,20 +526,20 @@ export default function HallOfFamePage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #c9a84c" }}>
-                    <th style={{ color: "#8b6914", fontSize: 8, padding: 2, textAlign: "left" }}>
+                    <th style={{ color: "#8b6914", fontSize: 10, padding: 2, textAlign: "left" }}>
                       Rd
                     </th>
-                    <th style={{ color: "#8b6914", fontSize: 8, padding: 2, textAlign: "left" }} />
-                    <th style={{ color: "#8b6914", fontSize: 8, padding: 2, textAlign: "left" }}>
+                    <th style={{ color: "#8b6914", fontSize: 10, padding: 2, textAlign: "left" }} />
+                    <th style={{ color: "#8b6914", fontSize: 10, padding: 2, textAlign: "left" }}>
                       Player
                     </th>
-                    <th style={{ color: "#8b6914", fontSize: 8, padding: 2, textAlign: "center" }}>
+                    <th style={{ color: "#8b6914", fontSize: 10, padding: 2, textAlign: "center" }}>
                       Wks
                     </th>
-                    <th style={{ color: "#8b6914", fontSize: 8, padding: 2, textAlign: "right" }}>
+                    <th style={{ color: "#8b6914", fontSize: 10, padding: 2, textAlign: "right" }}>
                       Pts
                     </th>
-                    <th style={{ color: "#8b6914", fontSize: 8, padding: 2, textAlign: "right" }}>
+                    <th style={{ color: "#8b6914", fontSize: 10, padding: 2, textAlign: "right" }}>
                       Chp
                     </th>
                   </tr>
@@ -664,17 +665,25 @@ export default function HallOfFamePage() {
 
   return (
     <>
-      <div className="text-center my-3">
-        <h2 style={{ color: "#8B6914", fontFamily: "Georgia,serif", letterSpacing: 2 }}>
+      <div className="text-center" style={{ margin: "4px 0 10px" }}>
+        <h2
+          style={{
+            color: "#8B6914",
+            fontFamily: "Georgia,serif",
+            letterSpacing: 2,
+            margin: "0 0 4px",
+            fontSize: "clamp(20px, 5.5vw, 28px)",
+          }}
+        >
           GFFL HALL OF FAME
         </h2>
-        <hr style={{ borderColor: "#8B6914", width: 200, margin: "0 auto" }} />
+        <hr style={{ borderColor: "#8B6914", width: 200, margin: "0 auto 4px" }} />
         <p
           style={{
             color: "#8B6914",
             fontStyle: "italic",
             fontSize: 13,
-            margin: "8px 0 0",
+            margin: 0,
           }}
         >
           Tap a champion for season details
@@ -682,15 +691,14 @@ export default function HallOfFamePage() {
       </div>
       <div
         style={{
-          padding: 20,
+          padding: "clamp(10px, 3vw, 20px)",
           background: "linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
           borderRadius: 12,
-          minHeight: "100vh",
           display: "flex",
           flexWrap: "wrap",
           justifyContent: "center",
           alignItems: "flex-start",
-          gap: 16,
+          gap: 12,
         }}
       >
         {bustCards}

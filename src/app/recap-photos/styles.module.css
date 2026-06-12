@@ -6,9 +6,17 @@
   column-gap: 12px;
 }
 
+.recapItem {
+  margin-bottom: 12px;
+}
+
 @media (max-width: 768px) {
   .recapCollage {
     column-count: 1;
+    column-gap: 6px;
+  }
+  .recapItem {
+    margin-bottom: 6px;
   }
 }
 

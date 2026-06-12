@@ -995,14 +995,14 @@ export default function TrophyRoomPage() {
   ];
 
   return (
-    <div style={{ background: "#e8e0d4", padding: 20, borderRadius: 12 }}>
+    <div style={{ background: "#e8e0d4", padding: "clamp(8px, 2.5vw, 20px)", borderRadius: 12 }}>
       <p
         style={{
           textAlign: "center",
           color: "#7a6a4f",
           fontStyle: "italic",
           fontSize: 13,
-          margin: "0 0 12px",
+          margin: "0 0 8px",
         }}
       >
         Tap any trophy for details
@@ -1010,8 +1010,16 @@ export default function TrophyRoomPage() {
       <div className={styles.trophyGrid}>{activeCards}</div>
       {legacyCards.length > 0 && (
         <>
-          <hr style={{ borderColor: "#aaa" }} />
-          <h4 style={{ color: "#666", textAlign: "center", marginTop: 16, marginBottom: 12 }}>
+          <hr style={{ borderColor: "#aaa", margin: "14px 0 0" }} />
+          <h4
+            style={{
+              color: "#666",
+              textAlign: "center",
+              marginTop: 8,
+              marginBottom: 10,
+              fontSize: "clamp(16px, 4.5vw, 20px)",
+            }}
+          >
             <svg
               width="20"
               height="20"

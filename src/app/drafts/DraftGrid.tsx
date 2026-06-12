@@ -101,7 +101,7 @@ export default function DraftGrid({ drafts, starters, season, posFilter = null }
           <tr>
             <th
               style={{
-                padding: "4px 6px",
+                padding: "3px 4px",
                 background: "#222",
                 color: "#fff",
                 fontSize: 11,
@@ -116,12 +116,12 @@ export default function DraftGrid({ drafts, starters, season, posFilter = null }
               <th
                 key={o}
                 style={{
-                  padding: "4px 6px",
+                  padding: "3px 5px",
                   background: "#013369",
                   color: "#fff",
                   fontSize: 10,
                   textAlign: "center",
-                  minWidth: 100,
+                  minWidth: 84,
                   whiteSpace: "nowrap",
                 }}
               >
@@ -135,13 +135,14 @@ export default function DraftGrid({ drafts, starters, season, posFilter = null }
             <tr key={rd}>
               <td
                 style={{
-                  padding: "4px 6px",
+                  padding: "3px 4px",
                   fontWeight: "bold",
                   background: "#f0f0f0",
-                  fontSize: 12,
+                  fontSize: 11,
                   position: "sticky",
                   left: 0,
                   zIndex: 2,
+                  whiteSpace: "nowrap",
                 }}
               >
                 RD {rd}
@@ -153,7 +154,7 @@ export default function DraftGrid({ drafts, starters, season, posFilter = null }
                     <td
                       key={o}
                       style={{
-                        padding: "4px 6px",
+                        padding: "3px 4px",
                         background: "#f8f8f8",
                         border: "1px solid #ddd",
                       }}
@@ -170,7 +171,7 @@ export default function DraftGrid({ drafts, starters, season, posFilter = null }
                   <td
                     key={o}
                     style={{
-                      padding: "4px 6px",
+                      padding: "3px 4px",
                       // Highlighted picks get a stronger position tint
                       background: highlighted ? `${bg}88` : `${bg}33`,
                       border: highlighted ? "2px solid #013369" : "1px solid #ddd",

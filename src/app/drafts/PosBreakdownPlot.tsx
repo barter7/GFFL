@@ -93,7 +93,7 @@ export default function PosBreakdownPlot({ rows, yTitle }: Props) {
         yaxis: { title: { text: yTitle }, ticksuffix: "%" },
         legend: { title: { text: "Position" } },
       }}
-      style={{ height: 400 }}
+      style={{ height: "clamp(300px, 85vw, 400px)" }}
     />
   );
 }

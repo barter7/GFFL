@@ -190,62 +190,59 @@ function DraftsInner() {
 
   return (
     <>
-      <div className="row mb-4">
+      <div className="row">
         <div className="col-12">
           <Card
             header="Draft Board"
             headerExtra={
-              <select
-                className="form-select form-select-sm"
-                style={{ width: 120 }}
-                value={season}
-                onChange={(e) => setSeason(Number(e.target.value))}
-              >
-                {seasonChoices.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+              <div className="d-flex flex-wrap align-items-center gap-2">
+                <div
+                  className="btn-group btn-group-sm flex-wrap"
+                  role="group"
+                  aria-label="Highlight position"
+                >
+                  {POS_FILTERS.map((f) => (
+                    <button
+                      key={f.value}
+                      type="button"
+                      className={`btn ${
+                        posFilter === f.value
+                          ? "btn-primary"
+                          : "btn-outline-secondary"
+                      }`}
+                      onClick={() => setPosFilter(f.value)}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+                <select
+                  className="form-select form-select-sm"
+                  style={{ width: "auto" }}
+                  value={season}
+                  onChange={(e) => setSeason(Number(e.target.value))}
+                  aria-label="Season"
+                >
+                  {seasonChoices.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
             }
           >
-            <div
-              className="btn-group btn-group-sm mb-2 flex-wrap"
-              role="group"
-              aria-label="Highlight position"
-            >
-              {POS_FILTERS.map((f) => (
-                <button
-                  key={f.value}
-                  type="button"
-                  className={`btn ${
-                    posFilter === f.value ? "btn-primary" : "btn-outline-secondary"
-                  }`}
-                  onClick={() => setPosFilter(f.value)}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            <div
-              style={{
-                overflowX: "auto",
-                WebkitOverflowScrolling: "touch",
-                minHeight: 800,
-              }}
-            >
-              <DraftGrid
-                drafts={drafts}
-                starters={starters}
-                season={season}
-                posFilter={posFilter === "All" ? null : posFilter}
-              />
-            </div>
+            <DraftGrid
+              drafts={drafts}
+              starters={starters}
+              season={season}
+              posFilter={posFilter === "All" ? null : posFilter}
+            />
           </Card>
         </div>
       </div>
 
-      <div className="row mb-4">
+      <div className="row">
         <div className="col-12">
           <Card header="Draft Results (List)">
             <DataTable columns={draftListColumns} rows={draftList} pageSize={25} />
@@ -253,7 +250,7 @@ function DraftsInner() {
         </div>
       </div>
 
-      <div className="row mb-4">
+      <div className="row">
         <div className="col-md-6">
           <Card header="Round 1 Position Breakdown (%)">
             <PosBreakdownPlot rows={round1} yTitle="% of Round 1 Picks" />
@@ -266,7 +263,7 @@ function DraftsInner() {
         </div>
       </div>
 
-      <div className="row mb-4">
+      <div className="row">
         <div className="col-12">
           <Card header="Biggest Draft Busts">
             <p className="text-muted small">
@@ -283,7 +280,7 @@ function DraftsInner() {
         </div>
       </div>
 
-      <div className="row mb-4">
+      <div className="row">
         <div className="col-12">
           <Card header="Biggest Draft Values">
             <p className="text-muted small">
@@ -300,7 +297,7 @@ function DraftsInner() {
         </div>
       </div>
 
-      <div className="row mb-4">
+      <div className="row">
         <div className="col-12">
           <Card header="Closest to Draft Value">
             <p className="text-muted small">

@@ -24,7 +24,7 @@ function CommishCard({ year, name }: { year: number; name: string }) {
       style={{
         display: "inline-block",
         textAlign: "center",
-        margin: 10,
+        margin: "2px 0",
         verticalAlign: "top",
         width: 140,
       }}
@@ -106,10 +106,9 @@ export default function CommissionerPage() {
     <div
       style={{
         background: "linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%)",
-        padding: "30px 20px",
+        padding: "clamp(14px, 4vw, 30px) clamp(10px, 3vw, 20px)",
         borderRadius: 12,
         textAlign: "center",
-        minHeight: "80vh",
       }}
     >
       <h2
@@ -117,12 +116,13 @@ export default function CommissionerPage() {
           color: "#d4a84b",
           fontFamily: "Georgia,serif",
           letterSpacing: 3,
-          marginBottom: 5,
+          margin: "0 0 4px",
+          fontSize: "clamp(18px, 5vw, 28px)",
         }}
       >
         COMMISSIONER OF THE YEAR
       </h2>
-      <hr style={{ borderColor: "#8b6914", width: 200, margin: "0 auto 30px" }} />
+      <hr style={{ borderColor: "#8b6914", width: 200, margin: "0 auto clamp(12px, 3vw, 24px)" }} />
       <div
         style={{
           display: "flex",

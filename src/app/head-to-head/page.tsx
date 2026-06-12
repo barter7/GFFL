@@ -184,25 +184,25 @@ function HeadToHeadInner() {
 
   return (
     <>
-      <div className="row g-3">
+      <div className="row">
         <div className="col-md-4">
           <Card header="Select Matchup">
-            <div className="mb-3">
-              <label className="form-label" htmlFor="h2h-team1">
-                Owner 1
-              </label>
-              <select
-                id="h2h-team1"
-                className="form-select"
-                value={team1}
-                onChange={(e) => setTeam1(e.target.value)}
-              >
-                {owners.map((o) => (
-                  <option key={o}>{o}</option>
-                ))}
-              </select>
-            </div>
-            <div className="text-center mb-3">
+            <div className="d-flex align-items-end gap-2 mb-2">
+              <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                <label className="form-label small mb-1" htmlFor="h2h-team1">
+                  Owner 1
+                </label>
+                <select
+                  id="h2h-team1"
+                  className="form-select form-select-sm"
+                  value={team1}
+                  onChange={(e) => setTeam1(e.target.value)}
+                >
+                  {owners.map((o) => (
+                    <option key={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
               <button
                 type="button"
                 className="btn btn-outline-secondary btn-sm"
@@ -210,39 +210,39 @@ function HeadToHeadInner() {
                 title="Swap owners"
                 aria-label="Swap owners"
               >
-                ⇄ Swap
+                ⇄
               </button>
+              <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                <label className="form-label small mb-1" htmlFor="h2h-team2">
+                  Owner 2
+                </label>
+                <select
+                  id="h2h-team2"
+                  className="form-select form-select-sm"
+                  value={team2}
+                  onChange={(e) => setTeam2(e.target.value)}
+                >
+                  {owners.map((o) => (
+                    <option key={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="mb-3">
-              <label className="form-label" htmlFor="h2h-team2">
-                Owner 2
-              </label>
-              <select
-                id="h2h-team2"
-                className="form-select"
-                value={team2}
-                onChange={(e) => setTeam2(e.target.value)}
-              >
-                {owners.map((o) => (
-                  <option key={o}>{o}</option>
-                ))}
-              </select>
+            <div className="d-flex align-items-center flex-wrap gap-2">
+              <div className="form-check mb-0">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="h2h-reg-only"
+                  checked={regOnly}
+                  onChange={(e) => setRegOnly(e.target.checked)}
+                />
+                <label className="form-check-label small" htmlFor="h2h-reg-only">
+                  Regular Season Only
+                </label>
+              </div>
+              <span className="text-muted small">Results update automatically.</span>
             </div>
-            <div className="form-check">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                id="h2h-reg-only"
-                checked={regOnly}
-                onChange={(e) => setRegOnly(e.target.checked)}
-              />
-              <label className="form-check-label" htmlFor="h2h-reg-only">
-                Regular Season Only
-              </label>
-            </div>
-            <p className="text-muted small mb-0 mt-2">
-              Results update automatically.
-            </p>
           </Card>
         </div>
         <div className="col-md-8">
@@ -251,25 +251,29 @@ function HeadToHeadInner() {
               <h5>No matchups found between these owners.</h5>
             ) : (
               <>
-                <div className="text-center mb-3">
-                  <h4>
+                <div className="text-center mb-2">
+                  <h5 className="mb-1">
                     {team1} vs {team2}
-                  </h4>
-                  <h5>
+                  </h5>
+                  <div className="fw-bold">
                     {summary.wins}W - {summary.losses}L
                     {summary.ties > 0 ? ` - ${summary.ties}T` : ""}
-                  </h5>
-                  <small>
-                    Avg Score: {summary.avgScore.toFixed(1)} - {summary.avgOpp.toFixed(1)}
-                  </small>
+                    <span className="text-muted fw-normal small ms-2">
+                      Avg: {summary.avgScore.toFixed(1)} - {summary.avgOpp.toFixed(1)}
+                    </span>
+                  </div>
                 </div>
-                <Plot data={plot.data} layout={plot.layout} style={{ height: 350 }} />
+                <Plot
+                  data={plot.data}
+                  layout={plot.layout}
+                  style={{ height: "clamp(280px, 80vw, 350px)" }}
+                />
               </>
             )}
           </Card>
         </div>
       </div>
-      <div className="row g-3 mt-0">
+      <div className="row">
         <div className="col-12">
           <Card header="Head-to-Head Matchup History">
             <DataTable
@@ -281,7 +285,7 @@ function HeadToHeadInner() {
           </Card>
         </div>
       </div>
-      <div className="row g-3 mt-0">
+      <div className="row">
         <div className="col-12">
           <Card header="Owner vs Owner Record Matrix (Regular Season)">
             <DataTable columns={matrixColumns} rows={matrixRows} pageSize={25} />

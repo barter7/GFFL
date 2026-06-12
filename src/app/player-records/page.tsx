@@ -24,14 +24,20 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
   return (
     <>
       {/* scrollMarginTop keeps anchored headings clear of the sticky navbar */}
-      <div id={slug(title)} style={{ margin: "25px 20px 10px", scrollMarginTop: 72 }}>
+      <div
+        id={slug(title)}
+        style={{
+          margin: "clamp(14px, 4vw, 25px) clamp(6px, 2.5vw, 20px) 8px",
+          scrollMarginTop: 72,
+        }}
+      >
         <div
           style={{
             fontFamily: "'IM Fell English',Georgia,serif",
-            fontSize: 20,
+            fontSize: "clamp(15px, 4.2vw, 20px)",
             color: "#3d2a10",
             fontWeight: "bold",
-            letterSpacing: 2,
+            letterSpacing: 1.5,
             textTransform: "uppercase",
             borderBottom: "2px solid #5c3a10",
             paddingBottom: 4,
@@ -44,7 +50,7 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
           fits; otherwise the table scrolls inside instead of the whole page. */}
       <div
         style={{
-          margin: "0 20px",
+          margin: "0 clamp(6px, 2.5vw, 20px)",
           overflowX: "auto",
           WebkitOverflowScrolling: "touch",
         }}
@@ -63,21 +69,21 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
                 <td
                   style={{
                     color: "#8b6914",
-                    fontSize: 14,
-                    padding: "4px 6px",
-                    width: 30,
+                    fontSize: "clamp(12px, 3.2vw, 14px)",
+                    padding: "3px 4px",
+                    width: 28,
                     verticalAlign: "middle",
                   }}
                 >
                   #{i + 1}
                 </td>
-                <td style={{ width: 40, padding: 4 }}>
+                <td style={{ width: 36, padding: 3 }}>
                   {hsUrl && (
                     <Headshot
                       src={hsUrl}
                       style={{
-                        width: 32,
-                        height: 32,
+                        width: 30,
+                        height: 30,
                         borderRadius: "50%",
                         objectFit: "cover",
                         border: "2px solid #8b6914",
@@ -89,9 +95,9 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
                   style={{
                     color: "#3d2a10",
                     fontFamily: "'Cormorant Garamond',Georgia,serif",
-                    fontSize: 16,
+                    fontSize: "clamp(13px, 3.6vw, 16px)",
                     fontWeight: 600,
-                    padding: 4,
+                    padding: "3px 4px",
                     verticalAlign: "middle",
                   }}
                 >
@@ -104,11 +110,12 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
                   style={{
                     color: "#3d2a10",
                     fontFamily: "'Cormorant Garamond',Georgia,serif",
-                    fontSize: 18,
+                    fontSize: "clamp(14px, 4vw, 18px)",
                     fontWeight: "bold",
                     textAlign: "right",
-                    padding: 4,
+                    padding: "3px 4px",
                     verticalAlign: "middle",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {r.value}
@@ -117,10 +124,10 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
                   <td
                     style={{
                       color: "#5c3a10",
-                      fontSize: 13,
+                      fontSize: 12,
                       fontStyle: "italic",
                       textAlign: "right",
-                      padding: 4,
+                      padding: "3px 4px",
                       verticalAlign: "middle",
                     }}
                   >
@@ -137,7 +144,7 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
         style={{
           border: "none",
           borderTop: "1px dashed rgba(92,58,16,0.25)",
-          margin: "10px 20px",
+          margin: "8px clamp(6px, 2.5vw, 20px)",
         }}
       />
     </>

@@ -22,7 +22,7 @@ export default function Toc({ items }: { items: TocItem[] }) {
   return (
     <details
       style={{
-        margin: "0 20px 24px",
+        margin: "0 clamp(6px, 2.5vw, 20px) 16px",
         border: "1px solid rgba(92,58,16,0.45)",
         borderRadius: 4,
         background: "rgba(139,105,20,0.07)",
@@ -32,11 +32,11 @@ export default function Toc({ items }: { items: TocItem[] }) {
       <summary
         style={{
           cursor: "pointer",
-          padding: "10px 14px",
+          padding: "8px 12px",
           fontFamily: "'IM Fell English',Georgia,serif",
-          fontSize: 17,
+          fontSize: "clamp(14px, 4vw, 17px)",
           color: "#3d2a10",
-          letterSpacing: 2,
+          letterSpacing: 1.5,
           textTransform: "uppercase",
           userSelect: "none",
         }}
@@ -46,9 +46,9 @@ export default function Toc({ items }: { items: TocItem[] }) {
       <ol
         style={{
           margin: 0,
-          padding: "4px 14px 12px 34px",
-          columnWidth: 260,
-          columnGap: 24,
+          padding: "2px 12px 10px 28px",
+          columnWidth: 240,
+          columnGap: 20,
           color: "#8b6914",
         }}
       >
@@ -59,9 +59,9 @@ export default function Toc({ items }: { items: TocItem[] }) {
               onClick={(e) => go(e, item.id)}
               style={{
                 display: "block",
-                padding: "5px 0",
+                padding: "3px 0",
                 color: "#5c3a10",
-                fontSize: 16,
+                fontSize: "clamp(13px, 3.6vw, 16px)",
                 fontWeight: 600,
                 textDecoration: "underline dotted rgba(92,58,16,0.5)",
               }}
