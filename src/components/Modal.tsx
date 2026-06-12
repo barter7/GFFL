@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface Props {
   open: boolean;
@@ -28,9 +29,11 @@ export default function Modal({ open, onClose, title, children, dark = false, ma
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  // Portal to <body>: ancestor transforms/z-index (e.g. trophy shelves,
+  // banners) would otherwise trap the fixed overlay beneath page content.
+  return createPortal(
     <div
       onClick={onClose}
       style={{
@@ -91,6 +94,7 @@ export default function Modal({ open, onClose, title, children, dark = false, ma
         )}
         <div style={{ padding: 20 }}>{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
