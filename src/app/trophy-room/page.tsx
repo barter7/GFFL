@@ -467,7 +467,9 @@ export default function TrophyRoomPage() {
   const legacySorted = ownerStats.filter((s) => legacyOwners.includes(s.owner)).map((s) => s.owner);
 
   // Function to build a trophy case for one owner
-  function buildOwnerCard(o: string): ReactNode {
+  // `eager` keeps above-the-fold images (first card) loading immediately;
+  // everything else gets loading="lazy".
+  function buildOwnerCard(o: string, eager = false): ReactNode {
     const stats = alltime.find((r) => r.team === o);
     const ownerSeasons = byOwnerStandings.get(o) ?? [];
     const ownerWeeks = byOwnerSchedule.get(o) ?? [];
@@ -693,13 +695,13 @@ export default function TrophyRoomPage() {
               justifyContent: "center",
             }}
           >
-            <PhotoBlock o={o} photoFile={photoFile} />
+            <PhotoBlock o={o} photoFile={photoFile} lazy={!eager} />
             <div style={{ width: "100%", maxWidth: 140, marginTop: 4 }}>
               <Plaque label={null} value={o} style={NAME_STYLE} wide />
             </div>
           </div>
           {/* Right: jersey */}
-          <JerseyBlock jerseyFile={jerseyFile} />
+          <JerseyBlock jerseyFile={jerseyFile} lazy={!eager} />
         </div>
 
         {/* Lombardi / Hunt split shelf */}
@@ -708,13 +710,15 @@ export default function TrophyRoomPage() {
           <div className={`${styles.shelfLabel} ${styles.shelfLabelRight}`}>APPEARANCES</div>
           <div style={halfShelfStyle}>
             {champYears.map((yr) => (
-              <img
-                key={yr}
-                src={photoUrl("photos/champion_ring.png")}
-                alt=""
-                className={`${styles.trophyImg} ${styles.lombardiImg}`}
-                title={seasonTooltip(yr, "Champion ")}
-              />
+              <Tap key={yr} info={ringInfo(yr)}>
+                <img
+                  src={photoUrl("photos/champion_ring.png")}
+                  alt={`Championship ring ${yr}`}
+                  loading="lazy"
+                  className={`${styles.trophyImg} ${styles.lombardiImg}`}
+                  title={seasonTooltip(yr, "Champion ")}
+                />
+              </Tap>
             ))}
           </div>
           <div
@@ -729,13 +733,15 @@ export default function TrophyRoomPage() {
           />
           <div style={halfShelfStyle}>
             {appearYears.map((yr) => (
-              <img
-                key={yr}
-                src={photoUrl("photos/Hunt.png")}
-                alt=""
-                className={`${styles.trophyImg} ${styles.huntImg}`}
-                title={seasonTooltip(yr, "Title Game ")}
-              />
+              <Tap key={yr} info={huntInfo(yr)}>
+                <img
+                  src={photoUrl("photos/Hunt.png")}
+                  alt={`Title game appearance ${yr}`}
+                  loading="lazy"
+                  className={`${styles.trophyImg} ${styles.huntImg}`}
+                  title={seasonTooltip(yr, "Title Game ")}
+                />
+              </Tap>
             ))}
           </div>
         </div>
@@ -746,13 +752,15 @@ export default function TrophyRoomPage() {
           <div className={`${styles.shelfLabel} ${styles.shelfLabelRight}`}>MOST POINTS</div>
           <div style={halfShelfWrapStyle}>
             {oneseedYears.map((yr) => (
-              <img
-                key={yr}
-                src={photoUrl("photos/mvp.png")}
-                alt=""
-                className={`${styles.trophyImg} ${styles.mvpImg}`}
-                title={seasonTooltip(yr, "MVP ")}
-              />
+              <Tap key={yr} info={mvpInfo(yr)}>
+                <img
+                  src={photoUrl("photos/mvp.png")}
+                  alt={`Best record ${yr}`}
+                  loading="lazy"
+                  className={`${styles.trophyImg} ${styles.mvpImg}`}
+                  title={seasonTooltip(yr, "MVP ")}
+                />
+              </Tap>
             ))}
           </div>
           <div
@@ -766,13 +774,15 @@ export default function TrophyRoomPage() {
           />
           <div style={halfShelfWrapStyle}>
             {gfflPfYears.map((yr) => (
-              <img
-                key={yr}
-                src={photoUrl("photos/GFFL.png")}
-                alt=""
-                className={`${styles.trophyImg} ${styles.gfflImg}`}
-                title={seasonTooltip(yr, "Most PF ")}
-              />
+              <Tap key={yr} info={gfflInfo(yr)}>
+                <img
+                  src={photoUrl("photos/GFFL.png")}
+                  alt={`Most points ${yr}`}
+                  loading="lazy"
+                  className={`${styles.trophyImg} ${styles.gfflImg}`}
+                  title={seasonTooltip(yr, "Most PF ")}
+                />
+              </Tap>
             ))}
           </div>
         </div>
@@ -794,13 +804,15 @@ export default function TrophyRoomPage() {
               const src = findPhoto(`${isOneseed ? "oneseed" : "playoffs"}_${yr}`);
               if (!src) return null;
               return (
-                <img
-                  key={yr}
-                  src={src}
-                  alt=""
-                  className={`${styles.trophyImg} ${styles.bannerImg}`}
-                  title={seasonTooltip(yr, isOneseed ? "#1 Seed " : "Playoffs ")}
-                />
+                <Tap key={yr} info={bannerInfo(yr, isOneseed)}>
+                  <img
+                    src={src}
+                    alt={`${isOneseed ? "#1 seed" : "Playoffs"} ${yr}`}
+                    loading="lazy"
+                    className={`${styles.trophyImg} ${styles.bannerImg}`}
+                    title={seasonTooltip(yr, isOneseed ? "#1 Seed " : "Playoffs ")}
+                  />
+                </Tap>
               );
             })}
           </div>
