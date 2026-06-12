@@ -675,34 +675,29 @@ export function SummarySection({
           marginBottom: 6,
         }}
       >
-        Tap a row for details · scroll for more
+        Tap a row for full details
       </div>
       {/* Capped-height scroll panel keeps this section short on phones */}
       <div
         className="scroll-panel"
         style={{
-          overflowX: "auto",
           border: "1px solid #2a2a2a",
           borderRadius: 6,
         }}
       >
-      <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Arial,sans-serif" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Arial,sans-serif", tableLayout: "fixed" }}>
         <thead>
           <tr>
             <th style={thLeft}>Achievement</th>
-            <th style={thLeft}>Description</th>
-            <th style={thCenter}>Unlocked</th>
-            <th style={thCenter}>Rarity</th>
-            <th style={thCenter}>Value</th>
-            <th style={thLeft}>Who</th>
+            <th style={{ ...thCenter, width: 64 }}>Unlocked</th>
+            <th style={{ ...thCenter, width: 64 }}>Value</th>
           </tr>
         </thead>
         <tbody>
           {ACHIEVEMENTS.map((ach) => {
             const unlockedBy = allOwners.filter((o) => results[o].unlocked[ach.id] === true);
             const count = unlockedBy.length;
-            const who = count > 0 ? unlockedBy.join(", ") : "Nobody";
-            const { color: rarityColor, label: rarityLabel } = rarityInfo(count, allOwners.length);
+            const { color: rarityColor } = rarityInfo(count, allOwners.length);
             const valStr = `${achValues[ach.id].toLocaleString("en-US")}G`;
             return (
               <tr
@@ -723,32 +718,25 @@ export function SummarySection({
                   style={{
                     padding: "7px 8px",
                     borderBottom: "1px solid #333",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
                   }}
                 >
                   <span style={{ color: count > 0 ? "#a1c943" : "#555", marginRight: 6 }}>
                     {ach.icon}
                   </span>
-                  <span style={{ color: count > 0 ? "#fff" : "#555", fontWeight: "bold" }}>
+                  <span style={{ color: count > 0 ? "#fff" : "#555", fontWeight: "bold", fontSize: 13 }}>
                     {ach.name}
                   </span>
                 </td>
                 <td
                   style={{
-                    padding: "7px 8px",
-                    borderBottom: "1px solid #333",
-                    color: "#aaa",
-                    fontSize: 12,
-                  }}
-                >
-                  {ach.desc}
-                </td>
-                <td
-                  style={{
-                    padding: "7px 8px",
+                    padding: "7px 4px",
                     borderBottom: "1px solid #333",
                     textAlign: "center",
                     fontWeight: "bold",
+                    fontSize: 12,
                     color: rarityColor,
                   }}
                 >
@@ -756,19 +744,7 @@ export function SummarySection({
                 </td>
                 <td
                   style={{
-                    padding: "7px 8px",
-                    borderBottom: "1px solid #333",
-                    textAlign: "center",
-                    fontSize: 10,
-                    fontWeight: "bold",
-                    color: rarityColor,
-                  }}
-                >
-                  {rarityLabel}
-                </td>
-                <td
-                  style={{
-                    padding: "7px 8px",
+                    padding: "7px 4px",
                     borderBottom: "1px solid #333",
                     textAlign: "center",
                     color: "#a1c943",
@@ -777,16 +753,6 @@ export function SummarySection({
                   }}
                 >
                   {valStr}
-                </td>
-                <td
-                  style={{
-                    padding: "7px 8px",
-                    borderBottom: "1px solid #333",
-                    color: "#ccc",
-                    fontSize: 12,
-                  }}
-                >
-                  {who}
                 </td>
               </tr>
             );

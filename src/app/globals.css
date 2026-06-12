@@ -14,9 +14,41 @@ body {
   background-color: var(--gffl-navy);
 }
 
-.gffl-navbar .nav-link.active {
+/* All tabs visible in one horizontally scrollable strip */
+.gffl-tabstrip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 8px 8px;
+  white-space: nowrap;
+}
+
+.gffl-tabstrip::-webkit-scrollbar {
+  display: none;
+}
+
+.gffl-tab {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.78);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+.gffl-tab:hover {
   color: #fff;
-  font-weight: 600;
+}
+
+.gffl-tab.active {
+  color: #fff;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .card {
