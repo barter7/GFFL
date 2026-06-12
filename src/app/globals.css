@@ -14,31 +14,26 @@ body {
   background-color: var(--gffl-navy);
 }
 
-/* All tabs visible in one horizontally scrollable strip */
+/* All tabs visible at once: pills wrap onto two rows on phones */
 .gffl-tabstrip {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 2px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding: 8px 8px;
-  white-space: nowrap;
-}
-
-.gffl-tabstrip::-webkit-scrollbar {
-  display: none;
+  justify-content: center;
+  gap: 3px 4px;
+  padding: 6px 6px;
 }
 
 .gffl-tab {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   color: rgba(255, 255, 255, 0.78);
   text-decoration: none;
-  font-size: 0.85rem;
+  font-size: clamp(0.68rem, 2.4vw, 0.85rem);
   font-weight: 500;
-  padding: 6px 12px;
+  padding: 4px 9px;
   border-radius: 999px;
-  line-height: 1.2;
+  line-height: 1.15;
+  text-align: center;
 }
 
 .gffl-tab:hover {
