@@ -1,0 +1,105 @@
+---
+title: "NFL Props Model — Weekly Card"
+output:
+  html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
+params:
+  season: 2026
+  week: 1
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressMessages({ library(dplyr); library(readr); library(knitr) })
+snap_path <- file.path("data", "results",
+                       sprintf("projections_%d_w%02d.csv",
+                               params$season, params$week))
+snap <- if (file.exists(snap_path))
+  read_csv(snap_path, show_col_types = FALSE) else NULL
+has_lines <- !is.null(snap) && any(!is.na(snap$line))
+```
+
+# Season `r params$season` — Week `r params$week`
+
+```{r no-data, results="asis"}
+if (is.null(snap)) cat("**No snapshot found for this week — run run_model.R first.**")
+```
+
+```{r edges, results="asis"}
+if (has_lines) {
+  cat("## Top edges\n\n(model P(over) vs no-vig market P(over), min 3% edge)\n")
+} else if (!is.null(snap)) {
+  cat("## Projections\n\n*No prop lines available (offseason or fetch failure)",
+      "— showing raw projections.*\n")
+}
+```
+
+```{r edge-table}
+if (has_lines) {
+  snap %>%
+    filter(!is.na(edge), lean != "PASS") %>%
+    arrange(desc(abs(edge))) %>%
+    head(25) %>%
+    transmute(Player = player_name, Pos = position, Team = team,
+              Opp = opponent, Market = market, Line = line,
+              Proj = round(proj, 2), `Model P(over)` = round(model_p_over, 3),
+              `Mkt P(over)` = round(market_p_over, 3),
+              Edge = sprintf("%+.1f%%", 100 * edge), Lean = lean,
+              Book = sportsbook) %>%
+    kable()
+}
+```
+
+## Receptions
+
+```{r rec}
+if (!is.null(snap)) {
+  snap %>% filter(market == "receptions") %>%
+    arrange(desc(proj)) %>% head(30) %>%
+    transmute(Player = player_name, Pos = position, Team = team,
+              Opp = opponent, `Proj rec` = round(proj, 2),
+              Line = line, `P(over)` = round(p_over_line, 3)) %>%
+    kable()
+}
+```
+
+## QB passing yards
+
+```{r qby}
+if (!is.null(snap)) {
+  snap %>% filter(market == "pass_yards") %>%
+    arrange(desc(proj)) %>%
+    transmute(Player = player_name, Team = team, Opp = opponent,
+              `Proj yds` = round(proj, 1), Line = line,
+              `P(over)` = round(p_over_line, 3)) %>%
+    kable()
+}
+```
+
+## QB passing TDs
+
+```{r qtd}
+if (!is.null(snap)) {
+  snap %>% filter(market == "pass_tds") %>%
+    arrange(desc(proj)) %>%
+    transmute(Player = player_name, Team = team, Opp = opponent,
+              `Proj TD` = round(proj, 2), Line = line,
+              `P(over)` = round(p_over_line, 3)) %>%
+    kable()
+}
+```
+
+## Anytime TD
+
+```{r any}
+if (!is.null(snap)) {
+  snap %>% filter(market == "anytime_td") %>%
+    arrange(desc(proj)) %>% head(40) %>%
+    transmute(Player = player_name, Pos = position, Team = team,
+              Opp = opponent, `P(anytime)` = round(proj, 3),
+              `Fair odds` = implied_to_amer(proj)) %>%
+    kable()
+}
+```
