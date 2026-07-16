@@ -107,8 +107,17 @@ function topGames(data: StarterRow[], suffix = " pts"): Top5Row[] {
     }));
 }
 
-/** group_by(player, pos, team, season, owner) season totals, top n */
-function seasonTop(data: StarterRow[], n: number): Top5Row[] {
+/**
+ * group_by(player, pos, team, season, owner) season totals, top n.
+ * Season TOTALS only make sense for completed seasons — an in-progress season
+ * would produce partial sums — so rows outside `finalSeasons` are excluded.
+ */
+function seasonTop(
+  data: StarterRow[],
+  n: number,
+  finalSeasons: Set<number>
+): Top5Row[] {
+  data = data.filter((r) => finalSeasons.has(r.season));
   interface SG {
     player_name: string;
     pos: string;
@@ -199,7 +208,12 @@ export interface PlayerRecords {
   teSeason: Top5Row[];
 }
 
-export function computePlayerRecords(): PlayerRecords {
+/**
+ * Single-GAME records use all data (the converter guarantees only completed
+ * weeks exist); season-TOTAL records are restricted to `finalSeasons` so an
+ * in-progress season's partial totals never enter the record book.
+ */
+export function computePlayerRecords(finalSeasons: Set<number>): PlayerRecords {
   const data = getLeagueData();
 
   const starters = data.starters.filter(
@@ -421,7 +435,7 @@ export function computePlayerRecords(): PlayerRecords {
     }));
 
   // 26. Most points scored in a single season for one owner
-  const seasonLeaders = seasonTop(started, 10);
+  const seasonLeaders = seasonTop(started, 10, finalSeasons);
 
   // 27. Most games started across all owners (most popular starter)
   const mostPopular = countTop(started);
@@ -450,11 +464,11 @@ export function computePlayerRecords(): PlayerRecords {
     .sort((a, b) => cmpDesc(a.v, b.v))
     .slice(0, 10)
     .map(({ g, v }) => row3(g, String(v)));
-  const nonQbSeason = seasonTop(nonQbStarted, 10);
+  const nonQbSeason = seasonTop(nonQbStarted, 10, finalSeasons);
 
   // 36-39. Most points in a single season BY POSITION (top 20)
   const posSeasonRecords = (position: string) =>
-    seasonTop(started.filter((r) => r.pos === position), 20);
+    seasonTop(started.filter((r) => r.pos === position), 20, finalSeasons);
   const qbSeason = posSeasonRecords("QB");
   const rbSeason = posSeasonRecords("RB");
   const wrSeason = posSeasonRecords("WR");
