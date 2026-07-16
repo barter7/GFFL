@@ -7,6 +7,7 @@ export interface AlltimeRow {
   seasons: number;
   wins: number;
   losses: number;
+  ties: number;
   winPct: number;
   pf: number;
   pa: number;
@@ -20,7 +21,7 @@ export function computeAlltimeStandings(standings: StandingRow[]): AlltimeRow[] 
     let row = byOwner.get(s.owner);
     if (!row) {
       row = {
-        team: s.owner, seasons: 0, wins: 0, losses: 0,
+        team: s.owner, seasons: 0, wins: 0, losses: 0, ties: 0,
         winPct: 0, pf: 0, pa: 0, pfPerGame: 0, championships: 0,
       };
       byOwner.set(s.owner, row);
@@ -28,13 +29,15 @@ export function computeAlltimeStandings(standings: StandingRow[]): AlltimeRow[] 
     row.seasons += 1;
     row.wins += s.h2h_wins;
     row.losses += s.h2h_losses;
+    row.ties += s.h2h_ties ?? 0;
     row.pf += s.points_for;
     row.pa += s.points_against;
     if (s.league_rank === 1) row.championships += 1;
   }
   for (const row of byOwner.values()) {
-    const games = row.wins + row.losses;
-    row.winPct = games > 0 ? row.wins / games : 0;
+    // Ties count as half a win, matching ESPN's own h2h_winpct.
+    const games = row.wins + row.losses + row.ties;
+    row.winPct = games > 0 ? (row.wins + 0.5 * row.ties) / games : 0;
     row.pfPerGame = games > 0 ? row.pf / games : 0;
   }
   return [...byOwner.values()].sort((a, b) => b.wins - a.wins || b.winPct - a.winPct);
