@@ -157,20 +157,65 @@ pbp_with_context <- function(pbp, ctx = load_game_context()) {
   if (!is.null(oc) && nrow(oc) > 0) {
     oc_j <- oc %>%
       transmute(season, team, oc_name,
+                play_caller = coalesce(play_caller, oc_name),
                 from_week = coalesce(from_week, 1L),
                 to_week   = coalesce(to_week, 30L))
     # expand week ranges into a (season, week, team) lookup so the
     # join stays 1:1 even across mid-season coordinator changes
     oc_lookup <- oc_j %>%
       rowwise() %>%
-      reframe(season, team, oc_name, week = from_week:to_week)
+      reframe(season, team, oc_name, play_caller,
+              week = from_week:to_week)
     out <- out %>%
-      left_join(oc_lookup %>% rename(team_oc = oc_name),
+      left_join(oc_lookup %>%
+                  rename(team_oc = oc_name, team_play_caller = play_caller),
                 by = c("season", "week", "posteam" = "team")) %>%
-      left_join(oc_lookup %>% rename(opp_oc = oc_name),
+      left_join(oc_lookup %>%
+                  rename(opp_oc = oc_name, opp_play_caller = play_caller),
                 by = c("season", "week", "defteam" = "team"))
+    miss <- out %>%
+      filter(!is.na(posteam), is.na(team_play_caller)) %>%
+      distinct(season, week, posteam)
+    if (nrow(miss) > 0) {
+      warning(sprintf(
+        "coordinators.csv missing %d team-game(s) (e.g. %s wk%d %d) — %s",
+        nrow(miss), miss$posteam[1], miss$week[1], miss$season[1],
+        "extend the table before projecting those games"))
+    }
   } else {
-    out <- out %>% mutate(team_oc = NA_character_, opp_oc = NA_character_)
+    out <- out %>% mutate(team_oc = NA_character_, opp_oc = NA_character_,
+                          team_play_caller = NA_character_,
+                          opp_play_caller  = NA_character_)
   }
   out
+}
+
+# ── Coordinator table validation ─────────────────────────────
+#  Checks the timeline resolves every pbp team-game to EXACTLY
+#  one row: no gaps (missing weeks) and no overlaps (two rows
+#  claiming the same team-week). Run after editing the CSV.
+validate_coordinators <- function(pbp) {
+  oc <- load_coordinators()
+  if (is.null(oc)) stop("coordinators.csv not found")
+  oc_lookup <- oc %>%
+    transmute(season, team,
+              from_week = coalesce(from_week, 1L),
+              to_week   = coalesce(to_week, 30L)) %>%
+    rowwise() %>%
+    reframe(season, team, week = from_week:to_week)
+
+  team_games <- pbp %>%
+    filter(!is.na(posteam)) %>%
+    distinct(season, week, team = posteam)
+
+  hits <- team_games %>%
+    left_join(oc_lookup %>% mutate(hit = 1L),
+              by = c("season", "week", "team")) %>%
+    group_by(season, week, team) %>%
+    summarise(n_rows = sum(hit, na.rm = TRUE), .groups = "drop")
+
+  gaps     <- hits %>% filter(n_rows == 0)
+  overlaps <- hits %>% filter(n_rows > 1)
+  list(team_games = nrow(hits), gaps = gaps, overlaps = overlaps,
+       ok = nrow(gaps) == 0 && nrow(overlaps) == 0)
 }
