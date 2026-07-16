@@ -23,6 +23,9 @@ suppressMessages({
 })
 source("utils.R")
 source("data_sources.R")
+source("pbp_data.R")
+source("game_context.R")
+source("nfl_features.R")
 source("model_core.R")
 source("scrape_props.R")
 source("results_tracker.R")
@@ -44,6 +47,15 @@ tryCatch({
   message("  WARNING: cache refresh failed — ", conditionMessage(e))
   message("  Build continues with previously cached data.")
 })
+# pbp + derived game-script history (current season recomputed so the
+# spread-bucket table keeps updating as new games are added)
+tryCatch({
+  refresh_pbp()
+  this_year <- as.integer(format(Sys.Date(), "%Y"))
+  cur <- if (as.integer(format(Sys.Date(), "%m")) >= 9) this_year else this_year - 1L
+  refresh_spread_gamescript(current_season = cur)
+}, error = function(e) message("  WARNING: pbp/gamescript refresh — ",
+                               conditionMessage(e)))
 
 logs  <- load_gamelogs()
 sched <- load_schedules_cache()

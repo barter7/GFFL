@@ -460,10 +460,24 @@ build_longest_plays <- function(pbp) {
 
 # ── Historical game script by closing spread range ───────────
 #
-#  Replaces the original's nflspreaddata.csv: for each closing
-#  team-spread bucket, the average share of a team's snaps spent
-#  in positive (wp > .75), neutral, and negative (wp < .25) win-
-#  probability states. Built from every cached pbp season.
+#  Replaces the original's 20-year nflspreaddata.csv import: for
+#  each closing team-spread bucket, the average share of a team's
+#  snaps spent in positive (wp > .75), neutral, and negative
+#  (wp < .25) win-probability states.
+#
+#  Two-layer cache so the 20-season history never has to be
+#  rebuilt from raw pbp:
+#    data/context/gamescript_games.csv   one row per team-game
+#        (season, game_id, posteam, team_spread, shares, n plays)
+#        — COMMITTED; completed seasons are immutable
+#    data/context/spread_gamescript.csv  the aggregated bucket
+#        table consumed by build_play_projections()
+#
+#  refresh_spread_gamescript() computes rows for any season
+#  missing from the cache and RE-computes the current season on
+#  every run (its pbp file grows weekly), so the table keeps
+#  updating as new games are added. run_model.R calls it after
+#  refresh_pbp().
 SPREAD_RANGES <- tibble(
   lo = c(0, 3.5, 6.5, 7.5, 10.5, 14.5, 17.5,
          -3, -6, -7, -10, -14, -17, -Inf),
@@ -484,21 +498,80 @@ spread_range_label <- function(team_spread) {
   })
 }
 
-build_spread_gamescript_table <- function(pbp) {
-  pbp %>%
-    filter(qtr %in% 1:4) %>%
-    # posteam-relative closing spread; game_id ends in the home team
+GAMESCRIPT_GAMES_FILE <- file.path("data", "context", "gamescript_games.csv")
+GAMESCRIPT_TABLE_FILE <- file.path("data", "context", "spread_gamescript.csv")
+GAMESCRIPT_SEASONS    <- 2006:2100   # "last 20 years" rolling start
+
+# One row per team-game: WP-state shares + posteam-relative
+# closing spread. The minimal pbp slice needed is tiny, so this
+# reads the season file directly rather than via FEATURE_PBP_COLS.
+compute_gamescript_rows <- function(season) {
+  path <- pbp_path(season)
+  if (!file.exists(path)) return(NULL)
+  read_csv(path, col_types = cols_only(
+    game_id = col_character(), season = col_integer(),
+    posteam = col_character(), qtr = col_integer(),
+    play_type = col_character(), two_point_attempt = col_double(),
+    wp = col_double(), spread_line = col_double()
+  ), progress = FALSE) %>%
+    filter(!is.na(posteam), play_type %in% c("pass", "run"),
+           two_point_attempt == 0, qtr %in% 1:4, !is.na(wp)) %>%
     mutate(home_team_id = sub(".*_", "", game_id),
            team_spread  = ifelse(posteam == home_team_id,
                                  spread_line, -spread_line)) %>%
+    group_by(season, game_id, posteam, team_spread) %>%
+    summarise(n_plays  = n(),
+              positive = mean(wp > .75),
+              neutral  = mean(wp >= .25 & wp <= .75),
+              negative = mean(wp < .25), .groups = "drop")
+}
+
+#  Fills the per-game cache for any season whose pbp is cached
+#  locally but absent from gamescript_games.csv; always
+#  recomputes `current_season` (new games arrive weekly).
+refresh_spread_gamescript <- function(current_season = NULL) {
+  existing <- if (file.exists(GAMESCRIPT_GAMES_FILE))
+    read_csv(GAMESCRIPT_GAMES_FILE, show_col_types = FALSE) else NULL
+
+  cached_pbp <- as.integer(gsub("\\D", "", basename(
+    list.files(PBP_DIR, pattern = "^play_by_play_\\d{4}\\.csv\\.gz$"))))
+  have_rows  <- if (is.null(existing)) integer(0) else unique(existing$season)
+  todo <- setdiff(cached_pbp, have_rows)
+  if (!is.null(current_season) && current_season %in% cached_pbp)
+    todo <- union(todo, current_season)
+  if (length(todo) == 0) return(invisible(existing))
+
+  new_rows <- bind_rows(lapply(sort(todo), function(s) {
+    message(sprintf("  gamescript: computing %d", s))
+    compute_gamescript_rows(s)
+  }))
+  keep <- if (is.null(existing)) NULL else existing %>% filter(!season %in% todo)
+  out  <- bind_rows(keep, new_rows) %>%
+    arrange(season, game_id, posteam)
+  dir.create(dirname(GAMESCRIPT_GAMES_FILE), recursive = TRUE,
+             showWarnings = FALSE)
+  write_csv(out, GAMESCRIPT_GAMES_FILE)
+
+  # aggregate to the bucket table
+  tbl <- out %>%
+    filter(season >= min(GAMESCRIPT_SEASONS), n_plays >= 30) %>%
     mutate(range = spread_range_label(team_spread)) %>%
     filter(!is.na(range)) %>%
-    group_by(game_id, posteam, range) %>%
-    summarise(pos = mean(positive), neu = mean(neutral),
-              neg = mean(negative), .groups = "drop") %>%
     group_by(range) %>%
-    summarise(games = n(), positive = mean(pos), neutral = mean(neu),
-              negative = mean(neg), .groups = "drop")
+    summarise(games = n(), positive = mean(positive),
+              neutral = mean(neutral), negative = mean(negative),
+              .groups = "drop")
+  write_csv(tbl, GAMESCRIPT_TABLE_FILE)
+  message(sprintf("  gamescript: %d team-games (%d-%d) -> %s",
+                  nrow(out), min(out$season), max(out$season),
+                  GAMESCRIPT_TABLE_FILE))
+  invisible(out)
+}
+
+#  The bucket table consumed by build_play_projections().
+build_spread_gamescript_table <- function() {
+  if (!file.exists(GAMESCRIPT_TABLE_FILE)) refresh_spread_gamescript()
+  read_csv(GAMESCRIPT_TABLE_FILE, show_col_types = FALSE)
 }
 
 # ── Play-volume projections for a slate ──────────────────────
