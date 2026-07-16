@@ -28,6 +28,13 @@ game_context.R     per-game context synced to pbp by game_id via
                    starting QBs, stadium/roof/surface, parsed weather.
                    Optional data/context/coordinators.csv adds OCs
                    (no R-package source exists for coordinators)
+nfl_features.R     feature layer (port of the owner's original prep
+                   script): gamelogs + efficiency, WP-state playcalling,
+                   defense-allowed tables + positional ranks, EPA ranks,
+                   snap counts, NGS, unrealized air yards, spread-bucket
+                   game scripts, play-volume projections. All builders
+                   take (asof_season, asof_week) — no lookahead.
+                   Optional PFF drop-in via data/pff/*.csv
 roster_context.R   per-game depth charts + weekly injury reports
                    (Out/Doubtful/Questionable + practice status), both
                    vendor formats normalized to one per-game schema

@@ -3,6 +3,8 @@ data/cache/
 data/props/
 data/pbp/
 data/rosters/
+data/players/
+data/pff/
 data/context/game_context.csv
 data/results/report_*.html
 # data/context/coordinators.csv IS committed if supplied
