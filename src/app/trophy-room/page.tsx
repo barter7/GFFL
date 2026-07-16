@@ -3,11 +3,12 @@
 import type { CSSProperties, ReactNode } from "react";
 import { getLeagueData, photoUrl, fmt, ScheduleRow, StandingRow } from "@/lib/data";
 import { computeAlltimeStandings } from "@/lib/league";
+import { PRE_DATA_CHAMPIONS, PRE_DATA_SACKOS } from "@/lib/lore";
 import { findPhoto } from "./photos";
 import Tap, { TapInfo, TapLine } from "./Tap";
 import styles from "./styles.module.css";
 
-export const metadata = { title: "Trophy Room — GFFL Archives" };
+export const metadata = { title: "Trophy Room" };
 
 // ---------------------------------------------------------------------------
 // Plaque styling (gold / silver / bronze by rank)
@@ -334,7 +335,7 @@ function rankMap(names: string[]): Map<string, number> {
 }
 
 export default function TrophyRoomPage() {
-  const { standings, schedule } = getLeagueData();
+  const { standings, schedule, finalSeasons } = getLeagueData();
 
   // Compute stats per owner
   const alltime = computeAlltimeStandings(standings);
@@ -397,8 +398,14 @@ export default function TrophyRoomPage() {
 
   const seasons = [...new Set(standings.map((s) => s.season))].sort((a, b) => a - b);
 
+  // Wins/PF-based per-season awards are only meaningful once a season is over:
+  // a partial season would hand out trophies for incomplete records. The 999
+  // rank sentinel already protects rank-based checks, but these loops compare
+  // wins/points directly, so they must skip non-final seasons explicitly.
+  const awardSeasons = seasons.filter((yr) => finalSeasons.has(yr));
+
   // Sackos: worst regular season record (fewest wins, then lowest PF as tiebreaker)
-  const sackoWinners = seasons.map((season) => {
+  const sackoWinners = awardSeasons.map((season) => {
     const rows = standings
       .filter((s) => s.season === season)
       .sort((a, b) => a.h2h_wins - b.h2h_wins || a.points_for - b.points_for);
@@ -407,15 +414,16 @@ export default function TrophyRoomPage() {
   const sackoCount = new Map<string, number>();
   for (const s of sackoWinners) sackoCount.set(s.owner, (sackoCount.get(s.owner) ?? 0) + 1);
 
-  // Playoff appearances: league_rank <= 4 (top 4 make playoffs)
+  // Playoff appearances: league_rank <= 4 (top 4 make playoffs).
+  // finalSeasons gate is belt-and-braces: non-final rows carry rank 999.
   const playoffRows = standings
-    .filter((s) => s.league_rank <= 4)
+    .filter((s) => finalSeasons.has(s.season) && s.league_rank <= 4)
     .map((s) => ({ season: s.season, owner: s.owner }));
   const playoffCount = new Map<string, number>();
   for (const p of playoffRows) playoffCount.set(p.owner, (playoffCount.get(p.owner) ?? 0) + 1);
 
   // #1 seed: best regular season record (wins desc, PF tiebreaker)
-  const oneseedRows = seasons.map((season) => {
+  const oneseedRows = awardSeasons.map((season) => {
     const rows = standings
       .filter((s) => s.season === season)
       .sort((a, b) => b.h2h_wins - a.h2h_wins || b.points_for - a.points_for);
@@ -423,7 +431,7 @@ export default function TrophyRoomPage() {
   });
 
   // GFFL trophy: most regular season points for
-  const gfflPfRows = seasons.map((season) => {
+  const gfflPfRows = awardSeasons.map((season) => {
     const rows = standings
       .filter((s) => s.season === season)
       .sort((a, b) => b.points_for - a.points_for);
@@ -645,6 +653,7 @@ export default function TrophyRoomPage() {
             { label: "League Rank (best week)", value: `#${bestWkRank.get(o) ?? "?"} of ${ownerCount}` },
           ]
         : [],
+      note: "Includes playoff games.",
     };
     const streakPlaqueInfo: TapInfo = {
       title: `${o} — Longest Win Streak`,
@@ -652,12 +661,16 @@ export default function TrophyRoomPage() {
         { label: "Streak", value: `${winStreakStr} games` },
         { label: "League Rank (streak)", value: `#${wstreakRank.get(o) ?? "?"} of ${ownerCount}` },
       ],
+      note: "Includes playoff games.",
     };
 
     // Championship trophies with tooltips
     let champYears = ownerSeasons.filter((s) => s.league_rank === 1).map((s) => s.season);
-    // Add pre-data championships
-    if (o === "Connor") champYears = [...new Set([2016, ...champYears])];
+    // Add pre-data championships (league lore, shared with the Hall of Fame)
+    const preDataChampYears = Object.entries(PRE_DATA_CHAMPIONS)
+      .filter(([, owner]) => owner === o)
+      .map(([yr]) => Number(yr));
+    champYears = [...new Set([...preDataChampYears, ...champYears])];
     champYears.sort((a, b) => a - b);
 
     // Hunt trophies (title game appearances) with tooltips
@@ -668,8 +681,11 @@ export default function TrophyRoomPage() {
 
     // Sacko trophies with tooltips
     let sackoYears = sackoWinners.filter((s) => s.owner === o).map((s) => s.season);
-    // Add pre-data sackos
-    if (o === "Kerley") sackoYears = [...new Set([2016, ...sackoYears])];
+    // Add pre-data sackos (league lore, shared with the Hall of Fame)
+    const preDataSackoYears = Object.entries(PRE_DATA_SACKOS)
+      .filter(([, owner]) => owner === o)
+      .map(([yr]) => Number(yr));
+    sackoYears = [...new Set([...preDataSackoYears, ...sackoYears])];
     sackoYears.sort((a, b) => a - b);
 
     // Combined banners with tooltips

@@ -30,22 +30,31 @@ interface PfgRow extends StandingRow {
 
 export function computeRecordsBook(
   standings: StandingRow[],
-  schedule: ScheduleRow[]
+  schedule: ScheduleRow[],
+  finalSeasons: Set<number>
 ): RecordEntry[] {
   const records: RecordEntry[] = [];
 
+  // Single-season records only consider completed seasons: a partial season's
+  // totals (wins, losses, PF, PF/G) would pollute "fewest"/"lowest" records
+  // and its 999-rank sentinel is meaningless for playoff/championship splits.
+  // Weekly records below keep the full schedule — the converter guarantees
+  // only completed weeks are present.
+  const finalStandings = standings.filter((s) => finalSeasons.has(s.season));
+
   // Season-level PF rank + PF/G, PA/G and win% per season (pf_ranked_seasons / pfg_season)
-  const rows: PfgRow[] = standings.map((s) => {
+  const rows: PfgRow[] = finalStandings.map((s) => {
     const games = s.h2h_wins + s.h2h_losses + (s.h2h_ties ?? 0);
     return {
       ...s,
       games,
       pfg: s.points_for / games,
       pag: s.points_against / games,
-      winpct: s.h2h_wins / games,
+      // Ties count as half a win, matching ESPN and computeAlltimeStandings.
+      winpct: (s.h2h_wins + 0.5 * (s.h2h_ties ?? 0)) / games,
       pfSeasonRank:
         1 +
-        standings.filter(
+        finalStandings.filter(
           (o) => o.season === s.season && o.points_for > s.points_for
         ).length,
     };
@@ -66,9 +75,16 @@ export function computeRecordsBook(
     });
   };
 
-  // sprintf("%d-%d (%.1f%%)", h2h_wins, h2h_losses, winpct * 100)
-  const recordStr = (r: PfgRow) =>
-    `${r.h2h_wins}-${r.h2h_losses} (${(r.winpct * 100).toFixed(1)}%)`;
+  // "W-L (pct%)", or "W-L-T (pct%)" when the season had a tie —
+  // e.g. Jack 2019 "7-6-1 (53.6%)".
+  const recordStr = (r: PfgRow) => {
+    const ties = r.h2h_ties ?? 0;
+    const wl =
+      ties > 0
+        ? `${r.h2h_wins}-${r.h2h_losses}-${ties}`
+        : `${r.h2h_wins}-${r.h2h_losses}`;
+    return `${wl} (${(r.winpct * 100).toFixed(1)}%)`;
+  };
 
   // === PLAYOFF/MISS RECORDS ===
   // Worst record (win%) to make playoffs (league_rank <= 4)
@@ -172,7 +188,7 @@ export function computeRecordsBook(
   const regSchedule = schedule.filter((g) => g.game_type === "Regular Season");
 
   // Most wins in a single season
-  const bestSeason = [...standings].sort((a, b) => b.h2h_wins - a.h2h_wins)[0];
+  const bestSeason = [...finalStandings].sort((a, b) => b.h2h_wins - a.h2h_wins)[0];
   records.push({
     record: "Most Wins (Season)",
     holder: bestSeason.owner,
@@ -180,17 +196,18 @@ export function computeRecordsBook(
     season: String(bestSeason.season),
   });
 
-  // Fewest losses in a season
-  const fewestLosses = [...standings].sort((a, b) => a.h2h_losses - b.h2h_losses)[0];
+  // Fewest losses in a season (ties comma-joined like add_record entries)
+  const minLosses = Math.min(...finalStandings.map((s) => s.h2h_losses));
+  const fewestLossRows = finalStandings.filter((s) => s.h2h_losses === minLosses);
   records.push({
     record: "Fewest Losses (Season)",
-    holder: fewestLosses.owner,
-    value: String(fewestLosses.h2h_losses),
-    season: String(fewestLosses.season),
+    holder: fewestLossRows.map((r) => r.owner).join(", "),
+    value: String(minLosses),
+    season: [...new Set(fewestLossRows.map((r) => r.season))].join(", "),
   });
 
   // Most points in a season
-  const mostPf = [...standings].sort((a, b) => b.points_for - a.points_for)[0];
+  const mostPf = [...finalStandings].sort((a, b) => b.points_for - a.points_for)[0];
   records.push({
     record: "Most Points For (Season)",
     holder: mostPf.owner,
@@ -199,7 +216,7 @@ export function computeRecordsBook(
   });
 
   // Fewest points in a season
-  const leastPf = [...standings].sort((a, b) => a.points_for - b.points_for)[0];
+  const leastPf = [...finalStandings].sort((a, b) => a.points_for - b.points_for)[0];
   records.push({
     record: "Fewest Points For (Season)",
     holder: leastPf.owner,

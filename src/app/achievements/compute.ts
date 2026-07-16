@@ -8,7 +8,16 @@ import {
   type ScheduleRow,
   type StarterRow,
 } from "@/lib/data";
+import { PRE_DATA_CHAMPIONS, PRE_DATA_SACKOS } from "@/lib/lore";
 import { ACHIEVEMENTS, FAVORITE_TEAMS, NEGATIVE_IDS } from "./definitions";
+
+/** Pre-data-era award years (from lore) for one owner, ascending. */
+function preDataYears(lore: Record<number, string>, owner: string): number[] {
+  return Object.entries(lore)
+    .filter(([, o]) => o === owner)
+    .map(([yr]) => Number(yr))
+    .sort((a, b) => a - b);
+}
 
 export interface OwnerResult {
   unlocked: Record<string, boolean>;
@@ -68,7 +77,7 @@ let modelCache: AchievementsModel | null = null;
 export function computeAchievementsModel(): AchievementsModel {
   if (modelCache) return modelCache;
 
-  const { standings, schedule, drafts, starters } = getLeagueData();
+  const { standings, schedule, drafts, starters, finalSeasons } = getLeagueData();
 
   // Owner ordering: active alphabetical, legacy ("Joe") at the end
   const owners = uniq(standings.map((s) => s.owner)).sort();
@@ -79,11 +88,17 @@ export function computeAchievementsModel(): AchievementsModel {
   const seasonsAll = uniq(standings.map((s) => s.season)).sort((a, b) => a - b);
   const standingsBySeason = groupMap(standings, (s) => String(s.season));
 
+  // Season-total awards (most wins, fewest PA, sacko, undefeated, season-long
+  // points leaders, ...) are only meaningful once a season is complete. During
+  // an in-progress season the standings totals are partial, so every
+  // per-season award precompute iterates only the finalized seasons.
+  const finalSeasonsAll = seasonsAll.filter((yr) => finalSeasons.has(yr));
+
   // ---- Pre-compute season-wide data for achievements ----
 
   // Soft Schedule: lowest PA per season winner
   const softScheduleSeasons: { season: number; owner: string }[] = [];
-  for (const yr of seasonsAll) {
+  for (const yr of finalSeasonsAll) {
     const rows = [...(standingsBySeason.get(String(yr)) ?? [])].sort(
       (a, b) => a.points_against - b.points_against
     );
