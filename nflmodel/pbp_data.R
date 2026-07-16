@@ -137,5 +137,7 @@ PBP_MODEL_COLS <- c(
   # scoring
   "touchdown", "td_player_id", "td_player_name", "two_point_attempt",
   # vegas
-  "spread_line", "total_line"
+  "spread_line", "total_line",
+  # environment (game-constant; game_context.R parses weather further)
+  "weather", "temp", "wind", "roof", "surface", "stadium"
 )
