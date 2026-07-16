@@ -11,7 +11,10 @@ library(dplyr)
 
 # --- Configuration ---
 LEAGUE_ID <- 570237
-SEASONS <- 2017:2025
+# Latest season = year as of 180 days ago, so the new season is only picked up
+# once it actually starts (a January run still fetches last fall's season, and
+# the next season is added automatically at the end of the following summer).
+SEASONS <- 2017:as.integer(format(Sys.Date() - 180, "%Y"))
 ESPN_S2 <- Sys.getenv("ESPN_S2")
 ESPN_SWID <- Sys.getenv("ESPN_SWID")
 
@@ -72,6 +75,38 @@ for (s in SEASONS) {
   }, error = function(e) {
     cat("ERROR:", e$message, "\n")
   })
+}
+
+# --- Validate (fail closed: never overwrite good cached data with a bad fetch) ---
+# A season counts as fetched only if it produced at least one standings row.
+fetched_seasons <- sort(as.integer(names(Filter(function(x) nrow(x) > 0, all_standings))))
+missing_seasons <- setdiff(SEASONS, fetched_seasons)
+
+if (length(fetched_seasons) == 0) {
+  stop("FATAL: no seasons were fetched from ESPN. ",
+       "Check that ESPN_S2/ESPN_SWID are current (they expire periodically) ",
+       "and that league ", LEAGUE_ID, " is reachable. ",
+       "Nothing was written to data/.")
+}
+
+if (length(missing_seasons) > 0) {
+  if (identical(as.integer(missing_seasons), as.integer(max(SEASONS)))) {
+    # Only the newest season is missing: the league likely hasn't been renewed
+    # on ESPN yet. Historical data is intact, so continue with a loud warning.
+    cat("\n")
+    cat("****************************************************************\n")
+    cat("* WARNING: season", max(SEASONS), "returned no standings data.      *\n")
+    cat("* The league has probably not been renewed on ESPN yet.       *\n")
+    cat("* Continuing with seasons", min(fetched_seasons), "-", max(fetched_seasons), "only.                  *\n")
+    cat("****************************************************************\n\n")
+  } else {
+    stop("FATAL: standings data is missing for historical season(s) ",
+         paste(missing_seasons, collapse = ", "),
+         " (expected ", min(SEASONS), "-", max(SEASONS), "). ",
+         "This usually means the ESPN_S2/ESPN_SWID cookies have expired ",
+         "or ESPN returned partial data. Refusing to save: nothing was ",
+         "written to data/, existing cached files are untouched.")
+  }
 }
 
 # --- Combine and Save ---

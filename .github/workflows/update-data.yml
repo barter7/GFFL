@@ -1,0 +1,106 @@
+# Daily in-season league data refresh.
+#
+# Fetches fresh data from ESPN (fetch_data.R), converts it to the JSON the
+# site is built from (scripts/convert_data.py), and commits the result to
+# main. Both scripts fail closed: an expired ESPN cookie or a partial ESPN
+# response fails the job instead of wiping the site's data.
+#
+# One-time setup: add ESPN_S2 and ESPN_SWID as repository secrets under
+# Settings -> Secrets and variables -> Actions.
+
+name: Update league data
+
+on:
+  schedule:
+    # Daily at 10:00 UTC during the fantasy season (September-January).
+    - cron: "0 10 * 1,9,10,11,12 *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check ESPN secrets are configured
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+        run: |
+          if [ -z "$ESPN_S2" ] || [ -z "$ESPN_SWID" ]; then
+            echo "::error::Add ESPN_S2 and ESPN_SWID under Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+
+      - name: Cache R packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: r-lib-${{ runner.os }}-ffscrapr-dplyr-nflreadr-v1
+
+      - name: Install R packages
+        run: |
+          Rscript -e 'pkgs <- c("ffscrapr", "dplyr", "nflreadr");
+                      missing <- setdiff(pkgs, rownames(installed.packages()));
+                      if (length(missing)) install.packages(missing)'
+
+      - name: Fetch league data from ESPN
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+        run: Rscript fetch_data.R
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python packages
+        run: pip install pyreadr rdata pandas
+
+      - name: Convert data to site JSON
+        run: python3 scripts/convert_data.py
+
+      - name: Commit and push refreshed data
+        run: |
+          if [ -n "$(git status --porcelain -- data src/data)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data src/data
+            git commit -m "Daily league data refresh"
+            git push origin main
+          else
+            echo "No data changes today."
+          fi
+
+      - name: Sync mirror branch (best effort)
+        run: |
+          set +e
+          git fetch origin claude/espn-fantasy-dashboard-NcBRU &&
+            git checkout claude/espn-fantasy-dashboard-NcBRU &&
+            git merge --no-edit main &&
+            git push origin claude/espn-fantasy-dashboard-NcBRU
+          if [ $? -ne 0 ]; then
+            echo "::warning::Mirror branch sync failed (non-fatal); main was still updated."
+          fi
