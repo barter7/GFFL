@@ -205,6 +205,16 @@ Team-games with <30 recorded offensive snaps are excluded.
 +17.5 bucket (n=1) showed a 91% positive share; the 20-year value
 (n=18) is 59%. Any new bucketed table must report per-bucket n.
 
+**R4.6 — Smoothed spread curve.** Alongside the bucket table, the
+per-game cache is kernel-smoothed (Nadaraya-Watson, Gaussian
+bandwidth 1.5 spread points, 10-fold-CV-selected — Study S10) into
+`spread_gamescript_smooth.csv`: state shares on a half-point spread
+grid, with Kish effective sample size per point. Thin numbers borrow
+from well-sampled neighbors by distance; the four shares sum to 1 at
+every query; the curve is symmetric around 0 by construction. Use
+`gamescript_shares_at()` for slate spreads; never use a smoothed
+value without checking its eff_n.
+
 **R4.5 — Play-volume projection** (ported from the original model):
 plays = mean of (team plays for + opp plays allowed)/2 and
 team plays × (opp allowed / league avg); pass/rush split two ways —
@@ -293,6 +303,16 @@ quintiles .0343. Decision: quartiles become canonical (R4.1), and
 the cache stores the full 5%-bin histogram (R4.1a) so finer schemes
 remain one function call away. 20-season quartile table verified
 monotonic in all four states across all 14 spread buckets.
+
+**S10 — Kernel smoothing of the spread curve** (2026-07; 10,862
+team-games). 10-fold CV over Gaussian bandwidths {.75, 1, 1.5, 2, 3,
+4}: flat minimum at h = 1.5 (MSE ×1e4: 566.06 vs 566.41/569.94 at
+the extremes). Motivating case verified: raw spread-16 favorites
+(n=10 after the 30-snap filter) showed noisy, non-monotone shares
+vs their 15.5/16.5 neighbors; the smoothed estimate at 16 rests on
+eff_n = 211 and sits monotonically between them. Curve q4 share is
+monotone in spread; symmetry holds to |Δ| ≤ .015 (residual from the
+30-snap filter occasionally dropping one side of a game).
 
 **S8 — Legacy weekly-log model** (2026-07). The v1 pipeline
 (data_sources.R hvpkod-derived weekly caches) validated the market

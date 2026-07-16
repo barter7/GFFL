@@ -597,16 +597,101 @@ refresh_spread_gamescript <- function(current_season = NULL) {
                               "positive", "neutral", "negative")), mean),
               .groups = "drop")
   write_csv(tbl, GAMESCRIPT_TABLE_FILE)
-  message(sprintf("  gamescript: %d team-games (%d-%d) -> %s",
+
+  # smoothed curve alongside the bucket table (R4.6)
+  smooth <- out %>%
+    filter(season >= min(GAMESCRIPT_SEASONS)) %>%
+    smooth_gamescript_curve()
+  write_csv(smooth, GAMESCRIPT_SMOOTH_FILE)
+
+  message(sprintf("  gamescript: %d team-games (%d-%d) -> %s (+ smooth curve)",
                   nrow(out), min(out$season), max(out$season),
                   GAMESCRIPT_TABLE_FILE))
   invisible(out)
+}
+
+#  Smoothed state shares for arbitrary slate spreads: linear
+#  interpolation on the precomputed half-point grid.
+gamescript_shares_at <- function(team_spread,
+                                 curve = read_csv(GAMESCRIPT_SMOOTH_FILE,
+                                                  show_col_types = FALSE)) {
+  out <- lapply(GS_STATE_LABELS, function(l)
+    approx(curve$team_spread, curve[[l]], xout = team_spread, rule = 2)$y)
+  names(out) <- GS_STATE_LABELS
+  as_tibble(out) %>% mutate(team_spread = team_spread, .before = 1)
 }
 
 #  The bucket table consumed by build_play_projections().
 build_spread_gamescript_table <- function() {
   if (!file.exists(GAMESCRIPT_TABLE_FILE)) refresh_spread_gamescript()
   read_csv(GAMESCRIPT_TABLE_FILE, show_col_types = FALSE)
+}
+
+# ── Smoothed spread → state-share curve ──────────────────────
+#
+#  Hard buckets waste information at thinly-traded numbers: a 16
+#  spread might be one game while 15.5 and 16.5 hold twenty each.
+#  Nadaraya-Watson kernel smoothing estimates the state shares AT
+#  any spread s as the Gaussian-distance-weighted average of all
+#  team-games, so every estimate borrows from its neighbors in
+#  proportion to how close and how numerous they are.
+#
+#  Properties (by construction):
+#   • the four state shares are averaged with identical weights,
+#     so they sum to exactly 1 at every query spread
+#   • every game enters the data twice (team +s, opponent −s with
+#     reversed states), so the curve is antisymmetric around 0
+#   • eff_n (Kish effective sample size) is reported per point —
+#     never trust a smoothed value without checking it
+#
+#  Bandwidth: Gaussian sd in spread points. Selected by 10-fold
+#  CV on per-team-game share prediction (Study S10): h = 1.5.
+GS_SMOOTH_BANDWIDTH <- 1.5
+GAMESCRIPT_SMOOTH_FILE <- file.path("data", "context",
+                                    "spread_gamescript_smooth.csv")
+
+smooth_gamescript_curve <- function(games,
+                                    query = seq(-21, 21, by = 0.5),
+                                    bandwidth = GS_SMOOTH_BANDWIDTH,
+                                    boundaries = GS_STATE_BOUNDS,
+                                    labels = GS_STATE_LABELS) {
+  g <- games %>%
+    filter(!is.na(team_spread), n_plays >= 30) %>%
+    gamescript_state_shares(boundaries, labels)
+  sm <- sapply(query, function(s) {
+    w  <- dnorm(g$team_spread - s, sd = bandwidth)
+    sw <- sum(w)
+    c(sapply(labels, function(l) sum(w * g[[l]]) / sw),
+      eff_n = sw^2 / sum(w^2))
+  })
+  out <- as_tibble(t(sm))
+  names(out) <- c(labels, "eff_n")
+  bind_cols(tibble(team_spread = query), out)
+}
+
+#  10-fold CV over candidate bandwidths: predict each held-out
+#  team-game's realized state shares from the curve fit on the
+#  other folds; minimize mean squared error across the 4 shares.
+cv_gamescript_bandwidth <- function(games, candidates = c(.75, 1, 1.5, 2, 3, 4),
+                                    k = 10, seed = 42) {
+  g <- games %>%
+    filter(!is.na(team_spread), n_plays >= 30) %>%
+    gamescript_state_shares()
+  set.seed(seed)
+  fold <- sample(rep_len(1:k, nrow(g)))
+  sapply(candidates, function(h) {
+    err <- 0
+    for (f in 1:k) {
+      tr <- g[fold != f, ]; te <- g[fold == f, ]
+      curve <- smooth_gamescript_curve(tr, query = sort(unique(te$team_spread)),
+                                       bandwidth = h)
+      pred <- te %>%
+        left_join(curve, by = "team_spread", suffix = c("_obs", "_hat"))
+      err <- err + sum(sapply(GS_STATE_LABELS, function(l)
+        sum((pred[[paste0(l, "_obs")]] - pred[[paste0(l, "_hat")]])^2)))
+    }
+    err / (nrow(g) * length(GS_STATE_LABELS))
+  }) |> setNames(candidates)
 }
 
 # ── Play-volume projections for a slate ──────────────────────
