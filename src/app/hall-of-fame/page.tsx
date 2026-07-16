@@ -7,6 +7,7 @@
 import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { getLeagueData, headshotUrl, fmt, BENCH_SLOTS, StarterRow } from "@/lib/data";
+import { PRE_DATA_CHAMPIONS } from "@/lib/lore";
 import Modal from "@/components/Modal";
 import { findPhoto } from "../trophy-room/photos";
 
@@ -156,6 +157,7 @@ function BustCard({
   totalScore,
   rosterHtml,
   draftHtml,
+  note,
 }: {
   owner: string;
   yr: number;
@@ -167,6 +169,8 @@ function BustCard({
   totalScore: number;
   rosterHtml: ReactNode;
   draftHtml: ReactNode;
+  /** Optional italic footnote in the tap modal (pre-data champions). */
+  note?: string;
 }) {
   const [open, setOpen] = useState(false);
   const hasBust = bustFile != null;
@@ -412,6 +416,11 @@ function BustCard({
             ))}
           </tbody>
         </table>
+        {note != null && (
+          <div style={{ marginTop: 12, fontSize: 12, fontStyle: "italic", opacity: 0.6 }}>
+            {note}
+          </div>
+        )}
         {roster.length > 0 && (
           <>
             <div
@@ -440,10 +449,51 @@ function BustCard({
 export default function HallOfFamePage() {
   const { standings, schedule, drafts, starters } = getLeagueData();
 
-  // Get champion for each season using league_rank == 1
+  // Get champion for each season using league_rank == 1. Non-final seasons
+  // carry the 999 rank sentinel, so only completed seasons ever match — which
+  // also means the "final week roster" lookup below can never pick up an
+  // in-progress season's schedule.
   const champRows = standings
     .filter((s) => s.league_rank === 1)
     .sort((a, b) => a.season - b.season);
+
+  // Champions from before the recorded-data era (league lore, shared with the
+  // trophy room). No standings/roster/draft data exists for these seasons, so
+  // the busts render without dropdowns and with a pre-data note instead of
+  // record/PF stats.
+  const preDataCards = Object.entries(PRE_DATA_CHAMPIONS)
+    .map(([yr, owner]) => ({ yr: Number(yr), owner }))
+    .sort((a, b) => a.yr - b.yr)
+    .map(({ yr, owner }, idx) => {
+      const bustFile = findPhoto(
+        `${owner.toLowerCase()}_bust2`,
+        `${owner}_bust2`,
+        `${owner.toLowerCase()}_bust`,
+        `${owner}_bust`
+      );
+      const photoFile = findPhoto(`${owner.toLowerCase()}_headshot`, owner.toLowerCase(), owner);
+      const summary: SummaryLine[] = [
+        { label: "Season", value: String(yr) },
+        { label: "Owner", value: owner },
+        { label: "Record / Points For", value: "Pre-data era" },
+      ];
+      return (
+        <BustCard
+          key={yr}
+          owner={owner}
+          yr={yr}
+          bustFile={bustFile}
+          photoFile={photoFile}
+          lazy={idx >= 2}
+          summary={summary}
+          roster={[]}
+          totalScore={0}
+          rosterHtml={null}
+          draftHtml={null}
+          note="Championship from the league's founding season — before recorded ESPN data."
+        />
+      );
+    });
 
   // Championship week = final week of each season's schedule
   const champWeekBySeason = new Map<number, number>();
@@ -653,7 +703,7 @@ export default function HallOfFamePage() {
         yr={yr}
         bustFile={bustFile}
         photoFile={photoFile}
-        lazy={idx >= 2}
+        lazy={preDataCards.length + idx >= 2}
         summary={summary}
         roster={roster}
         totalScore={totalScore}
@@ -701,6 +751,7 @@ export default function HallOfFamePage() {
           gap: 12,
         }}
       >
+        {preDataCards}
         {bustCards}
       </div>
     </>

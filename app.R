@@ -19,8 +19,8 @@ source("helpers.R")
 
 # --- League Configuration (for future live data features) ---
 LEAGUE_ID <- 570237
-ESPN_S2_TOKEN <- Sys.getenv("ESPN_S2", "AEA1%2BjaW2g9NUF4iIXuqdbRZ5qVRGdaxEa3YlbfwdrOPXeKIQvKQZvY7jAiem0XvhcnYczVj2lXY%2FpOTeYUQWSR6tpdRCWrKhUWv%2BvkZ3Q7CiTNr40zp3SZxiPTiyitikEwxmmDA6Dz4dAI1yRU1MWBYQpsRTBjapEBbs0ZKB4mOVPSc0NACSMFxtmb52rdidtJBVyRSAAtI5c9eJUmcsz7bozC96i5p9PAYr18U1Gm56W04Z8XqC3onM3iuqcj0F7dDrwRGKRVYHJSpm3xzJa2TFJH5K6nS4Ps%2B4xSjhsz3ag%3D%3D")
-ESPN_SWID_TOKEN <- Sys.getenv("ESPN_SWID", "{5762B088-9519-444D-A2B0-889519E44D16}")
+ESPN_S2_TOKEN <- Sys.getenv("ESPN_S2", "")
+ESPN_SWID_TOKEN <- Sys.getenv("ESPN_SWID", "")
 
 # --- UI ---
 ui <- page_navbar(

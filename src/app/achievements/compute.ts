@@ -8,7 +8,16 @@ import {
   type ScheduleRow,
   type StarterRow,
 } from "@/lib/data";
+import { PRE_DATA_CHAMPIONS, PRE_DATA_SACKOS } from "@/lib/lore";
 import { ACHIEVEMENTS, FAVORITE_TEAMS, NEGATIVE_IDS } from "./definitions";
+
+/** Pre-data-era award years (from lore) for one owner, ascending. */
+function preDataYears(lore: Record<number, string>, owner: string): number[] {
+  return Object.entries(lore)
+    .filter(([, o]) => o === owner)
+    .map(([yr]) => Number(yr))
+    .sort((a, b) => a - b);
+}
 
 export interface OwnerResult {
   unlocked: Record<string, boolean>;
@@ -68,7 +77,7 @@ let modelCache: AchievementsModel | null = null;
 export function computeAchievementsModel(): AchievementsModel {
   if (modelCache) return modelCache;
 
-  const { standings, schedule, drafts, starters } = getLeagueData();
+  const { standings, schedule, drafts, starters, finalSeasons } = getLeagueData();
 
   // Owner ordering: active alphabetical, legacy ("Joe") at the end
   const owners = uniq(standings.map((s) => s.owner)).sort();
@@ -79,11 +88,17 @@ export function computeAchievementsModel(): AchievementsModel {
   const seasonsAll = uniq(standings.map((s) => s.season)).sort((a, b) => a - b);
   const standingsBySeason = groupMap(standings, (s) => String(s.season));
 
+  // Season-total awards (most wins, fewest PA, sacko, undefeated, season-long
+  // points leaders, ...) are only meaningful once a season is complete. During
+  // an in-progress season the standings totals are partial, so every
+  // per-season award precompute iterates only the finalized seasons.
+  const finalSeasonsAll = seasonsAll.filter((yr) => finalSeasons.has(yr));
+
   // ---- Pre-compute season-wide data for achievements ----
 
   // Soft Schedule: lowest PA per season winner
   const softScheduleSeasons: { season: number; owner: string }[] = [];
-  for (const yr of seasonsAll) {
+  for (const yr of finalSeasonsAll) {
     const rows = [...(standingsBySeason.get(String(yr)) ?? [])].sort(
       (a, b) => a.points_against - b.points_against
     );
@@ -92,7 +107,7 @@ export function computeAchievementsModel(): AchievementsModel {
 
   // MVP: best regular season record per season
   const mvpSeasons: { season: number; owner: string }[] = [];
-  for (const yr of seasonsAll) {
+  for (const yr of finalSeasonsAll) {
     const rows = [...(standingsBySeason.get(String(yr)) ?? [])].sort(
       (a, b) => b.h2h_wins - a.h2h_wins || b.points_for - a.points_for
     );
@@ -103,7 +118,9 @@ export function computeAchievementsModel(): AchievementsModel {
   // Really Bad Beat: 2nd highest PF but missed playoffs
   const ninjaSeasons: { season: number; owner: string }[] = [];
   const rbbSeasons: { season: number; owner: string }[] = [];
-  for (const yr of seasonsAll) {
+  // league_rank is sentinel-safe (999 mid-season), but the PF rank array over
+  // a partial season is meaningless — only rank finalized seasons.
+  for (const yr of finalSeasonsAll) {
     const rows = standingsBySeason.get(String(yr)) ?? [];
     const ranks = rankDesc(rows.map((r) => r.points_for));
     rows.forEach((r, i) => {
@@ -112,11 +129,20 @@ export function computeAchievementsModel(): AchievementsModel {
     });
   }
 
-  // Rock Bottom: lowest scoring week of a season
+  // Defensive: the converter only emits fully-completed weeks, but make sure a
+  // null-result or 0-0 row can never register as a legitimate low/steady score
+  // in the min/consistency computations below.
+  const playedSchedule = schedule.filter(
+    (g) => g.result !== null && !(g.franchise_score === 0 && g.opponent_score === 0)
+  );
+
+  // Rock Bottom: lowest scoring week of a season (a season award — the
+  // season's low can still move while it is in progress, so gate on final)
   const scheduleSeasons = uniq(schedule.map((g) => g.season));
   const rockBottomSeasons: { season: number; owner: string }[] = [];
   for (const yr of scheduleSeasons) {
-    const rows = [...schedule.filter((g) => g.season === yr)].sort(
+    if (!finalSeasons.has(yr)) continue;
+    const rows = [...playedSchedule.filter((g) => g.season === yr)].sort(
       (a, b) => a.franchise_score - b.franchise_score
     );
     if (rows.length) rockBottomSeasons.push({ season: yr, owner: rows[0].team_owner });
@@ -177,8 +203,10 @@ export function computeAchievementsModel(): AchievementsModel {
       if (e) e.pts += r.player_score ?? 0;
       else single.set(k, { season: r.season, owner: r.owner, player_name: r.player_name, pts: r.player_score ?? 0 });
     }
+    // Season-long position awards only settle once the season is final
     const singleBySeason = groupMap([...single.values()], (e) => String(e.season));
     const topRows = [...singleBySeason.entries()]
+      .filter(([yr]) => finalSeasons.has(Number(yr)))
       .sort((a, b) => Number(a[0]) - Number(b[0]))
       .map(([, rows]) => [...rows].sort((a, b) => b.pts - a.pts)[0]);
     topPosInfo[position] = topRows;
@@ -194,15 +222,18 @@ export function computeAchievementsModel(): AchievementsModel {
     }
     const totalsBySeason = groupMap([...totals.values()], (e) => String(e.season));
     const bestRows = [...totalsBySeason.entries()]
+      .filter(([yr]) => finalSeasons.has(Number(yr)))
       .sort((a, b) => Number(a[0]) - Number(b[0]))
       .map(([, rows]) => [...rows].sort((a, b) => b.pts - a.pts)[0]);
     bestPosInfo[position] = bestRows;
     for (const r of bestRows) bestPosSeasons[position].add(r.owner);
   }
 
-  // Sacko row per season (lowest wins, then lowest PF)
+  // Sacko row per season (lowest wins, then lowest PF) — final seasons only,
+  // which also keeps every downstream consumer (skin, escape artist, villain
+  // arc) from awarding off a partial season.
   const sackoBySeason = new Map<number, StandingRow>();
-  for (const yr of seasonsAll) {
+  for (const yr of finalSeasonsAll) {
     const rows = [...(standingsBySeason.get(String(yr)) ?? [])].sort(
       (a, b) => a.h2h_wins - b.h2h_wins || a.points_for - b.points_for
     );
@@ -211,7 +242,7 @@ export function computeAchievementsModel(): AchievementsModel {
 
   // By the Skin of his...: tied sacko record but finished higher on PF
   const skinOwners = new Set<string>();
-  for (const yr of uniq(standings.map((s) => s.season))) {
+  for (const yr of finalSeasonsAll) {
     const sackoRow = sackoBySeason.get(yr);
     if (!sackoRow) continue;
     for (const s of standingsBySeason.get(String(yr)) ?? []) {
@@ -266,7 +297,8 @@ export function computeAchievementsModel(): AchievementsModel {
   }
   const mrRelevantOwners = new Set(mrRelevantInfo.map((r) => r.owner));
 
-  // Repeat & Threepeat championships (includes Connor's 2016 championship)
+  // Repeat & Threepeat championships (pre-data-era titles from lore count,
+  // e.g. Connor's 2016 championship)
   const champYearsByOwner = new Map<string, number[]>();
   for (const s of standings) {
     if (s.league_rank === 1) {
@@ -275,7 +307,12 @@ export function computeAchievementsModel(): AchievementsModel {
       champYearsByOwner.set(s.owner, arr);
     }
   }
-  champYearsByOwner.set("Connor", [...(champYearsByOwner.get("Connor") ?? []), 2016]);
+  for (const preOwner of new Set(Object.values(PRE_DATA_CHAMPIONS))) {
+    champYearsByOwner.set(preOwner, [
+      ...(champYearsByOwner.get(preOwner) ?? []),
+      ...preDataYears(PRE_DATA_CHAMPIONS, preOwner),
+    ]);
+  }
   const repeatOwners = new Set<string>();
   const threepeatOwners = new Set<string>();
   const repeatYears = new Map<string, [number, number]>();
@@ -375,8 +412,8 @@ export function computeAchievementsModel(): AchievementsModel {
   // Consistency (3 straight) and Is Key (5 straight): scores within 10 pts of each other
   const consistencyFirst = new Map<string, number>();
   const isKeyFirst = new Map<string, number>();
-  for (const oChk of uniq(schedule.map((g) => g.team_owner))) {
-    const ownerWeeks = [...schedule.filter((g) => g.team_owner === oChk)].sort(
+  for (const oChk of uniq(playedSchedule.map((g) => g.team_owner))) {
+    const ownerWeeks = [...playedSchedule.filter((g) => g.team_owner === oChk)].sort(
       (a, b) => a.season - b.season || a.week - b.week
     );
     for (const yr of uniq(ownerWeeks.map((g) => g.season)).sort((a, b) => a - b)) {
@@ -404,11 +441,13 @@ export function computeAchievementsModel(): AchievementsModel {
   const consistencyOwners = new Set(consistencyFirst.keys());
   const isKeyOwners = new Set(isKeyFirst.keys());
 
-  // Perfectly Average: never the highest or lowest in any week of a season
+  // Perfectly Average: never the highest or lowest in any week of a season —
+  // only decidable once the season is final
   const perfectlyAvgOwners = new Set<string>();
   const perfectlyAvgFirst = new Map<string, number>();
   for (const yr of [...scheduleSeasons].sort((a, b) => a - b)) {
-    const yrSc = schedule.filter((g) => g.season === yr);
+    if (!finalSeasons.has(yr)) continue;
+    const yrSc = playedSchedule.filter((g) => g.season === yr);
     const highLow = new Set<string>();
     for (const wk of uniq(yrSc.map((g) => g.week))) {
       const wkSc = yrSc.filter((g) => g.week === wk);
@@ -434,6 +473,7 @@ export function computeAchievementsModel(): AchievementsModel {
   // Boomer Boomer: 3+ different seasons with that honor
   const boomerInfoByOwner = new Map<string, { season: number; week: number; pts: number }[]>();
   for (const yr of scheduleSeasons) {
+    if (!finalSeasons.has(yr)) continue; // season high can move until final
     const yrSc = schedule.filter((g) => g.season === yr);
     if (!yrSc.length) continue;
     let top = yrSc[0];
@@ -452,7 +492,10 @@ export function computeAchievementsModel(): AchievementsModel {
   const lateBloomerSeasons = new Map<string, number[]>();
   const ranOutOfGasSeasons = new Map<string, number[]>();
   const regOnly = schedule.filter((g) => g.game_type === "Regular Season");
-  for (const yr of uniq(regOnly.map((g) => g.season))) {
+  // Gate on final seasons: "made/missed playoffs" is only a fact at season end
+  // (mid-season the 999 rank sentinel would read as "missed", wrongly
+  // unlocking Ran Out of Gas after any 3-0 start).
+  for (const yr of uniq(regOnly.map((g) => g.season)).filter((yr) => finalSeasons.has(yr))) {
     const yrGames = regOnly.filter((g) => g.season === yr && g.result !== null);
     for (const oChk of uniq(yrGames.map((g) => g.team_owner))) {
       const first3 = [...yrGames.filter((g) => g.team_owner === oChk)]
@@ -481,7 +524,9 @@ export function computeAchievementsModel(): AchievementsModel {
   const neverLeftOwners = new Set<string>();
   const neverLeftDetail = new Map<string, string>();
   for (const oChk of uniq(standings.map((s) => s.owner))) {
-    const os = [...standings.filter((s) => s.owner === oChk)]
+    // Final seasons only: an in-progress season is neither a "make" nor a
+    // "miss" yet (its 999 rank sentinel would count as a miss).
+    const os = [...standings.filter((s) => s.owner === oChk && finalSeasons.has(s.season))]
       .sort((a, b) => a.season - b.season)
       .map((s) => ({ season: s.season, made: s.league_rank <= 4 }));
     if (os.length < 5) continue;
@@ -526,12 +571,13 @@ export function computeAchievementsModel(): AchievementsModel {
   // Always the Bridesmaid: 3+ runner-ups, 0 titles
   const bridesmaidOwners = new Set<string>();
   const bridesmaidDetail = new Map<string, string>();
+  const finalStandings = standings.filter((s) => finalSeasons.has(s.season));
   for (const oChk of uniq(standings.map((s) => s.owner))) {
-    const titles = standings.filter((s) => s.owner === oChk && s.league_rank === 1).length;
-    const runners = standings.filter((s) => s.owner === oChk && s.league_rank === 2).length;
+    const titles = finalStandings.filter((s) => s.owner === oChk && s.league_rank === 1).length;
+    const runners = finalStandings.filter((s) => s.owner === oChk && s.league_rank === 2).length;
     if (runners >= 3 && titles === 0) {
       bridesmaidOwners.add(oChk);
-      const yrs = standings
+      const yrs = finalStandings
         .filter((s) => s.owner === oChk && s.league_rank === 2)
         .map((s) => s.season)
         .sort((a, b) => a - b);
@@ -539,9 +585,9 @@ export function computeAchievementsModel(): AchievementsModel {
     }
   }
 
-  // Points Machine: opoy 3+ times
+  // Points Machine: opoy 3+ times (season points title — final seasons only)
   const opoyByOwner: { season: number; owner: string }[] = [];
-  for (const yr of seasonsAll) {
+  for (const yr of finalSeasonsAll) {
     const rows = [...(standingsBySeason.get(String(yr)) ?? [])].sort(
       (a, b) => b.points_for - a.points_for
     );
@@ -557,9 +603,9 @@ export function computeAchievementsModel(): AchievementsModel {
     }
   }
 
-  // All Pain, No Gain: led league in points against a season
+  // All Pain, No Gain: led league in points against a season (final only)
   const paLeaders: { season: number; owner: string; league_rank: number }[] = [];
-  for (const yr of seasonsAll) {
+  for (const yr of finalSeasonsAll) {
     const rows = [...(standingsBySeason.get(String(yr)) ?? [])].sort(
       (a, b) => b.points_against - a.points_against
     );
@@ -597,6 +643,7 @@ export function computeAchievementsModel(): AchievementsModel {
   const neverLookedBackOwners = new Set<string>();
   const neverLookedBackDetail = new Map<string, string>();
   for (const yr of [...scheduleSeasons].sort((a, b) => a - b)) {
+    if (!finalSeasons.has(yr)) continue; // wire-to-wire needs the whole season
     const yrSc = schedule.filter((g) => g.season === yr && g.result !== null);
     if (!yrSc.length) continue;
     const regYr = yrSc.filter((g) => g.game_type === "Regular Season");
@@ -629,6 +676,7 @@ export function computeAchievementsModel(): AchievementsModel {
   const escapeArtistOwners = new Set<string>();
   const escapeArtistDetail = new Map<string, string>();
   for (const yr of [...scheduleSeasons].sort((a, b) => a - b)) {
+    if (!finalSeasons.has(yr)) continue; // "final week" only exists at season end
     const yrSc = schedule.filter((g) => g.season === yr && g.result !== null);
     if (!yrSc.length) continue;
     const regYr = yrSc.filter((g) => g.game_type === "Regular Season");
@@ -740,10 +788,14 @@ export function computeAchievementsModel(): AchievementsModel {
 
     // Most PF seasons
     const mostPfSeasons = opoyByOwner.filter((r) => r.owner === o);
-    // Sackos
-    const sackoSeasons = seasonsAll
-      .filter((yr) => sackoBySeason.get(yr)?.owner === o)
-      .map((yr) => ({ season: yr }));
+    // Sackos: in-data last-place finishes plus the pre-data-era lore
+    // (Kerley's 2016 counts toward Sacko and Repeat Offender)
+    const sackoSeasons = [
+      ...seasonsAll
+        .filter((yr) => sackoBySeason.get(yr)?.owner === o)
+        .map((yr) => ({ season: yr, preData: false })),
+      ...preDataYears(PRE_DATA_SACKOS, o).map((yr) => ({ season: yr, preData: true })),
+    ].sort((a, b) => a.season - b.season);
 
     const careerWins = ownerSt.reduce((a, s) => a + s.h2h_wins, 0);
     const careerLosses = ownerSt.reduce((a, s) => a + s.h2h_losses, 0);
@@ -753,7 +805,11 @@ export function computeAchievementsModel(): AchievementsModel {
     const maxMargin = regSc.length
       ? Math.max(...regSc.map((g) => g.franchise_score - g.opponent_score))
       : 0;
-    const undefeated = ownerSt.some((s) => s.h2h_losses === 0 && s.h2h_wins > 0);
+    // Undefeated must be a FULL final season — a 3-0 start mid-season also
+    // reads as "0 losses" in the standings rows.
+    const undefeated = ownerSt.some(
+      (s) => finalSeasons.has(s.season) && s.h2h_losses === 0 && s.h2h_wins > 0
+    );
 
     // Game of Inches: win by 1 pt or less
     const gameOfInches = regSc.some(
@@ -762,9 +818,10 @@ export function computeAchievementsModel(): AchievementsModel {
     // Blowout: win by 50+
     const blowout50 = regSc.some((g) => g.franchise_score - g.opponent_score >= 50);
 
-    // Gauntlet: beat every owner in one season
+    // Gauntlet: beat every owner in one season (mid-season you have only
+    // faced a subset of the league, so only final seasons can qualify)
     let gauntlet = false;
-    for (const yr of uniq(regSc.map((g) => g.season))) {
+    for (const yr of uniq(regSc.map((g) => g.season)).filter((yr) => finalSeasons.has(yr))) {
       const beaten = new Set(
         regSc.filter((g) => g.season === yr && g.result === "W").map((g) => g.opponent_owner)
       );
@@ -932,10 +989,18 @@ export function computeAchievementsModel(): AchievementsModel {
         d.first_win = `${r.season} Wk ${r.week} vs ${r.opponent_owner}`;
       }
     }
-    // Champions
-    const champYrs = ownerSt.filter((s) => s.league_rank === 1).map((s) => s.season).sort((a, b) => a - b);
-    if (champYrs.length > 0) d.champion = `Won: ${champYrs.join(", ")}`;
-    if (champYrs.length >= 2) d.dynasty = `Titles: ${champYrs.join(", ")}`;
+    // Champions: in-data titles plus the pre-data-era lore (Connor's 2016)
+    const champRows = [
+      ...ownerSt
+        .filter((s) => s.league_rank === 1)
+        .map((s) => ({ season: s.season, preData: false })),
+      ...preDataYears(PRE_DATA_CHAMPIONS, o).map((yr) => ({ season: yr, preData: true })),
+    ].sort((a, b) => a.season - b.season);
+    const champLabels = champRows.map((r) =>
+      r.preData ? `${r.season} (pre-data era)` : String(r.season)
+    );
+    if (champRows.length > 0) d.champion = `Won: ${champLabels.join(", ")}`;
+    if (champRows.length >= 2) d.dynasty = `Titles: ${champLabels.join(", ")}`;
     // Title game (any rank 1 or 2)
     const finalYrs = ownerSt.filter((s) => s.league_rank <= 2).map((s) => s.season).sort((a, b) => a - b);
     if (finalYrs.length > 0) d.title_game = `First: ${finalYrs[0]}`;
@@ -961,16 +1026,18 @@ export function computeAchievementsModel(): AchievementsModel {
       if (r150) d.one_fifty = `${r150.season} Wk ${r150.week} (${rnd(r150.franchise_score)} pts)`;
       if (r200) d.two_hundred = `${r200.season} Wk ${r200.week} (${rnd(r200.franchise_score)} pts)`;
     }
-    // Undefeated
+    // Undefeated (full final seasons only, matching the check above)
     const undefYrs = ownerSt
-      .filter((s) => s.h2h_losses === 0 && s.h2h_wins > 0)
+      .filter((s) => finalSeasons.has(s.season) && s.h2h_losses === 0 && s.h2h_wins > 0)
       .map((s) => s.season)
       .sort((a, b) => a - b);
     if (undefYrs.length > 0) d.undefeated = `Season: ${undefYrs[0]}`;
-    // Sacko
-    const sackoYrs = sackoSeasons.map((r) => r.season).sort((a, b) => a - b);
-    if (sackoYrs.length > 0) d.sacko = `First: ${sackoYrs[0]}`;
-    if (sackoYrs.length >= 2) d.double_sacko = `Years: ${sackoYrs.join(", ")}`;
+    // Sacko (already sorted ascending; pre-data years annotated)
+    const sackoLabels = sackoSeasons.map((r) =>
+      r.preData ? `${r.season} (pre-data era)` : String(r.season)
+    );
+    if (sackoLabels.length > 0) d.sacko = `First: ${sackoLabels[0]}`;
+    if (sackoLabels.length >= 2) d.double_sacko = `Years: ${sackoLabels.join(", ")}`;
     // Runner up
     const runnerYrs = ownerSt.filter((s) => s.league_rank === 2).map((s) => s.season).sort((a, b) => a - b);
     if (runnerYrs.length > 0) d.runner_up = `First: ${runnerYrs[0]}`;
@@ -1001,7 +1068,9 @@ export function computeAchievementsModel(): AchievementsModel {
     }
     // Gauntlet
     if (gauntlet) {
-      for (const yr of uniq(regSc.map((g) => g.season)).sort((a, b) => a - b)) {
+      for (const yr of uniq(regSc.map((g) => g.season))
+        .filter((yr) => finalSeasons.has(yr))
+        .sort((a, b) => a - b)) {
         const beaten = new Set(
           regSc.filter((g) => g.season === yr && g.result === "W").map((g) => g.opponent_owner)
         );
@@ -1162,8 +1231,8 @@ export function computeAchievementsModel(): AchievementsModel {
 
     const unlocked: Record<string, boolean> = {
       first_win: careerWins >= 1,
-      champion: ownerSt.some((s) => s.league_rank === 1),
-      dynasty: ownerSt.filter((s) => s.league_rank === 1).length >= 2,
+      champion: champRows.length > 0,
+      dynasty: champRows.length >= 2,
       title_game: ownerSt.some((s) => s.league_rank <= 2),
       one_seed: mvpSeasons.some((r) => r.owner === o),
       playoff_bound: ownerSt.some((s) => s.league_rank <= 4),

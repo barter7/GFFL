@@ -79,22 +79,46 @@ export interface StarterRow {
   owner: string;
 }
 
-// GFFL owner names mapped by alphabetical index of ESPN user_nickname
-// (duplicates = one person with multiple ESPN accounts).
-const OWNER_NAMES_BY_INDEX = [
-  "Alex", "Connor", "Harry", "Matt", "Connor", "Harry", "Joe",
-  "Jack", "Mike", "Kerley", "RJ", "Faz", "Tom",
-];
+// GFFL owner names pinned per ESPN user_nickname. The original scheme mapped
+// nicknames to owners by alphabetical index, which silently scrambles ALL
+// owners across every season if a nickname is ever added or renamed on ESPN.
+// This dictionary is the verified output of that scheme against 2017-2025
+// draft data — do not remove entries; add new accounts as they appear.
+const NICKNAME_TO_OWNER: Record<string, string> = {
+  "Faz929": "Alex",
+  "GenoSmithGOAT": "Connor",
+  "HadlockIII": "Harry",
+  "MMik55": "Matt",
+  "espnfan7035599953": "Connor",
+  "hhadlock@optonline.net": "Harry",
+  "jvasil6524890": "Joe",
+  "metaldeath37": "Jack",
+  "mtag93": "Mike",
+  "prone2confusion": "Kerley",
+  "rjvasi5159015": "RJ",
+  "tfasan9991529": "Faz",
+  "thomasmikalonis": "Tom",
+};
 
 interface RawDraftRow extends Omit<DraftRow, "owner"> {}
 
 function buildOwnerLookup(drafts: RawDraftRow[]): Map<string, string> {
-  // nickname -> owner via alphabetical index, same as helpers.R build_owner_map
-  const nicknames = [...new Set(drafts.map((d) => d.user_nickname))].sort();
   const lookup = new Map<string, string>();
-  nicknames.forEach((nick, i) => {
-    lookup.set(nick, OWNER_NAMES_BY_INDEX[i] ?? nick);
-  });
+  for (const d of drafts) {
+    if (lookup.has(d.user_nickname)) continue;
+    const owner = NICKNAME_TO_OWNER[d.user_nickname];
+    if (owner) {
+      lookup.set(d.user_nickname, owner);
+    } else {
+      // Unknown ESPN account: fall back to the raw nickname so history stays
+      // intact, and shout at build time so the dictionary gets updated.
+      console.warn(
+        `[GFFL] Unknown ESPN nickname "${d.user_nickname}" (season ${d.season}). ` +
+          `Add it to NICKNAME_TO_OWNER in src/lib/data.ts.`
+      );
+      lookup.set(d.user_nickname, d.user_nickname);
+    }
+  }
   return lookup;
 }
 
@@ -114,6 +138,12 @@ interface LeagueData {
   starters: StarterRow[];
   seasons: number[];
   owners: string[];
+  /**
+   * Seasons whose final standings exist (ESPN publishes league_rank only after
+   * the season ends; mid-season every rank is 0). Seasonal awards — champion,
+   * sacko, playoff berths, single-season records — must only consider these.
+   */
+  finalSeasons: Set<number>;
   /** season|franchise_id -> owner name */
   ownerByFranchise: Map<string, string>;
 }
@@ -144,34 +174,78 @@ export function getLeagueData(): LeagueData {
     owner: ownerOf(d.season, d.franchise_id, d.franchise_name),
   }));
 
-  const standings: StandingRow[] = toObjects<Omit<StandingRow, "owner">>(
+  // Only seasons that have draft data carry owner identities. ESPN starts
+  // serving standings/schedule for a renewed season weeks before the draft;
+  // without draft rows every team would show up as a phantom owner ("1"…"10"),
+  // so pre-draft seasons are excluded entirely.
+  const draftSeasons = new Set(drafts.map((d) => d.season));
+
+  const rawStandings = toObjects<Omit<StandingRow, "owner">>(
     standingsJson as Columnar
-  ).map((s) => ({ ...s, owner: ownerOf(s.season, s.franchise_id, s.franchise_name) }));
+  ).filter((s) => draftSeasons.has(s.season));
+
+  // ESPN's league_rank (rankCalculatedFinal) is 0 for every team until the
+  // season is finalized. A rank of 0 would satisfy checks like rank <= 4
+  // (playoffs) or rank <= 2 (title game), so mid-season seasons are flagged
+  // non-final and their ranks pushed to a harmless sentinel.
+  const finalSeasons = new Set<number>();
+  for (const season of draftSeasons) {
+    const rows = rawStandings.filter((s) => s.season === season);
+    if (rows.length > 0 && rows.every((s) => s.league_rank >= 1)) {
+      finalSeasons.add(season);
+    }
+  }
+
+  const standings: StandingRow[] = rawStandings.map((s) => ({
+    ...s,
+    league_rank: finalSeasons.has(s.season) ? s.league_rank : 999,
+    owner: ownerOf(s.season, s.franchise_id, s.franchise_name),
+  }));
 
   const schedule: ScheduleRow[] = toObjects<
     Omit<ScheduleRow, "game_type" | "team_owner" | "opponent_owner">
-  >(scheduleJson as Columnar).map((g) => ({
-    ...g,
-    game_type: classifyGameType(g.season, g.week),
-    team_owner: ownerOf(g.season, g.franchise_id, String(g.franchise_id)),
-    opponent_owner: ownerOf(g.season, g.opponent_id, String(g.opponent_id)),
-  }));
+  >(scheduleJson as Columnar)
+    .filter((g) => draftSeasons.has(g.season))
+    .map((g) => ({
+      ...g,
+      game_type: classifyGameType(g.season, g.week),
+      team_owner: ownerOf(g.season, g.franchise_id, String(g.franchise_id)),
+      opponent_owner: ownerOf(g.season, g.opponent_id, String(g.opponent_id)),
+    }));
 
   const starters: StarterRow[] = toObjects<Omit<StarterRow, "owner">>(
     startersJson as Columnar
-  ).map((s) => ({ ...s, owner: ownerOf(s.season, s.franchise_id, s.franchise_name) }));
+  )
+    .filter((s) => draftSeasons.has(s.season))
+    .map((s) => ({ ...s, owner: ownerOf(s.season, s.franchise_id, s.franchise_name) }));
 
   const seasons = [...new Set(standings.map((s) => s.season))].sort((a, b) => a - b);
   const owners = [...new Set(standings.map((s) => s.owner))].sort();
 
-  cache = { standings, schedule, drafts, starters, seasons, owners, ownerByFranchise };
+  cache = {
+    standings, schedule, drafts, starters, seasons, owners, finalSeasons, ownerByFranchise,
+  };
   return cache;
 }
 
 const headshots = headshotsJson as Record<string, number>;
 
+/**
+ * Normalize a player name for headshot lookup: lowercase, no periods,
+ * generational suffixes dropped. MUST stay in sync with normalize_name()
+ * in scripts/convert_data.py, which builds headshots.json with the same rule.
+ */
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/\s+(jr|sr|ii|iii|iv)$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function headshotUrl(playerName: string): string | null {
-  const id = headshots[playerName.toLowerCase()];
+  const id = headshots[normalizeName(playerName)] ?? headshots[playerName.toLowerCase()];
   if (!id) return null;
   return `https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/${id}.png&w=96&h=70&cb=1`;
 }

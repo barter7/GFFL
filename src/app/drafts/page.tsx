@@ -97,7 +97,7 @@ function toValueRow(d: DraftValueRow): ValueRow {
 }
 
 function DraftsInner() {
-  const { drafts, starters, seasons } = getLeagueData();
+  const { drafts, starters, seasons, finalSeasons } = getLeagueData();
   const seasonChoices = useMemo(
     () => [...seasons].sort((a, b) => b - a),
     [seasons]
@@ -147,9 +147,16 @@ function DraftsInner() {
     [drafts, starters]
   );
 
+  // The all-time Busts/Values/Closest tables compare season totals, which are
+  // only meaningful for completed seasons — drop in-progress rows.
+  const valueDataFinal = useMemo(
+    () => valueData.filter((d) => finalSeasons.has(d.season)),
+    [valueData, finalSeasons]
+  );
+
   const busts = useMemo(
     () =>
-      valueData
+      valueDataFinal
         .filter(
           (d) =>
             d.value_diff != null && d.expected_pts != null && d.expected_pts > 0
@@ -157,22 +164,22 @@ function DraftsInner() {
         .sort((a, b) => a.value_diff! - b.value_diff!)
         .slice(0, 25)
         .map(toValueRow),
-    [valueData]
+    [valueDataFinal]
   );
 
   const values = useMemo(
     () =>
-      valueData
+      valueDataFinal
         .filter((d) => d.value_diff != null && d.expected_pts != null)
         .sort((a, b) => b.value_diff! - a.value_diff!)
         .slice(0, 25)
         .map(toValueRow),
-    [valueData]
+    [valueDataFinal]
   );
 
   const accurate = useMemo(
     () =>
-      valueData
+      valueDataFinal
         .filter(
           (d) =>
             d.value_diff != null &&
@@ -183,7 +190,7 @@ function DraftsInner() {
         .sort((a, b) => Math.abs(a.value_diff!) - Math.abs(b.value_diff!))
         .slice(0, 25)
         .map(toValueRow),
-    [valueData]
+    [valueDataFinal]
   );
 
   const round1 = useMemo(() => drafts.filter((d) => d.round === 1), [drafts]);
@@ -232,6 +239,12 @@ function DraftsInner() {
               </div>
             }
           >
+            {!finalSeasons.has(season) && (
+              <p className="text-muted small">
+                Season in progress — value vs. expectation reflects games
+                played so far
+              </p>
+            )}
             <DraftGrid
               drafts={drafts}
               starters={starters}
