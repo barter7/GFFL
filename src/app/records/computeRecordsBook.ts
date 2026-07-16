@@ -184,8 +184,15 @@ export function computeRecordsBook(
     nsmall(r.pag, 2)
   );
 
-  // Filter to regular season
-  const regSchedule = schedule.filter((g) => g.game_type === "Regular Season");
+  // Weekly records and streaks count ALL games including playoffs — the same
+  // basis as the matchups tables, trophy-room plaques, and single-game
+  // achievements (e.g. Kerley's 224.28 in the 2025 playoffs is THE record).
+  const playedSchedule = schedule.filter((g) => g.result !== null);
+  // Zero scores are no-show forfeits (e.g. the abandoned 2022 playoff
+  // matchups) - they count for streaks/results but not for score records.
+  const scoredSchedule = playedSchedule.filter(
+    (g) => g.franchise_score > 0 && g.opponent_score > 0
+  );
 
   // Most wins in a single season
   const bestSeason = [...finalStandings].sort((a, b) => b.h2h_wins - a.h2h_wins)[0];
@@ -224,9 +231,9 @@ export function computeRecordsBook(
     season: String(leastPf.season),
   });
 
-  if (regSchedule.length > 0) {
+  if (playedSchedule.length > 0) {
     // Highest single-week score
-    const highWeek = [...regSchedule].sort(
+    const highWeek = [...scoredSchedule].sort(
       (a, b) => b.franchise_score - a.franchise_score
     )[0];
     records.push({
@@ -237,7 +244,7 @@ export function computeRecordsBook(
     });
 
     // Lowest single-week score
-    const lowWeeks = regSchedule
+    const lowWeeks = scoredSchedule
       .filter((g) => g.franchise_score > 0)
       .sort((a, b) => a.franchise_score - b.franchise_score);
     if (lowWeeks.length > 0) {
@@ -251,7 +258,7 @@ export function computeRecordsBook(
     }
 
     // Biggest blowout
-    const blowouts = regSchedule
+    const blowouts = scoredSchedule
       .map((g) => ({ g, margin: g.franchise_score - g.opponent_score }))
       .filter((x) => x.margin > 0)
       .sort((a, b) => b.margin - a.margin);
@@ -266,7 +273,7 @@ export function computeRecordsBook(
     }
 
     // Closest game
-    const closeGames = regSchedule
+    const closeGames = scoredSchedule
       .map((g) => ({ g, margin: Math.abs(g.franchise_score - g.opponent_score) }))
       .filter((x) => x.margin > 0)
       .sort((a, b) => a.margin - b.margin);
@@ -282,7 +289,7 @@ export function computeRecordsBook(
   }
 
   // Winning streak
-  const winStreak = computeLongestWinStreak(regSchedule);
+  const winStreak = computeLongestWinStreak(playedSchedule);
   records.push({
     record: "Longest Winning Streak",
     holder: winStreak.team,
@@ -291,7 +298,7 @@ export function computeRecordsBook(
   });
 
   // Losing streak
-  const loseStreak = computeLongestLossStreak(regSchedule);
+  const loseStreak = computeLongestLossStreak(playedSchedule);
   records.push({
     record: "Longest Losing Streak",
     holder: loseStreak.team,

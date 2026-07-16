@@ -175,7 +175,8 @@ function MatchupsInner() {
   const blowouts = useMemo<BlowoutRow[]>(() => {
     return schedule
       .map((g) => ({ g, margin: g.franchise_score - g.opponent_score }))
-      .filter((x) => x.margin > 0)
+      // opponent_score > 0 excludes no-show forfeits (e.g. 2022 playoffs)
+      .filter((x) => x.margin > 0 && x.g.opponent_score > 0)
       .sort((a, b) => b.margin - a.margin)
       .slice(0, 25)
       .map(({ g, margin }) => ({
