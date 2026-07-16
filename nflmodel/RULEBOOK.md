@@ -5,6 +5,13 @@ studies behind this model — the NFL sibling of PropSZN's rulebook.
 Every rule states its provenance. When a rule changes, update this
 file in the same commit.
 
+> **Status note (2026-07):** the project restarted data-first. §1–§2
+> and §4 (data, context, game script) are the LIVE foundation being
+> built now. §3 and §5 document the v1 prototype (model_core.R /
+> backtest.R) — kept as the record of what was learned there; the
+> rebuilt model will re-adopt or revise those rules explicitly when
+> we get to the modeling stage.
+
 ---
 
 ## 1. Data rules
@@ -159,9 +166,22 @@ shrinks toward the league 61.1% with k=16 games.
 ## 4. Game script
 
 **R4.1 — Definition.** A snap's game-script state comes from the
-nflfastR win-probability column `wp`:
-positive = wp > .75, negative = wp < .25, neutral otherwise
-(quarters 1–4, pass/run snaps, no 2-pt conversions).
+nflfastR win-probability column `wp`, in QUARTILE states
+(Study S9; supersedes the original 3-state .25/.75 scheme):
+  q1_trail_big  wp < .25
+  q2_trail      .25 ≤ wp < .50
+  q3_lead       .50 ≤ wp < .75
+  q4_lead_big   wp ≥ .75
+(quarters 1–4, pass/run snaps, no 2-pt conversions). The legacy
+3-state positive/neutral/negative columns are still emitted for
+compatibility.
+
+**R4.1a — The cache stores the WP histogram, not a bucketing.**
+`gamescript_games.csv` records each team-game's snap shares across
+twenty 5%-wide WP bins, so any state scheme with boundaries at
+multiples of 0.05 (quartiles, quintiles, legacy 3-state) is
+derivable via `gamescript_state_shares()` without ever re-reading
+raw pbp. Bucket-scheme changes are now free.
 
 **R4.2 — Use `wp`, NOT `vegas_wp`** (Study S7). `vegas_wp` bakes the
 pregame spread into the state from kickoff (a −9 favorite "starts"
@@ -262,6 +282,17 @@ Q1 vs 93.6% in Q4 — the divergence is pregame-prior contamination.
 A +7.5–10 favorite spends 62% of snaps "positive" under vegas_wp vs
 35% under wp. Pass rate within each state is nearly identical under
 both definitions. Decision: R4.2 (use wp).
+
+**S9 — WP bucket granularity** (2026-07; 2024–25, ~69k snaps).
+Pass rate falls monotonically across the WP range: 80% at wp<.05 to
+36% at wp>.95. The 3-state scheme's "neutral" band (.25–.75, 38k
+snaps) hid a real split at its midpoint: trailing-neutral passes at
+61.9%, leading-neutral at 57.5% (~67% vs ~57% at wp≈.26 vs .74).
+Snap-level R² of pass~state: 3-state .0298, quartiles .0308,
+quintiles .0343. Decision: quartiles become canonical (R4.1), and
+the cache stores the full 5%-bin histogram (R4.1a) so finer schemes
+remain one function call away. 20-season quartile table verified
+monotonic in all four states across all 14 spread buckets.
 
 **S8 — Legacy weekly-log model** (2026-07). The v1 pipeline
 (data_sources.R hvpkod-derived weekly caches) validated the market

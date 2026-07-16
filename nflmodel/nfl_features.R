@@ -502,13 +502,17 @@ GAMESCRIPT_GAMES_FILE <- file.path("data", "context", "gamescript_games.csv")
 GAMESCRIPT_TABLE_FILE <- file.path("data", "context", "spread_gamescript.csv")
 GAMESCRIPT_SEASONS    <- 2006:2100   # "last 20 years" rolling start
 
-# One row per team-game: WP-state shares + posteam-relative
-# closing spread. The minimal pbp slice needed is tiny, so this
-# reads the season file directly rather than via FEATURE_PBP_COLS.
+# One row per team-game: the team's snap distribution over
+# twenty 5%-wide win-probability bins (wp_00 = [0,.05), ...,
+# wp_95 = [.95,1]) plus the posteam-relative closing spread.
+# Storing the raw WP histogram — not a fixed bucketing — means
+# ANY state scheme with boundaries at multiples of 0.05
+# (quartiles, quintiles, legacy .25/.75) is derivable later
+# without re-downloading 20 seasons of raw pbp.
 compute_gamescript_rows <- function(season) {
   path <- pbp_path(season)
   if (!file.exists(path)) return(NULL)
-  read_csv(path, col_types = cols_only(
+  df <- read_csv(path, col_types = cols_only(
     game_id = col_character(), season = col_integer(),
     posteam = col_character(), qtr = col_integer(),
     play_type = col_character(), two_point_attempt = col_double(),
@@ -518,12 +522,38 @@ compute_gamescript_rows <- function(season) {
            two_point_attempt == 0, qtr %in% 1:4, !is.na(wp)) %>%
     mutate(home_team_id = sub(".*_", "", game_id),
            team_spread  = ifelse(posteam == home_team_id,
-                                 spread_line, -spread_line)) %>%
+                                 spread_line, -spread_line),
+           bin = sprintf("wp_%02d", pmin(floor(wp * 20), 19) * 5))
+  df %>%
+    count(season, game_id, posteam, team_spread, bin) %>%
     group_by(season, game_id, posteam, team_spread) %>%
-    summarise(n_plays  = n(),
-              positive = mean(wp > .75),
-              neutral  = mean(wp >= .25 & wp <= .75),
-              negative = mean(wp < .25), .groups = "drop")
+    mutate(n_plays = sum(n), share = n / n_plays) %>%
+    ungroup() %>%
+    select(-n) %>%
+    tidyr::pivot_wider(names_from = bin, values_from = share,
+                       values_fill = 0) %>%
+    select(season, game_id, posteam, team_spread, n_plays,
+           any_of(sprintf("wp_%02d", seq(0, 95, 5))))
+}
+
+# ── Derive state shares from the WP histogram ────────────────
+#  boundaries: interior cut points, each a multiple of 0.05.
+#  Canonical scheme: QUARTILES c(.25,.5,.75) — Study S9 (the old
+#  3-state "neutral" band hid a 61.9% vs 57.5% pass-rate split at
+#  its midpoint). Legacy 3-state = c(.25,.75).
+GS_STATE_BOUNDS  <- c(.25, .50, .75)
+GS_STATE_LABELS  <- c("q1_trail_big", "q2_trail", "q3_lead", "q4_lead_big")
+
+gamescript_state_shares <- function(games, boundaries = GS_STATE_BOUNDS,
+                                    labels = GS_STATE_LABELS) {
+  stopifnot(all(abs(boundaries * 20 - round(boundaries * 20)) < 1e-9))
+  edges <- c(0, boundaries, 1)
+  bin_cols <- sprintf("wp_%02d", seq(0, 95, 5))
+  for (i in seq_along(labels)) {
+    cols <- bin_cols[(edges[i] * 20 + 1):(edges[i + 1] * 20)]
+    games[[labels[i]]] <- rowSums(games[, cols, drop = FALSE], na.rm = TRUE)
+  }
+  games
 }
 
 #  Fills the per-game cache for any season whose pbp is cached
@@ -552,14 +582,19 @@ refresh_spread_gamescript <- function(current_season = NULL) {
              showWarnings = FALSE)
   write_csv(out, GAMESCRIPT_GAMES_FILE)
 
-  # aggregate to the bucket table
+  # aggregate to the bucket table: canonical quartile states plus
+  # the legacy 3-state columns (derived from the same histogram)
   tbl <- out %>%
     filter(season >= min(GAMESCRIPT_SEASONS), n_plays >= 30) %>%
+    gamescript_state_shares() %>%
+    gamescript_state_shares(boundaries = c(.25, .75),
+                            labels = c("negative", "neutral", "positive")) %>%
     mutate(range = spread_range_label(team_spread)) %>%
     filter(!is.na(range)) %>%
     group_by(range) %>%
-    summarise(games = n(), positive = mean(positive),
-              neutral = mean(neutral), negative = mean(negative),
+    summarise(games = n(),
+              across(all_of(c(GS_STATE_LABELS,
+                              "positive", "neutral", "negative")), mean),
               .groups = "drop")
   write_csv(tbl, GAMESCRIPT_TABLE_FILE)
   message(sprintf("  gamescript: %d team-games (%d-%d) -> %s",
