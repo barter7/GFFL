@@ -1,4 +1,5 @@
 # Regenerable data caches (rebuild with refresh_cache() / run_model.R)
 data/cache/
 data/props/
+data/pbp/
 data/results/report_*.html
