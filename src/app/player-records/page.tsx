@@ -2,14 +2,14 @@
 // output$player_records_book (lines 4162-4564) + UI nav_panel "Player Records"
 // (lines 279-289).
 import type { Metadata } from "next";
-import { headshotUrl } from "@/lib/data";
+import { getLeagueData, headshotUrl } from "@/lib/data";
 import { FLEURON, FLEURON_TRIPLE, RECORD_BOOK_CSS } from "../records/recordBookCss";
 import { computePlayerRecords, Top5Row } from "./computePlayerRecords";
 import Headshot from "./Headshot";
 import Toc, { TocItem } from "./Toc";
 import BackToTop from "../records/BackToTop";
 
-export const metadata: Metadata = { title: "Player Records — GFFL Archives" };
+export const metadata: Metadata = { title: "Player Records" };
 
 /** Anchor id for a section title (shared by the headings and the TOC). */
 function slug(title: string): string {
@@ -154,7 +154,8 @@ function Top5Section({ title, rows }: { title: string; rows: Top5Row[] }) {
 const Fleuron = () => <div className="fleuron">{FLEURON}</div>;
 
 export default function PlayerRecordsPage() {
-  const rec = computePlayerRecords();
+  const { finalSeasons } = getLeagueData();
+  const rec = computePlayerRecords(finalSeasons);
 
   // Section titles in render order (must mirror the <Top5Section> calls
   // below); drives the table of contents.

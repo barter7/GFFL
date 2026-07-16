@@ -366,7 +366,7 @@ function TopPerformancesInner() {
           </Card>
         </div>
         <div className="col-md-6">
-          <Card header="Most Appearances in Top 25">
+          <Card header="Most Appearances in Top 100">
             <Plot
               data={appearancesTrace}
               layout={{

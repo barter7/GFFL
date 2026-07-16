@@ -6,11 +6,11 @@ import { computeRecordsBook } from "./computeRecordsBook";
 import { FLEURON_TRIPLE, RECORD_BOOK_CSS } from "./recordBookCss";
 import BackToTop from "./BackToTop";
 
-export const metadata: Metadata = { title: "Records — GFFL Archives" };
+export const metadata: Metadata = { title: "Records" };
 
 export default function RecordsPage() {
-  const { standings, schedule } = getLeagueData();
-  const records = computeRecordsBook(standings, schedule);
+  const { standings, schedule, finalSeasons } = getLeagueData();
+  const records = computeRecordsBook(standings, schedule, finalSeasons);
 
   return (
     <div className="record-book">

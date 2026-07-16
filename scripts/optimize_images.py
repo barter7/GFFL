@@ -18,10 +18,21 @@ QUALITY = 82
 
 Image.MAX_IMAGE_PIXELS = None
 
+# www/ originals that are NOT referenced anywhere in src/ (verified against
+# photoUrl()/findPhoto() call sites, including fallback chains). Kept in www/
+# for posterity but skipped here so their .webp never regenerates in public/.
+SKIP_STEMS = {
+    "photos": {
+        "centurion_trophy",
+        "lombardi",
+    },
+}
+
 
 def process_dir(name: str) -> None:
     src_dir = os.path.join(ROOT, "www", name)
     dst_dir = os.path.join(ROOT, "public", name)
+    skip = SKIP_STEMS.get(name, set())
     os.makedirs(dst_dir, exist_ok=True)
     # Clear stale outputs so renames in www/ don't leave orphans
     for f in os.listdir(dst_dir):
@@ -31,6 +42,8 @@ def process_dir(name: str) -> None:
         src = os.path.join(src_dir, fname)
         stem, ext = os.path.splitext(fname)
         if not os.path.isfile(src) or ext.lower() not in (".png", ".jpg", ".jpeg"):
+            continue
+        if stem in skip:
             continue
         dst = os.path.join(dst_dir, stem + ".webp")
         try:
