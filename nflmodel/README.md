@@ -28,6 +28,9 @@ game_context.R     per-game context synced to pbp by game_id via
                    starting QBs, stadium/roof/surface, parsed weather.
                    Optional data/context/coordinators.csv adds OCs
                    (no R-package source exists for coordinators)
+roster_context.R   per-game depth charts + weekly injury reports
+                   (Out/Doubtful/Questionable + practice status), both
+                   vendor formats normalized to one per-game schema
 data_sources.R     nflreadr -> data/cache/*.csv (model reads only the cache)
 model_core.R       calibrated constants + all four market projections
 calibrate.R        one-off: fits the constants hard-coded in model_core.R
