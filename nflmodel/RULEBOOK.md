@@ -243,9 +243,9 @@ spikes carry no intent flags and self-exclude (clock decisions, not
 tendencies); nullified snaps with revealed intent (1,527 in 2025)
 count toward tendency RATES but never toward play VOLUME (official
 snaps only). RPOs are unobservable and land on the called-run side
-unless thrown — known limitation. Tendencies are era-scoped: built
-from the recent pbp window, never 20 years (league play-calling
-drifts). Tables: playcall_league.csv / playcall_team.csv
+unless thrown — known limitation. Tendencies are era-scoped: the window is
+the 17-game era (2021+, kept in the pbp cache), never 20 years —
+league play-calling drifts. Tables: playcall_league.csv / playcall_team.csv
 (playcall_tendencies.R), refreshed from the local pbp cache.
 
 **R4.5 — Play-volume projection** (ported from the original model):
@@ -357,17 +357,23 @@ rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
 
 **S12 — Play-calling tendencies by script quartile** (2026-07;
-2024-25, 72,083 called snaps). League called-pass rate 61.0% (2024
-61.0 / 2025 60.9), monotone across script: 74.2% trailing big, 62.6%
-trailing, 58.2% leading, 49.4% leading big. Official plays 60.5/team-
-game (qtr 1-4, no 2pt). Pace: 30.2 s/snap overall; 25.8 s after a
-called pass vs 36.0 s after a called run (incompletions stop the
-clock); trailing-big offenses accelerate to 26.2 s/snap. Team spread
-is large and modeling-relevant: base pass rates 52.5% (SEA) to 69.7%
-(ARI) in 2025; script-sensitivity (trailing-big shift) ranges +4.3pp
-(WAS) to +28.2pp (NE), distribution +13.4pp ± 4.3 across 64 team-
-seasons (leading-big: -12.1pp ± 4.9). Deviation-from-own-base is a
-real team trait, not noise.
+17-game era 2021-2025, 181,945 called snaps, 160 team-seasons).
+League called-pass rate 61.4%, stable by season (60.8-62.0) and
+monotone across script: 74.4% trailing big / 62.7% / 58.8% / 50.0%
+leading big. Real slow-down trend: 61.9 plays per team-game (2021)
+-> 60.1 (2025); pace 29.6 -> 30.4 s/snap. Pooled pace: 29.9 s/snap;
+26.0 s after a called pass vs ~36 s after a called run
+(incompletions stop the clock); trailing-big offenses accelerate to
+26.0 s/snap. 2025 team base rates span SEA 52.5% to ARI 69.7%;
+trailing-big shift spans WAS +4.3pp to NE +28.2pp.
+
+**Trait stability (the modeling-relevant result):** year-over-year
+correlations across 128 same-team season pairs — sec/snap pace 0.51,
+base pass rate 0.42, plays/g 0.24, script-sensitivity dev_q1 0.22 /
+dev_q4 0.19. A team's base rate and pace carry real signal; its
+script-sensitivity DELTAS are mostly noise and must be shrunk hard
+toward the league curve. Follow-up once coordinators cover more
+seasons: condition stability on play-caller continuity.
 
 **S8 — Legacy weekly-log model** (2026-07). The v1 pipeline
 (data_sources.R hvpkod-derived weekly caches) validated the market
