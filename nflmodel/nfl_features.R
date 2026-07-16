@@ -204,7 +204,7 @@ FEATURE_PBP_COLS <- c(
   "game_id", "season", "season_type", "week", "posteam", "defteam",
   "qtr", "down", "ydstogo", "yardline_100", "score_differential", "wp",
   "play_type", "pass", "rush", "pass_attempt", "rush_attempt",
-  "qb_dropback", "qb_scramble", "qb_kneel", "qb_spike", "sack",
+  "qb_dropback", "qb_scramble", "qb_kneel", "qb_spike", "sack", "penalty",
   "complete_pass", "incomplete_pass", "interception", "two_point_attempt",
   "yards_gained", "passing_yards", "receiving_yards", "rushing_yards",
   "air_yards", "yards_after_catch", "epa", "success", "cp", "cpoe",

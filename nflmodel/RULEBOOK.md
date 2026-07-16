@@ -62,6 +62,25 @@ POST weeks too.
 **R1.9 — Pushes are NA, not losses.** `cover`/`over` outcome flags
 are NA on exact pushes (the original prep script coded them 0).
 
+**R1.10 — pbp play population: penalties, timeouts, kneels.** The
+modeled snap population is `play_type %in% c("pass","run")` (no 2-pt
+attempts). Audited on 2025 (Study S11):
+- Timeouts are `no_play` rows → excluded everywhere; never counted
+  as snaps.
+- Penalties on plays that STOOD (~1.5% of kept snaps) are included;
+  the `penalty` flag rides along and penalty yardage is never in
+  `yards_gained`.
+- No-play penalty rows (pre-snap fouls + nullified plays) are
+  excluded, matching official stat accounting — nullified plays
+  credit no attempt/target/carry, and props settle on official
+  stats. CAVEAT: ~4.4% of real dropbacks/runs are nullified; DPI-
+  drawn targets in those rows are genuine receiver-usage signal that
+  official stats never credit. Logged as a future usage feature
+  (penalty-drawn targets / DPI yards), not silently discarded.
+- Kneels and spikes have their own play_types → excluded (forced
+  clock plays, not play-calling signal). Sacks and scrambles stay
+  in the population with flags intact.
+
 ---
 
 ## 2. Game context rules
@@ -313,6 +332,15 @@ vs their 15.5/16.5 neighbors; the smoothed estimate at 16 rests on
 eff_n = 211 and sits monotonically between them. Curve q4 share is
 monotone in spread; symmetry holds to |Δ| ≤ .015 (residual from the
 30-snap filter occasionally dropping one side of a game).
+
+**S11 — Penalty / timeout audit of the pbp filters** (2026-07; 2025
+season). Of 4,732 `no_play` rows: 2,140 timeouts, 2,536 accepted
+penalties; 1,527 of the penalty rows were real dropbacks/runs that
+were nullified — 4.4% of the pass/run snap population (e.g. deep DPI
+targets). Kept population contains 527 stood-with-penalty snaps
+(1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
+rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
+targets flagged as a future usage feature.
 
 **S8 — Legacy weekly-log model** (2026-07). The v1 pipeline
 (data_sources.R hvpkod-derived weekly caches) validated the market
