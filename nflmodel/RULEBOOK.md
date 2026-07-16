@@ -234,6 +234,20 @@ every query; the curve is symmetric around 0 by construction. Use
 `gamescript_shares_at()` for slate spreads; never use a smoothed
 value without checking its eff_n.
 
+**R4.7 — Play-calling is measured by the CALL, not the result.**
+called pass = nflfastR `pass` indicator (dropbacks: throws + sacks +
+scrambles); called run = `rush` (designed runs). Audited loopholes
+(Study S12): all 1,149 in-play 2025 scrambles carry pass==1 (a
+scramble is a called pass); sacks live inside called pass; kneels and
+spikes carry no intent flags and self-exclude (clock decisions, not
+tendencies); nullified snaps with revealed intent (1,527 in 2025)
+count toward tendency RATES but never toward play VOLUME (official
+snaps only). RPOs are unobservable and land on the called-run side
+unless thrown — known limitation. Tendencies are era-scoped: built
+from the recent pbp window, never 20 years (league play-calling
+drifts). Tables: playcall_league.csv / playcall_team.csv
+(playcall_tendencies.R), refreshed from the local pbp cache.
+
 **R4.5 — Play-volume projection** (ported from the original model):
 plays = mean of (team plays for + opp plays allowed)/2 and
 team plays × (opp allowed / league avg); pass/rush split two ways —
@@ -341,6 +355,19 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S12 — Play-calling tendencies by script quartile** (2026-07;
+2024-25, 72,083 called snaps). League called-pass rate 61.0% (2024
+61.0 / 2025 60.9), monotone across script: 74.2% trailing big, 62.6%
+trailing, 58.2% leading, 49.4% leading big. Official plays 60.5/team-
+game (qtr 1-4, no 2pt). Pace: 30.2 s/snap overall; 25.8 s after a
+called pass vs 36.0 s after a called run (incompletions stop the
+clock); trailing-big offenses accelerate to 26.2 s/snap. Team spread
+is large and modeling-relevant: base pass rates 52.5% (SEA) to 69.7%
+(ARI) in 2025; script-sensitivity (trailing-big shift) ranges +4.3pp
+(WAS) to +28.2pp (NE), distribution +13.4pp ± 4.3 across 64 team-
+seasons (leading-big: -12.1pp ± 4.9). Deviation-from-own-base is a
+real team trait, not noise.
 
 **S8 — Legacy weekly-log model** (2026-07). The v1 pipeline
 (data_sources.R hvpkod-derived weekly caches) validated the market
