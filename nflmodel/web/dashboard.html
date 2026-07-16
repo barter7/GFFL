@@ -1,0 +1,306 @@
+<title>NFL Props Workbench — Prototype</title>
+<style>
+:root{
+  --ground:#F7F6F1; --panel:#FFFFFF; --panel2:#EFEDE6;
+  --ink:#20232B; --ink2:#5A5E69; --ink3:#8B8F99;
+  --line:#DEDBD2; --accent:#C9A227; --accent-ink:#8A6D14;
+  --bar:#3A6EA5; --good:#1F8A5D; --bad:#C13A2E;
+  --goodbg:#E3F1EA; --badbg:#F7E4E1;
+  --seq0:#EFEDE6; --seq1:#D5E5E3; --seq2:#A8CCC8; --seq3:#6FA8A3; --seq4:#3D7F7A;
+  --shadow:0 1px 3px rgba(30,35,43,.08);
+}
+@media (prefers-color-scheme: dark){:root{
+  --ground:#15171D; --panel:#1D2027; --panel2:#252932;
+  --ink:#E7E5DE; --ink2:#A6A9B2; --ink3:#767A85;
+  --line:#33373F; --accent:#C9A227; --accent-ink:#D9B23C;
+  --bar:#4A7EB5; --good:#2E9A6B; --bad:#D14A3C;
+  --goodbg:#1E3229; --badbg:#38221F;
+  --seq0:#252932; --seq1:#27403D; --seq2:#2E5A55; --seq3:#3D7F7A; --seq4:#5CA69F;
+  --shadow:0 1px 3px rgba(0,0,0,.35);
+}}
+:root[data-theme="light"]{
+  --ground:#F7F6F1; --panel:#FFFFFF; --panel2:#EFEDE6;
+  --ink:#20232B; --ink2:#5A5E69; --ink3:#8B8F99;
+  --line:#DEDBD2; --accent:#C9A227; --accent-ink:#8A6D14;
+  --bar:#3A6EA5; --good:#1F8A5D; --bad:#C13A2E;
+  --goodbg:#E3F1EA; --badbg:#F7E4E1;
+  --seq0:#EFEDE6; --seq1:#D5E5E3; --seq2:#A8CCC8; --seq3:#6FA8A3; --seq4:#3D7F7A;
+  --shadow:0 1px 3px rgba(30,35,43,.08);
+}
+:root[data-theme="dark"]{
+  --ground:#15171D; --panel:#1D2027; --panel2:#252932;
+  --ink:#E7E5DE; --ink2:#A6A9B2; --ink3:#767A85;
+  --line:#33373F; --accent:#C9A227; --accent-ink:#D9B23C;
+  --bar:#4A7EB5; --good:#2E9A6B; --bad:#D14A3C;
+  --goodbg:#1E3229; --badbg:#38221F;
+  --seq0:#252932; --seq1:#27403D; --seq2:#2E5A55; --seq3:#3D7F7A; --seq4:#5CA69F;
+  --shadow:0 1px 3px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font:14px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.num{font-variant-numeric:tabular-nums}
+.app{display:grid;grid-template-columns:250px 1fr;gap:14px;max-width:1460px;margin:0 auto;padding:14px}
+@media(max-width:900px){.app{grid-template-columns:1fr}}
+.rail{display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
+.pad{padding:12px 14px}
+.eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)}
+h1{font-size:17px;margin:0;letter-spacing:-.01em}
+.brandbar{grid-column:1/-1;display:flex;align-items:baseline;gap:10px;padding:2px 2px 0}
+.brandbar .tag{color:var(--accent-ink);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+select,button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 9px}
+select:focus,button:focus{outline:2px solid var(--accent);outline-offset:1px}
+button{cursor:pointer}
+button[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.playercard{display:flex;gap:12px;align-items:center}
+.playercard img{width:74px;height:54px;object-fit:cover;border-radius:6px;background:var(--panel2)}
+.playercard .nm{font-weight:700;font-size:15px}
+.playercard .sub{color:var(--ink2);font-size:12px}
+.matchup{display:flex;justify-content:space-between;align-items:center;margin-top:10px;
+  border-top:1px solid var(--line);padding-top:10px;font-size:13px}
+.matchup .vs{color:var(--ink3);font-size:11px}
+.matchup .line{color:var(--accent-ink);font-weight:700}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px}
+.prop .lbl{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2)}
+.prop .ln{font-size:22px;font-weight:800;margin-top:2px}
+.prop .odds{font-size:11.5px;color:var(--ink3)}
+.prop .slot{color:var(--ink3);font-size:12px;margin-top:4px}
+.defstrip{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.defstat .v{font-size:16px;font-weight:800}
+.defstat .rk{display:inline-block;min-width:24px;text-align:center;border-radius:11px;
+  padding:1px 6px;font-size:11px;font-weight:700;margin-left:5px}
+.rk.good{background:var(--goodbg);color:var(--good)}
+.rk.mid{background:var(--panel2);color:var(--ink2)}
+.rk.bad{background:var(--badbg);color:var(--bad)}
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px;white-space:nowrap}
+th{position:sticky;top:0;background:var(--panel);text-align:right;color:var(--ink2);
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;padding:7px 8px;border-bottom:1.5px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+td{padding:5.5px 8px;text-align:right;border-bottom:1px solid var(--line)}
+tr:hover td{background:var(--panel2)}
+.cell{border-radius:4px;padding:1.5px 5px;display:inline-block;min-width:34px}
+.grid2{display:grid;grid-template-columns:minmax(340px,5fr) minmax(380px,6fr);gap:14px}
+@media(max-width:1100px){.grid2{grid-template-columns:1fr}}
+.pickrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.chart{position:relative;height:250px;display:flex;align-items:flex-end;gap:2px;
+  padding:6px 4px 22px;border-left:1px solid var(--line);border-bottom:1px solid var(--line)}
+.chart .bar{flex:1;background:var(--bar);border-radius:4px 4px 0 0;min-width:10px;position:relative;cursor:pointer}
+.chart .bar:hover{filter:brightness(1.15)}
+.chart .bar .wk{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:10px;color:var(--ink3)}
+.medline{position:absolute;left:0;right:0;border-top:2px dashed var(--accent-ink);pointer-events:none}
+.medtag{position:absolute;right:2px;transform:translateY(-100%);font-size:10.5px;color:var(--accent-ink);font-weight:700;pointer-events:none}
+.tip{position:fixed;z-index:10;background:var(--ink);color:var(--ground);padding:6px 9px;border-radius:6px;
+  font-size:12px;pointer-events:none;display:none;max-width:240px}
+.note{color:var(--ink3);font-size:12px}
+.footer{grid-column:1/-1;color:var(--ink3);font-size:11.5px;padding:2px 4px 10px}
+a{color:var(--accent-ink)}
+.themebtn{margin-left:auto}
+@media (prefers-reduced-motion: no-preference){.chart .bar{transition:height .25s ease}}
+</style>
+
+<div class="app">
+  <div class="brandbar">
+    <h1>NFL Props Workbench</h1><span class="tag">prototype</span>
+    <span class="note">real 2024–25 data · props &amp; projections slots pending season</span>
+    <button class="themebtn" id="themeToggle" aria-label="Toggle theme">◐ Theme</button>
+  </div>
+
+  <div class="rail">
+    <div class="panel pad">
+      <div class="eyebrow">Player</div>
+      <select id="playerSel" style="width:100%;margin-top:6px" aria-label="Select player"></select>
+      <div style="margin-top:8px"><span class="eyebrow">Season</span>
+        <button id="s2024" aria-pressed="false">2024</button>
+        <button id="s2025" aria-pressed="true">2025</button>
+      </div>
+    </div>
+    <div class="panel pad">
+      <div class="playercard">
+        <img id="pHead" alt="" referrerpolicy="no-referrer">
+        <div><div class="nm" id="pName"></div><div class="sub" id="pSub"></div></div>
+      </div>
+      <div class="matchup">
+        <div><span class="eyebrow">Last matchup</span><div id="mTeams" style="font-weight:700"></div></div>
+        <div style="text-align:right"><div class="vs">spread / total</div><div class="line num" id="mLine"></div></div>
+      </div>
+    </div>
+    <div class="panel pad">
+      <div class="eyebrow">Season rates</div>
+      <div id="rateBox" class="num" style="margin-top:6px;font-size:13px;line-height:1.8"></div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+    <div class="panel pad">
+      <div class="eyebrow" style="margin-bottom:8px">Prop board <span class="note">— lines &amp; odds populate from scrape_props.R in season; projections from the model layer</span></div>
+      <div class="cards" id="propCards"></div>
+    </div>
+
+    <div class="panel pad">
+      <div class="eyebrow" style="margin-bottom:8px">Opponent defense — <span id="defTeamLbl"></span> <span class="note">(EPA/play, season to date · rank of 32, 1 = stingiest)</span></div>
+      <div class="defstrip" id="defStrip"></div>
+    </div>
+
+    <div class="panel">
+      <div class="pad" style="padding-bottom:6px"><div class="eyebrow">Weekly log <span class="note" id="logNote"></span></div></div>
+      <div class="tblwrap" id="logTable"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel pad">
+        <div class="eyebrow" style="margin-bottom:8px">Team target share — <span id="tsTeamLbl"></span></div>
+        <div class="tblwrap" id="tsMatrix"></div>
+      </div>
+      <div class="panel pad">
+        <div class="pickrow" id="statPick" role="group" aria-label="Chart stat"></div>
+        <div class="chart" id="chart" role="img" aria-label="Weekly stat bars"></div>
+        <div class="note" style="margin-top:6px">dashed line = season median · hover a bar for detail · numbers also in the weekly log above</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Prototype embeds 12 players; production reads the full 645-player JSON contract from <code>nflmodel/data/web/</code> (players.json · gamelogs/&lt;id&gt;.json · teams/&lt;team&gt;_&lt;season&gt;.json · defense.json · props/ · projections/). Layout mirrors the owner’s 2024 Power BI board and PropSZN’s K’s tab.</div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+/*__DATA__*/
+
+const $=id=>document.getElementById(id);
+const state={pid:null,season:2025,stat:"rush_yds"};
+const fmtPct=v=>v==null?"":Math.round(v*100)+"%";
+const fmt=v=>v==null?"":v;
+
+const PROPS=[["Rushing Yards"],["Rush Attempts"],["Receiving Yards"],["Receptions"],
+  ["Rush + Rec"],["Longest Rush"],["Longest Reception"],["Anytime TD"]];
+const QPROPS=[["Passing Yards"],["Pass Attempts"],["Passing TDs"],["Completions"],
+  ["Interceptions"],["Rush Yards"],["Longest Completion"],["Anytime TD"]];
+
+const STATS_SKILL=[["rush_yds","Rushing Yards"],["rush_att","Rush Attempts"],
+  ["rec","Receptions"],["rec_yds","Receiving Yards"],["tgt","Targets"],["long_rec","Longest Rec"]];
+const STATS_QB=[["pass_yds","Passing Yards"],["pass_att","Attempts"],["pass_td","Pass TDs"],
+  ["comp","Completions"],["rush_yds","Rush Yards"]];
+
+function heat(v,invert){ if(v==null)return "";
+  const p=Math.max(0,Math.min(1,v));
+  const steps=["--seq0","--seq1","--seq2","--seq3","--seq4"];
+  const i=Math.min(4,Math.floor(p*5));
+  const dark = i>=3;
+  return `background:var(${steps[i]});color:${dark?"var(--ground)":"var(--ink)"}`;}
+
+function player(){return DATA.players.find(p=>p.player_id===state.pid);}
+function rows(){return (DATA.gamelogs[state.pid]||[]).filter(r=>r.season===state.season);}
+
+function renderPlayerList(){
+  $("playerSel").innerHTML=DATA.players.map(p=>
+    `<option value="${p.player_id}">${p.name} — ${p.pos}, ${p.team}</option>`).join("");
+  $("playerSel").value=state.pid;
+}
+function renderHeader(){
+  const p=player(), rs=rows(), last=rs[rs.length-1];
+  $("pHead").src=p.headshot||""; $("pHead").alt=p.name;
+  $("pName").textContent=p.name;
+  $("pSub").textContent=`${p.pos} · ${p.team} · ${rs.length} games in ${state.season}`;
+  if(last){
+    $("mTeams").textContent=`${p.team} ${last.home==="@"?"@":"vs"} ${last.opp} (wk ${last.week})`;
+    $("mLine").textContent=`${last.team_spread>0?"-":"+"}${Math.abs(last.team_spread)} / ${last.total_line??"—"}`;
+  }
+  const n=rs.length||1;
+  const sum=k=>rs.reduce((a,r)=>a+(r[k]||0),0);
+  const qb=p.pos==="QB";
+  $("rateBox").innerHTML= qb
+    ? `Pass yds/g <b>${(sum("pass_yds")/n).toFixed(1)}</b><br>Comp% <b>${fmtPct(sum("comp")/Math.max(1,sum("pass_att")))}</b><br>TD/g <b>${(sum("pass_td")/n).toFixed(2)}</b><br>YPA <b>${(sum("pass_yds")/Math.max(1,sum("pass_att"))).toFixed(2)}</b>`
+    : `Targets/g <b>${(sum("tgt")/n).toFixed(1)}</b> · Rec/g <b>${(sum("rec")/n).toFixed(1)}</b><br>Catch% <b>${fmtPct(sum("rec")/Math.max(1,sum("tgt")))}</b> · YPT <b>${(sum("rec_yds")/Math.max(1,sum("tgt"))).toFixed(2)}</b><br>Carries/g <b>${(sum("rush_att")/n).toFixed(1)}</b> · YPC <b>${(sum("rush_yds")/Math.max(1,sum("rush_att"))).toFixed(2)}</b><br>Rush+Rec/g <b>${((sum("rush_yds")+sum("rec_yds"))/n).toFixed(1)}</b>`;
+}
+function renderProps(){
+  const list=player().pos==="QB"?QPROPS:PROPS;
+  $("propCards").innerHTML=list.map(([lbl])=>`
+    <div class="panel2 prop panel pad" style="box-shadow:none">
+      <div class="lbl">${lbl}</div>
+      <div class="ln num">—</div>
+      <div class="odds">no line posted (offseason)</div>
+      <div class="slot">model proj: <b>pending</b></div>
+    </div>`).join("");
+}
+function renderDefense(){
+  const rs=rows(), last=rs[rs.length-1]; if(!last){$("defStrip").innerHTML="";return;}
+  const d=DATA.defense.find(x=>x.team===last.opp); $("defTeamLbl").textContent=last.opp||"";
+  if(!d){$("defStrip").innerHTML="<span class='note'>no data</span>";return;}
+  const chip=rk=>`<span class="rk ${rk<=10?"good":rk<=22?"mid":"bad"} num">${rk}</span>`;
+  const s=(lbl,v,rk)=>`<div class="defstat"><div class="eyebrow">${lbl}</div><div class="v num">${v.toFixed(3)}${chip(rk)}</div></div>`;
+  $("defStrip").innerHTML=
+    s("Def EPA",d.def_epa,d.def_rank)+s("vs Pass",d.def_pass_epa,d.def_pass_rank)+
+    s("vs Rush",d.def_rush_epa,d.def_rush_rank)+
+    `<div class="defstat"><div class="eyebrow">Plays faced/g</div><div class="v num">${d.total_plays.toFixed(1)}</div></div>
+     <div class="defstat"><div class="eyebrow">Pass% faced</div><div class="v num">${fmtPct(d.pass_perc)}</div></div>`;
+}
+function renderLog(){
+  const p=player(), rs=rows(); $("logNote").textContent=`— ${state.season}, all values official`;
+  const qb=p.pos==="QB";
+  const cols= qb
+   ? [["W","week"],["Opp",r=>`${r.home==="@"?"@ ":""}${r.opp}`],["Spr","team_spread"],["Snap%",r=>fmtPct(r.snap_pct)],
+      ["Att","pass_att"],["Cmp","comp"],["Yds","pass_yds"],["TD","pass_td"],["INT","ints"],["YPA","ypa"],["CPOE","cpoe"],
+      ["Rush","rush_att"],["RuYd","rush_yds"]]
+   : [["W","week"],["Opp",r=>`${r.home==="@"?"@ ":""}${r.opp}`],["Spr","team_spread"],["Snap%",r=>fmtPct(r.snap_pct)],
+      ["Q1",r=>hcell(r.q1)],["Q2",r=>hcell(r.q2)],["Q3",r=>hcell(r.q3)],["Q4",r=>hcell(r.q4)],
+      ["RuAtt","rush_att"],["RuYds","rush_yds"],["YPC","ypc"],["Ru Sh%",r=>fmtPct(r.rush_share)],["LgRu","long_rush"],
+      ["Tgt","tgt"],["Rec","rec"],["ReYds","rec_yds"],["AirYd","air_yds"],["UnAY","unrl_ay"],["LgRe","long_rec"],
+      ["Ru+Re","rush_rec"],["YAC","yac"],["Tgt%",r=>hcell(r.tgt_share)],["AY%",r=>fmtPct(r.ay_share)],
+      ["Rec%",r=>fmtPct(r.catch_pct)],["YPT","ypt"],["aDOT","adot"],["Sep","ngs_sep"],["TD",r=>fmt((r.rush_td||0)+(r.rec_td||0))]];
+  function hcell(v){return v==null?"":`<span class="cell num" style="${heat(v)}">${Math.round(v*100)}%</span>`}
+  $("logTable").innerHTML=`<table><thead><tr>${cols.map(c=>`<th>${c[0]}</th>`).join("")}</tr></thead><tbody>`+
+    rs.map(r=>`<tr>${cols.map(c=>{const v=typeof c[1]==="function"?c[1](r):fmt(r[c[1]]);
+      return `<td class="num">${v??""}</td>`}).join("")}</tr>`).join("")+`</tbody></table>`;
+}
+function renderMatrix(){
+  const p=player(); $("tsTeamLbl").textContent=`${p.team} ${state.season}`;
+  const m=(DATA.team_matrix[p.team]||[]).slice(0,12);
+  if(!m.length||state.season!==2025){$("tsMatrix").innerHTML="<div class='note'>matrix embedded for 2025 rosters only in this prototype</div>";return;}
+  const weeks=Object.keys(m[0]).filter(k=>!["player","total"].includes(k));
+  $("tsMatrix").innerHTML=`<table><thead><tr><th>Player</th>${weeks.map(w=>`<th>${w}</th>`).join("")}<th>Tot</th></tr></thead><tbody>`+
+    m.map(r=>`<tr><td>${r.player===p.name?`<b>${r.player}</b>`:r.player}</td>`+
+      weeks.map(w=>`<td class="num">${r[w]==null?"":`<span class="cell" style="${heat(r[w]*2)}">${(r[w]*100).toFixed(0)}</span>`}</td>`).join("")+
+      `<td class="num"><b>${(r.total*100).toFixed(0)}%</b></td></tr>`).join("")+`</tbody></table>`;
+}
+function renderChart(){
+  const p=player(), rs=rows();
+  const stats=p.pos==="QB"?STATS_QB:STATS_SKILL;
+  if(!stats.some(s=>s[0]===state.stat)) state.stat=stats[0][0];
+  $("statPick").innerHTML=stats.map(([k,lbl])=>
+    `<button data-k="${k}" aria-pressed="${k===state.stat}">${lbl}</button>`).join("");
+  document.querySelectorAll("#statPick button").forEach(b=>b.onclick=()=>{state.stat=b.dataset.k;renderChart();});
+  const vals=rs.map(r=>r[state.stat]??0), mx=Math.max(...vals,1);
+  const sorted=[...vals].sort((a,b)=>a-b), med=sorted.length?sorted[Math.floor(sorted.length/2)]:0;
+  const ch=$("chart");
+  ch.innerHTML=rs.map((r,i)=>{
+    const h=Math.max(2,Math.round(vals[i]/mx*200));
+    return `<div class="bar num" style="height:${h}px" data-i="${i}" tabindex="0"
+      aria-label="week ${r.week}: ${vals[i]}"><div class="wk">${r.week}</div></div>`}).join("")
+    +`<div class="medline" style="bottom:${22+Math.round(med/mx*200)}px"></div>
+      <div class="medtag" style="bottom:${22+Math.round(med/mx*200)}px">med ${med}</div>`;
+  const tip=$("tip");
+  ch.querySelectorAll(".bar").forEach(b=>{
+    const show=e=>{const r=rs[+b.dataset.i];
+      tip.innerHTML=`<b>Wk ${r.week}</b> ${r.home==="@"?"@":"vs"} ${r.opp}<br>${
+        stats.find(s=>s[0]===state.stat)[1]}: <b>${r[state.stat]??0}</b><br>spread ${r.team_spread>0?"-":"+"}${Math.abs(r.team_spread)} · snap ${fmtPct(r.snap_pct)}`;
+      tip.style.display="block";
+      tip.style.left=Math.min(innerWidth-250,(e.clientX??b.getBoundingClientRect().x)+12)+"px";
+      tip.style.top=((e.clientY??b.getBoundingClientRect().y)-10)+"px";};
+    b.onmousemove=show; b.onfocus=show;
+    b.onmouseleave=b.onblur=()=>tip.style.display="none";
+  });
+}
+function renderAll(){renderHeader();renderProps();renderDefense();renderLog();renderMatrix();renderChart();}
+
+$("playerSel").onchange=e=>{state.pid=e.target.value;renderAll();};
+$("s2024").onclick=()=>{state.season=2024;$("s2024").setAttribute("aria-pressed","true");$("s2025").setAttribute("aria-pressed","false");renderAll();};
+$("s2025").onclick=()=>{state.season=2025;$("s2025").setAttribute("aria-pressed","true");$("s2024").setAttribute("aria-pressed","false");renderAll();};
+$("themeToggle").onclick=()=>{const r=document.documentElement;
+  const cur=r.dataset.theme|| (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  r.dataset.theme=cur==="dark"?"light":"dark";};
+
+state.pid=DATA.players.find(p=>p.name==="Aaron Jones")?.player_id||DATA.players[0].player_id;
+renderPlayerList();renderAll();
+</script>
