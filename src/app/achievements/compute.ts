@@ -132,8 +132,10 @@ export function computeAchievementsModel(): AchievementsModel {
   // Defensive: the converter only emits fully-completed weeks, but make sure a
   // null-result or 0-0 row can never register as a legitimate low/steady score
   // in the min/consistency computations below.
+  // A zero score means a no-show/forfeit (e.g. the abandoned 2022 playoff
+  // matchups), not a played game - exclude from all score-based computations.
   const playedSchedule = schedule.filter(
-    (g) => g.result !== null && !(g.franchise_score === 0 && g.opponent_score === 0)
+    (g) => g.result !== null && g.franchise_score > 0 && g.opponent_score > 0
   );
 
   // Rock Bottom: lowest scoring week of a season (a season award — the
@@ -784,6 +786,10 @@ export function computeAchievementsModel(): AchievementsModel {
     const ownerSt = standings.filter((s) => s.owner === o);
     const ownerSc = schedule.filter((g) => g.result !== null);
     const ownerScAll = ownerSc.filter((g) => g.team_owner === o);
+    // Single-game feats (best week, margins, 100/150/200 clubs, bad beats)
+    // count ALL games including playoffs — consistent with Boomer, the
+    // matchups tables, the trophy-room plaques, and the records book.
+    // regSc remains for regular-season concepts (the Gauntlet round-robin).
     const regSc = ownerScAll.filter((g) => g.game_type === "Regular Season");
 
     // Most PF seasons
@@ -801,9 +807,15 @@ export function computeAchievementsModel(): AchievementsModel {
     const careerLosses = ownerSt.reduce((a, s) => a + s.h2h_losses, 0);
     const careerPf = ownerSt.reduce((a, s) => a + s.points_for, 0);
     const totalSeasons = ownerSt.length;
-    const maxWeek = regSc.length ? Math.max(...regSc.map((g) => g.franchise_score)) : 0;
-    const maxMargin = regSc.length
-      ? Math.max(...regSc.map((g) => g.franchise_score - g.opponent_score))
+    const maxWeek = ownerScAll.length
+      ? Math.max(...ownerScAll.map((g) => g.franchise_score))
+      : 0;
+    // Margin feats ignore forfeit games (opponent no-show scoring 0).
+    const realGames = ownerScAll.filter(
+      (g) => g.franchise_score > 0 && g.opponent_score > 0
+    );
+    const maxMargin = realGames.length
+      ? Math.max(...realGames.map((g) => g.franchise_score - g.opponent_score))
       : 0;
     // Undefeated must be a FULL final season — a 3-0 start mid-season also
     // reads as "0 losses" in the standings rows.
@@ -812,11 +824,11 @@ export function computeAchievementsModel(): AchievementsModel {
     );
 
     // Game of Inches: win by 1 pt or less
-    const gameOfInches = regSc.some(
+    const gameOfInches = realGames.some(
       (g) => g.franchise_score - g.opponent_score > 0 && g.franchise_score - g.opponent_score <= 1
     );
     // Blowout: win by 50+
-    const blowout50 = regSc.some((g) => g.franchise_score - g.opponent_score >= 50);
+    const blowout50 = realGames.some((g) => g.franchise_score - g.opponent_score >= 50);
 
     // Gauntlet: beat every owner in one season (mid-season you have only
     // faced a subset of the league, so only final seasons can qualify)
@@ -833,7 +845,7 @@ export function computeAchievementsModel(): AchievementsModel {
     }
 
     // Bad Beat: lose as 2nd highest scorer that week
-    const losses = regSc.filter((g) => g.result === "L");
+    const losses = ownerScAll.filter((g) => g.result === "L");
     const badBeatWeek = (row: ScheduleRow): boolean => {
       const seen = new Set<string>();
       const weekAll: ScheduleRow[] = [];
@@ -1017,7 +1029,7 @@ export function computeAchievementsModel(): AchievementsModel {
     const opoyYrs = mostPfSeasons.map((r) => r.season).sort((a, b) => a - b);
     if (opoyYrs.length > 0) d.opoy = `First: ${opoyYrs[0]}`;
     // Century / 150 / 200 point weeks
-    const bigWks = [...regSc].sort((a, b) => a.season - b.season || a.week - b.week);
+    const bigWks = [...ownerScAll].sort((a, b) => a.season - b.season || a.week - b.week);
     if (bigWks.length > 0) {
       const r100 = bigWks.find((g) => g.franchise_score >= 100);
       const r150 = bigWks.find((g) => g.franchise_score >= 150);
