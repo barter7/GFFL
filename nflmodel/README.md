@@ -22,11 +22,12 @@ empirical-Bayes style toward 1.0.
 utils.R            pure helpers: odds conversion, Log5, shrinkage, Beta grids
 pbp_data.R         play-by-play layer: refresh_pbp() / load_pbp_cache()
                    (nflfastR pbp, 372 cols/play, last + current season)
-game_context.R     per-game context synced to pbp by game_id: closing
-                   spread/total/moneylines + juice, rest, referee, coaches,
-                   starting QBs, stadium/roof/surface, parsed weather
-scrape_coordinators.R  builds data/context/coordinators.csv from PFR
-                   team pages — RUN LOCALLY (open network), then commit
+game_context.R     per-game context synced to pbp by game_id via
+                   nflreadr::load_schedules(): closing spread/total/
+                   moneylines + juice, rest, referee, head coaches,
+                   starting QBs, stadium/roof/surface, parsed weather.
+                   Optional data/context/coordinators.csv adds OCs
+                   (no R-package source exists for coordinators)
 data_sources.R     nflreadr -> data/cache/*.csv (model reads only the cache)
 model_core.R       calibrated constants + all four market projections
 calibrate.R        one-off: fits the constants hard-coded in model_core.R

@@ -4,5 +4,5 @@ data/props/
 data/pbp/
 data/context/game_context.csv
 data/results/report_*.html
-# data/context/coordinators.csv IS committed once generated
-# (scrape_coordinators.R) — it is hand-reviewed, not regenerable
+# data/context/coordinators.csv IS committed if supplied
+# (optional OC layer — no R-package source exists for it)
