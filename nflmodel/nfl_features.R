@@ -315,11 +315,15 @@ build_gamelogs <- function(seasons, rosters = load_rosters_cache(seasons),
       rush_plus_rec = receiving_yards + rushing_yards,
       total_td = receiving_tds + rushing_tds
     ) %>%
+    # rosters contribute only the ID crosswalk here — headshot_url
+    # and position already come from the weekly stats file
     left_join(rosters %>% select(season, gsis_id, pfr_id, pff_id,
-                                 headshot_url, jersey_number),
+                                 jersey_number),
               by = c("season", "player_id" = "gsis_id")) %>%
     left_join(sched_long %>%
-                select(game_id, season, week, team, opponent, home,
+                # no game_id here — the weekly stats file already
+                # carries the canonical one; avoid a .x/.y collision
+                select(season, week, team, opponent, home,
                        team_spread, implied_total, total_line,
                        team_ml, opp_ml, favorite, team_qb_id, opp_qb_id),
               by = c("season", "week", "team"))
