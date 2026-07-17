@@ -274,6 +274,23 @@ the 17-game era (2021+, kept in the pbp cache), never 20 years —
 league play-calling drifts. Tables: playcall_league.csv / playcall_team.csv
 (playcall_tendencies.R), refreshed from the local pbp cache.
 
+**R4.8 — Team plays projection (Projection Step 1)**
+(plays_projection.R): expected offensive plays for a team-game,
+built as an evaluation ladder with all predictors walk-forward
+(pre-kickoff only): league prior (previous season's plays/g — the
+league slows ~0.5 plays/yr, so the 5-year average enters through a
+trend-aware prior) → + team plays/g (season-to-date, EB-shrunk k=6
+toward previous season then league) → + opponent plays ALLOWED → +
+team & opponent pace (sec/play) → + game script (signed spread,
+|spread|, centered total; these carry the smoothed spread→script
+curve, which is a deterministic function of spread). Fitted
+coefficients live in data/context/plays_model.csv; score slates
+with project_team_plays(). HONEST CEILING (S15): plays are ~8.2-sd
+noisy per game; the model beats the league baseline by only ~1.2%
+MAE but its cross-sectional spread is well-calibrated — treat
+projected plays as the MEAN of a wide distribution (per the v1
+volume-mixture lesson), never as a point fact.
+
 **R4.5 — Play-volume projection** (ported from the original model):
 plays = mean of (team plays for + opp plays allowed)/2 and
 team plays × (opp allowed / league avg); pass/rush split two ways —
@@ -381,6 +398,19 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S15 — Plays-projection ladder** (2026-07; train 2022-24, test
+2025, n=570 test team-games). MAE by rung: league baseline 6.57 →
++team 6.52 → +opponent-allowed 6.51 → +pace 6.49 → +game-script
+6.50 (script terms help in-sample, wash on holdout — kept on
+theory, flagged). Coefficients: team_dev 0.26 (heavy shrink —
+a +4-plays team projects +1), pace_dev −0.52 plays per second of
+pace, opp_pace_dev +0.21, team_spread +0.15/pt (favorites sustain
+drives, consistent with S3), ctotal +0.08. 2025 projections span
+56.3–64.1 with monotone quintile calibration (58.7→57.4 … 62.3→
+62.2). Conclusion: play volume is mostly irreducible noise
+(sd 8.2); the projection's job is centering a distribution, and
+downstream models must consume it as such.
 
 **S14 — Defense profile build & identity check** (2026-07; 2021-25).
 Defense-allowed totals reconcile EXACTLY with offense totals (2025:
