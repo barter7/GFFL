@@ -274,6 +274,22 @@ the 17-game era (2021+, kept in the pbp cache), never 20 years —
 league play-calling drifts. Tables: playcall_league.csv / playcall_team.csv
 (playcall_tendencies.R), refreshed from the local pbp cache.
 
+**R4.9 — Pass/run split projection (Projection Step 2)**
+(pass_split_projection.R): a team-game's expected called-pass rate,
+ladder-built walk-forward (train 2022-24, test 2025): league base →
+league SCRIPT-EXPECTED rate (smoothed spread→quartile curve × prior
+season's per-state league rates) → + team base-rate deviation (EB
+k=6) → + script-sensitivity interactions (prior-season dev_q1/q4 ×
+expected script shift) → + opponent pass-rate-FACED funnel. The
+fitted sens coefficients are NEGATIVE — the regression mean-reverts
+prior-season deltas, confirming S12's stability finding in-model.
+UNIVERSE BRIDGE: nullified snaps are ~77% pass, so the call-based
+rate is multiplied by official_bridge (≈0.989, measured on train)
+before it scales OFFICIAL projected plays. Outputs: exp dropbacks =
+plays_proj × rate_proj(official); exp designed runs = remainder.
+Coefficients in data/context/pass_split_model.csv; score with
+project_pass_split().
+
 **R4.8 — Team plays projection (Projection Step 1)**
 (plays_projection.R): expected offensive plays for a team-game,
 built as an evaluation ladder with all predictors walk-forward
@@ -398,6 +414,17 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S16 — Pass-split ladder & end-to-end volume** (2026-07; test 2025,
+n=570). Rate MAE: league .0808 → script curve .0793 → +team .0796 →
++sens .0786 → +opp funnel .0779 (rate sd .0998). Monotone quintile
+calibration with the top quintile ~3pp hot (.666 proj / .636 act) —
+watch in-season. Coefs: team_dev 0.73, opp_dev 0.45, sens_q1 −1.13
+(mean-reversion of prior deltas). End-to-end with Step 1 on the
+OFFICIAL universe after the 0.9887 bridge: dropbacks 36.8 proj vs
+36.2 actual, MAE 6.28 vs 6.44 baseline; designed runs 23.8 vs 23.9,
+MAE 5.33 vs 5.40. Eval lesson recorded: call universe ≠ official
+universe (~2.6 snaps/team-game) — never mix them in an evaluation.
 
 **S15 — Plays-projection ladder** (2026-07; train 2022-24, test
 2025, n=570 test team-games). MAE by rung: league baseline 6.57 →
