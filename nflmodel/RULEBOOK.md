@@ -96,6 +96,17 @@ published REG-only season stats will differ for playoff teams.
 Position-dependent denominators need that season's roster file
 (all era rosters cached).
 
+**R1.12 — Defense profile layer** (defense_profiles.R): the exact
+mirror of R1.11 — everything a defense ALLOWS, same grains (game /
+season / era-2021+), same definitions: designed carries faced
+(scrambles tracked separately as scrambles allowed), targets faced
+= attempts with a receiver id, identical depth bands with
+completion%-allowed per band, sacks/INTs GENERATED, CPOE-allowed,
+plus receiver-position splits (targets/receptions/yards allowed to
+RB/WR/TE via the offense's season roster). Verified by identity:
+league offense totals equal defense-allowed totals to the yard
+(Study S14). Rates recomputed from sums at every grain.
+
 ---
 
 ## 2. Game context rules
@@ -370,6 +381,15 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S14 — Defense profile build & identity check** (2026-07; 2021-25).
+Defense-allowed totals reconcile EXACTLY with offense totals (2025:
+58,303 rush yds / 128,399 rec yds / 17,490 targets on both sides) —
+the mirror drops and double-counts nothing. League comp%-allowed
+depth gradient .767/.741/.681/.532/.362. 2025 stingiest pass
+defenses by YPT allowed: DEN 6.43 (9.9% sack rate — league leader),
+JAX 6.49, SEA 6.55; most generous WAS/TEN/DAL 8.5-8.7. Positional
+target funnels span WR-share-faced .47 (CIN) to .62 (LAC).
 
 **S13 — Player profile build & reconciliation** (2026-07; 2021-25,
 28,058 player-games, 3,055 player-seasons, 1,211 era careers).

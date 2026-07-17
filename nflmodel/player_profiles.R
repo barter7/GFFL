@@ -39,7 +39,8 @@ DEPTH_LABS  <- c("blos", "d0_4", "d5_9", "d10_19", "d20p")
 
 .profile_pbp <- function(seasons) {
   load_pbp_cache(seasons, cols = c(
-    "game_id", "season", "week", "posteam", "qtr", "two_point_attempt",
+    "game_id", "season", "week", "posteam", "defteam", "qtr",
+    "two_point_attempt",
     "play_type", "pass", "rush", "qb_scramble", "sack", "qb_dropback",
     "pass_attempt", "complete_pass", "interception",
     "air_yards", "yards_after_catch", "yards_gained",
