@@ -81,6 +81,21 @@ attempts). Audited on 2025 (Study S11):
   clock plays, not play-calling signal). Sacks and scrambles stay
   in the population with flags intact.
 
+**R1.11 — Player profile layer** (player_profiles.R): usage and
+efficiency per GAME, per SEASON, and CAREER (career = the cached
+17-game era, 2021+; true careers extend earlier). Season/career
+rates are recomputed from summed counts, never averaged averages.
+Definitions: carries = DESIGNED carries (`rush == 1`, scrambles
+excluded by construction) for both team carry share and the RB-only
+share; targets = pass attempts with a receiver id (throwaways have
+no receiver/air yards and drop from depth-band rates); depth bands
+on air yards: behind-LOS <0, 0-4, 5-9, 10-19, 20+; scrambles are
+attributed via rusher_player_id (their passer id is NA) and QB
+dropbacks = throws + sacks + scrambles. Profiles include playoffs —
+published REG-only season stats will differ for playoff teams.
+Position-dependent denominators need that season's roster file
+(all era rosters cached).
+
 ---
 
 ## 2. Game context rules
@@ -355,6 +370,20 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S13 — Player profile build & reconciliation** (2026-07; 2021-25,
+28,058 player-games, 3,055 player-seasons, 1,211 era careers).
+Reconciles exactly with official weekly stats (Chase 2025: 185
+targets / 125 receptions both sources). Depth-band completion
+gradients are textbook (Allen 2025: 85% short falling to 36% on
+20+). Two bugs caught by verification: scrambles carry no
+passer_player_id (rate silently zero until attributed via
+rusher_player_id), and missing 2021-23 roster files broke the
+RB-only carry-share denominator (RB determination needs the
+season's roster). Era bell-cow check: Henry .82 / Mixon .80 /
+Taylor .80 RB-carry share. Includes red-zone + end-zone target
+counts, inside-10/-5 carries, EPA and success rates, stuff and
+explosive rates, target depth mix, CPOE, sack/scramble rates.
 
 **S12 — Play-calling tendencies by script quartile** (2026-07;
 17-game era 2021-2025, 181,945 called snaps, 160 team-seasons).
