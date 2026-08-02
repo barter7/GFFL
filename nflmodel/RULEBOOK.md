@@ -107,6 +107,22 @@ RB/WR/TE via the offense's season roster). Verified by identity:
 league offense totals equal defense-allowed totals to the yard
 (Study S14). Rates recomputed from sums at every grain.
 
+**R1.13 — Match on IDs, never names, wherever an ID exists.**
+Every cross-source join goes through the nflverse roster crosswalk
+(gsis_id / pfr_id / pff_id / espn_id). Name matching is permitted
+ONLY where no ID exists on one side, and must be labeled as a
+fallback in the code. Current legitimate exceptions:
+- **coaches** — no id in any dataset, so coach joins are fuzzy
+  name matches (R2.6/S17)
+- **sportsbook prop feeds** — odds APIs publish no player ids, so
+  props join on `norm_name()` (scrape_props.R / results_tracker.R)
+- **the tail of a draft class** — see below
+Known ID traps (S19): the draft release's `gsis_id` column is NOT
+nflverse gsis format ("MEN516487" vs "00-0034381") and matches
+NOTHING — bridge the draft class on `pfr_player_id` -> roster
+`pfr_id` instead; snap counts carry only `pfr_player_id`, so they
+join via the crosswalk, never by name-first.
+
 ---
 
 ## 2. Game context rules
@@ -443,6 +459,19 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S19 — ID-first join audit** (2026-08). Swept every cross-source
+join. The draft-class join was the live offender: its `gsis_id`
+column is a foreign format that matched 0 of 676 rookie roster
+rows, which is what forced the earlier name fallback. Correct
+bridge is pfr_player_id -> roster pfr_id (187/257 picks; the rest
+have no PFR page yet), with name matching demoted to a labeled
+fallback for the tail. Result: 80 of 90 rostered rookies now
+resolve to a draft slot by ID, 10 are genuine UDFAs. Verified
+against known R1 picks (Mendoza R1.1, Love R1.3, Tate R1.4,
+Simpson R1.13, Concepcion R1.24, Price R1.32). pff_id is present
+on the roster crosswalk, so PFF exports join by id with no name
+matching at all.
 
 **S18 — Depth-chart churn build** (2026-08). 1,184 depth slots +
 270 departures across 32 teams. Status mix 851 returning / 243 new

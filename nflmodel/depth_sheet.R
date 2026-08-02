@@ -163,11 +163,19 @@ build_depth_sheet <- function() {
               nm26 = full_name,
               pff26 = as.character(pff_id)) %>% distinct(gsis_id, .keep_all=TRUE)
   draft <- read_csv(file.path("data","context","draft_picks_2026.csv"), show_col_types=FALSE)
-  # 2026 draftees mostly have no gsis_id yet, so match the class
-  # by normalized name and confirm with years_exp == 0 (S18)
+  # ID-FIRST (R1.13). The draft release's `gsis_id` column is NOT
+  # nflverse gsis format ("MEN516487" vs "00-00xxxxx") and matches
+  # nothing — `pfr_player_id` is the valid bridge to roster pfr_id.
+  # Name matching is the documented fallback for the tail of the
+  # class that has no PFR page yet (S19).
   nkey <- function(x) gsub("[^a-z]", "", tolower(x))
-  rookie <- draft %>%
-    transmute(nk = nkey(pfr_player_name), dr_round = round, dr_pick = pick) %>%
+  rookie_id <- draft %>%
+    filter(!is.na(pfr_player_id)) %>%
+    transmute(pfr_id = pfr_player_id, dr_round = round, dr_pick = pick) %>%
+    distinct(pfr_id, .keep_all = TRUE)
+  rookie_nm <- draft %>%
+    transmute(nk = nkey(pfr_player_name), dr_round_nm = round,
+              dr_pick_nm = pick) %>%
     distinct(nk, .keep_all = TRUE)
 
   V <- build_player_values(); pff <- load_pff_grades()
@@ -178,7 +186,8 @@ build_depth_sheet <- function() {
                 by = c("gsis_id" = "player_id")) %>%
       left_join(V$career %>% rename_with(~paste0("c_", .x), -player_id),
                 by = c("gsis_id" = "player_id")) %>%
-      left_join(r25 %>% select(gsis_id, pfr_id), by = "gsis_id") %>%
+      { if ("pfr_id" %in% names(.)) . else
+          left_join(., r25 %>% select(gsis_id, pfr_id), by = "gsis_id") } %>%
       left_join(V$snaps, by = c("pfr_id" = "pfr_player_id"))
     lv <- d %>% select(starts_with("l_")) %>% rename_with(~sub("^l_","",.x))
     cv <- d %>% select(starts_with("c_")) %>% rename_with(~sub("^c_","",.x))
@@ -190,8 +199,12 @@ build_depth_sheet <- function() {
   depth <- dc %>%
     left_join(r25 %>% select(gsis_id, team25, pff_id), by = "gsis_id") %>%
     left_join(r26 %>% select(gsis_id, yrs26), by = "gsis_id") %>%
+    left_join(r25 %>% select(gsis_id, pfr_id), by = "gsis_id") %>%
+    left_join(rookie_id, by = "pfr_id") %>%          # ID path first
     mutate(nk = nkey(player_name)) %>%
-    left_join(rookie, by = "nk") %>%
+    left_join(rookie_nm, by = "nk") %>%              # name fallback only
+    mutate(dr_round = coalesce(dr_round, dr_round_nm),
+           dr_pick  = coalesce(dr_pick,  dr_pick_nm)) %>%
     mutate(status = case_when(coalesce(yrs26, 99) == 0 ~ "ROOKIE",
                               is.na(team25) ~ "NEW",
                               team25 != team ~ "NEW",
@@ -218,8 +231,30 @@ build_depth_sheet <- function() {
     attach_val()
 
   if (!is.null(pff)) {
-    j <- function(d) d %>% left_join(pff %>% filter(is.na(season) | season == 2025),
-                                     by = c("pff_id" = "pff_id"))
+    # ID-first (R1.13): join on pff_id, then fill ONLY the rows it
+    # missed by normalized name. nflverse carries pff_id for ~70%
+    # of veterans and 0 of 682 rookies, so the name pass is
+    # required for the class — it is a labeled fallback, not the
+    # primary path.
+    pg <- pff %>% filter(is.na(season) | season == 2025)
+    gcols <- grep("^grade", names(pg), value = TRUE)
+    by_nm <- if ("player" %in% names(pg) || "name" %in% names(pg)) {
+      nmcol <- if ("player" %in% names(pg)) "player" else "name"
+      pg %>% transmute(nk = nkey(.data[[nmcol]]),
+                       across(all_of(gcols))) %>%
+        rename_with(~paste0(.x, "_nm"), all_of(gcols)) %>%
+        distinct(nk, .keep_all = TRUE)
+    } else NULL
+    j <- function(d) {
+      d <- d %>% left_join(pg %>% select(pff_id, all_of(gcols)), by = "pff_id")
+      if (!is.null(by_nm)) {
+        d <- d %>% mutate(.nk = nkey(player_name)) %>%
+          left_join(by_nm, by = c(".nk" = "nk"))
+        for (g in gcols) d[[g]] <- dplyr::coalesce(d[[g]], d[[paste0(g,"_nm")]])
+        d <- d %>% select(-.nk, -ends_with("_nm"))
+      }
+      d
+    }
     depth <- j(depth); out <- j(out)
   }
   list(depth = depth, out = out, has_pff = !is.null(pff))
