@@ -223,6 +223,39 @@ network and correct them before the first real run. A manual
 drop-in (any file keyed by rotowire_id) still works and is picked
 up by the same loader.
 
+**R2.10 — Fantasy-stock signals** (fantasy_signals.R). Per-player
+directional flags for QB/RB/WR/TE on a 2026 depth chart. Each
+signal is `{dir, code, label, detail}` where `dir` is one of
+`up` / `down` / `watch`; the DETAIL always carries the evidence,
+because "they signed a receiver" is meaningless until you know
+whether he saw 30 targets or 130. Every join is by `gsis_id`
+(R1.13) — draft capital is read off the pick itself, never off a
+name lookup. Signals and their thresholds:
+
+| code | dir | trigger |
+|---|---|---|
+| `DRAFT` | down | team took a round 1-3 pick at his position; suppressed for rookies |
+| `SIGNED` | down | a same-position player arrived (status NEW); shown with the arrival's 2025 line |
+| `VACATED` | up | a same-position player left; shown with the departure's 2025 line |
+| `TGTS` | up | >=8% of the team's 2025 targets are held by players off the roster |
+| `CARR` | up | >=10% of the team's 2025 carries are held by players off the roster |
+| `HC` / `OC` | watch | head coach change / OC vacated or presumed new (R2.4) |
+| `QB` | watch | new starting QB — pass catchers and backs only |
+| `PACE` | up/down | team's 2025 seconds-per-snap is >=1.5s off the league mean |
+| `AVAIL` | down | currently non-active per roster status (R2.8) |
+| `INJ` | down | 5+ weeks listed Out FOR INJURY in 2025 (R2.5) |
+
+The production line is position-shaped: attempts / pass yards /
+pass TD for a QB, carries for a back, targets for a pass catcher,
+with explicit "no 2025 touches" / "no 2025 pass attempts" rather
+than a row of zeros. These are VOLUME-CONTEXT flags for the depth
+sheet, not projections and not an input the model reads — the
+projection layer consumes the same underlying tables directly, so
+a signal is never allowed to double-count. Output:
+`data/context/fantasy_signals.json`; rendered as chips in
+web/depth.html where the arrow glyph (▲ ▼ ◆) carries the
+direction so it survives without colour (S22).
+
 ---
 
 ## 3. Modeling assumptions (props model core)
@@ -496,6 +529,33 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S22 — Fantasy-stock signals** (2026-08; R2.10). 452 of the ~1,180
+skill-position depth-chart rows carry at least one signal, spread
+across all 32 teams. Frequency: TGTS 351, VACATED 271, SIGNED 251,
+OC 128, HC 112, DRAFT 105, PACE 96, QB 78, CARR 52, INJ 20, AVAIL 5.
+Largest vacated target shares: PIT 51%, WAS 46%, GB 35%, MIA/NYG/PHI
+33% — those are the receiving rooms where 2025 usage is least
+informative about 2026.
+
+CATCH, and it is the R1.13 lesson again: the first build produced
+SIGNED chips with no stat line at all. The depth-sheet JSON export
+did not include `gsis_id`, so the lookup filtered on a column of
+NAs and returned zero rows — silently, because a zero-row join is
+not an error. Fix was to export `gsis_id` on BOTH the depth and
+departure tables and re-key the join to it. A join that returns
+nothing looks identical to a player who genuinely did nothing;
+where evidence is expected, its ABSENCE has to be treated as a
+failure, not as a fact about the player.
+
+Second correction: the production line was one-size-fits-all, so a
+backup QB arriving read as "0 car / 0 yds / 0 TD" — technically
+true and completely uninformative. Lines are now position-shaped
+(attempts/pass yards for QBs, carries for backs, targets for pass
+catchers), with explicit "no 2025 pass attempts" where the tally
+really is empty. Also note the em dashes in the JSON: R runs in a C
+locale here, so literal UTF-8 in the source is emitted as raw bytes
+(`<e2><80><94>`) that render as broken tags — write `\u2014` escapes in any R string bound for the browser.
 
 **S21 — RotoWire link layer** (2026-08). rotowire.com returns 403
 from this environment like every non-GitHub content host, so no

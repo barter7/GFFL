@@ -273,13 +273,14 @@ build_depth_sheet <- function() {
 if (sys.nframe() == 0) {
   s <- build_depth_sheet()
   write_json(list(
-    depth = s$depth %>% select(team, grp, slot, spot, player_name, status, from,
+    depth = s$depth %>% select(gsis_id, team, grp, slot, spot, player_name,
+                               status, from,
                                snaps25, line_2025, line_career,
                                cur_status, avail_note, rotowire_url,
                                y25_weeks_out_injury,
                                y25_weeks_q, y25_top_injury, car_weeks_out_injury,
                                any_of(grep("^grade", names(s$depth), value=TRUE))),
-    out = s$out %>% select(team, grp, player_name, spot, to, snaps25,
+    out = s$out %>% select(gsis_id, team, grp, player_name, spot, to, snaps25,
                            line_2025, line_career, y25_weeks_out_injury,
                            y25_top_injury,
                            any_of(grep("^grade", names(s$out), value=TRUE))),
