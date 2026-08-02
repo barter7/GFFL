@@ -186,6 +186,26 @@ real grades join automatically from data/pff/ via the roster
 pff_id crosswalk. Offensive line is the one group with no public
 per-player signal beyond snaps — labeled as such, never faked.
 
+**R2.8 — Availability layer** (injury_profile.R). Two things that
+must never be conflated:
+1. **Current status.** Official weekly injury reports do not exist
+   until Week 1 (injuries_2026.csv 404s in August by design), so
+   preseason availability comes from the ROSTER status field
+   (ACT / RES / E14 / RET / CUT). Once the season starts the
+   weekly report supersedes it and carries the real designation
+   plus practice participation.
+2. **Durability history** (2021-2025, per season and career):
+   weeks listed Out, weeks Out FOR INJURY, weeks Questionable/
+   Doubtful, weeks DNP in practice, and the most frequent body
+   part. Per R2.5 a designation is not a missed game — rest and
+   "Coaching Decision" rows are excluded from the injury counts.
+Roster status CODES are undocumented; do not invent meanings. The
+one verified empirically is R09 = 17 rookies / 0 veterans, i.e. an
+unsigned-or-unreported draft pick and NOT an injury (S20) — it is
+labeled "NOT SIGNED", never as hurt. Everything else on the
+reserve list reads generically as IR/PUP/NFI. Joins by gsis_id
+(R1.13).
+
 ---
 
 ## 3. Modeling assumptions (props model core)
@@ -459,6 +479,18 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S20 — Availability layer** (2026-08; injury reports 2021-2025 +
+2026 roster status). 4,240 players profiled. 2026 preseason:
+2,852 active, 36 reserve, 28 exempt, 11 retired, 3 cut. Most
+injury-affected 2025 starters: Jayden Daniels 11 weeks Out
+(elbow), Chris Godwin 9 (fibula), Kerby Joseph 9 (knee), Lane
+Johnson 8 (foot), Terry McLaurin 8 (quad). CATCH: the roster code
+R09 initially read as an injury reserve designation and would have
+flagged Mendoza, Simpson, Beck and Roush as hurt — cross-tabbing by
+years_exp showed 17 rookies / 0 veterans, i.e. an unsigned pick.
+Undocumented status codes must be validated against a known split
+before being given a meaning.
 
 **S19 — ID-first join audit** (2026-08). Swept every cross-source
 join. The draft-class join was the live offender: its `gsis_id`

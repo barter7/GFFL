@@ -28,6 +28,7 @@
 
 suppressMessages({ library(dplyr); library(tidyr); library(readr); library(jsonlite) })
 source("utils.R")
+source("injury_profile.R")
 
 SEASONS_CAREER <- 2021:2025
 DEPTH_JSON <- file.path("data", "context", "depth_sheet_2026.json")
@@ -179,6 +180,10 @@ build_depth_sheet <- function() {
     distinct(nk, .keep_all = TRUE)
 
   V <- build_player_values(); pff <- load_pff_grades()
+  INJ <- build_injury_profile() %>%
+    select(gsis_id, cur_status, cur_code, avail_note, cur_available,
+           y25_weeks_out_injury, y25_weeks_q, y25_top_injury,
+           car_weeks_out_injury, car_seasons_seen)
 
   attach_val <- function(d) {
     d <- d %>%
@@ -188,7 +193,8 @@ build_depth_sheet <- function() {
                 by = c("gsis_id" = "player_id")) %>%
       { if ("pfr_id" %in% names(.)) . else
           left_join(., r25 %>% select(gsis_id, pfr_id), by = "gsis_id") } %>%
-      left_join(V$snaps, by = c("pfr_id" = "pfr_player_id"))
+      left_join(V$snaps, by = c("pfr_id" = "pfr_player_id")) %>%
+      left_join(INJ, by = "gsis_id")   # availability layer (R2.8)
     lv <- d %>% select(starts_with("l_")) %>% rename_with(~sub("^l_","",.x))
     cv <- d %>% select(starts_with("c_")) %>% rename_with(~sub("^c_","",.x))
     d$line_2025   <- fmt_line(d$grp, lv)
@@ -265,9 +271,12 @@ if (sys.nframe() == 0) {
   write_json(list(
     depth = s$depth %>% select(team, grp, slot, spot, player_name, status, from,
                                snaps25, line_2025, line_career,
+                               cur_status, avail_note, y25_weeks_out_injury,
+                               y25_weeks_q, y25_top_injury, car_weeks_out_injury,
                                any_of(grep("^grade", names(s$depth), value=TRUE))),
     out = s$out %>% select(team, grp, player_name, spot, to, snaps25,
-                           line_2025, line_career,
+                           line_2025, line_career, y25_weeks_out_injury,
+                           y25_top_injury,
                            any_of(grep("^grade", names(s$out), value=TRUE))),
     has_pff = s$has_pff,
     generated = format(Sys.Date())),

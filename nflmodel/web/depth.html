@@ -53,6 +53,10 @@ tr.out .nm{color:var(--ink2)}
 .b.NEW{background:var(--addbg);color:var(--add)}
 .b.ROOKIE{background:var(--markwash);color:#8A6D14;box-shadow:inset 0 0 0 1px var(--mark)}
 .b.OUT{background:var(--lossbg);color:var(--loss)}
+.b.AVL{background:var(--lossbg);color:var(--loss)}
+.b.PEND{background:var(--chip);color:var(--ink2)}
+.dur{font-size:10px;color:var(--loss);white-space:nowrap;margin-left:5px;font-weight:600}
+.dur.mild{color:var(--ink3);font-weight:400}
 :root[data-theme=dark] .b.ROOKIE{color:var(--mark)}
 @media (prefers-color-scheme:dark){.b.ROOKIE{color:var(--mark)}}
 .from{color:var(--ink3);font-size:10.5px;margin-left:4px}
@@ -78,6 +82,7 @@ footer b{color:var(--ink2)}
   <button data-s="career" aria-pressed="false">Career (21–25)</button>
   <span class="sep"></span>
   <button id="only" aria-pressed="false">Changed groups only</button>
+  <button id="hurt" aria-pressed="false">Availability flags</button>
   <button class="tog" id="tog" aria-label="Toggle theme">◐</button>
 </div>
 <div class="grid" id="grid"></div>
@@ -88,7 +93,7 @@ footer b{color:var(--ink2)}
 const $=s=>document.querySelector(s);
 const GROUPS=["QB","RB","WR","TE","OL","DL","LB","DB"];
 const TEAMS=[...new Set(D.depth.map(r=>r.team))].sort();
-const st={mode:"team",sel:TEAMS[0],stat:"2025",only:false};
+const st={mode:"team",sel:TEAMS[0],stat:"2025",only:false,hurt:false};
 const maxSnap=1100;
 
 function fillPicker(){
@@ -101,6 +106,15 @@ const snapCell=s=>{
   const w=Math.max(1,Math.round(s/maxSnap*46));
   return `<div class="snapwrap"><span class="snapbar" style="width:${w}px"></span><span class="snapn mono">${s}</span></div>`;
 };
+const avail=r=>{ if(!r.avail_note)return "";
+  const pend=/unsigned|exempt/.test(r.avail_note);
+  return `<span class="b ${pend?"PEND":"AVL"}" title="${r.avail_note}">${
+    pend?"NOT SIGNED":"RESERVE"}</span>`;};
+const dur=r=>{ const w=r.y25_weeks_out_injury||0;
+  if(w<2)return "";
+  return `<span class="dur ${w<5?"mild":""}" title="weeks listed Out for injury in 2025${
+    r.y25_top_injury?" — mostly "+r.y25_top_injury:""}">${w}w out '25${
+    r.y25_top_injury?" ("+r.y25_top_injury+")":""}</span>`;};
 function rowsFor(team,grp){
   const din=D.depth.filter(r=>r.team===team&&r.grp===grp)
                    .sort((a,b)=>a.slot-b.slot);
@@ -113,18 +127,19 @@ function pod(team,grp){
   if(!din.length&&!dout.length)return "";
   const nNew=din.filter(r=>r.status!=="RET").length;
   if(st.only&&!nNew&&!dout.length)return "";
+  if(st.hurt&&!din.some(r=>r.avail_note||(r.y25_weeks_out_injury||0)>=5))return "";
   const line=r=>st.stat==="2025"?r.line_2025:r.line_career;
   const isOL=grp==="OL";
   const body=din.map(r=>`<tr class="${r.status!=="RET"?"new":""}">
       <td class="n mono">${r.slot}</td>
       <td class="who"><span class="nm">${r.player_name}</span>${
         r.status!=="RET"?`<span class="b ${r.status}">${r.status}</span>`:""}${
-        r.from?`<span class="from">${r.from}</span>`:""}</td>
+        r.from?`<span class="from">${r.from}</span>`:""}${avail(r)}${dur(r)}</td>
       <td class="stat">${line(r)||(isOL?"<i>no public grade</i>":"—")}</td>
       <td style="width:88px">${snapCell(r.snaps25)}</td></tr>`).join("");
   const outs=dout.map(r=>`<tr class="out">
       <td class="n">↓</td>
-      <td class="who"><span class="nm">${r.player_name}</span><span class="b OUT">OUT</span><span class="from">→ ${r.to}</span></td>
+      <td class="who"><span class="nm">${r.player_name}</span><span class="b OUT">OUT</span><span class="from">→ ${r.to}</span>${dur(r)}</td>
       <td class="stat">${line(r)||(isOL?"<i>no public grade</i>":"—")}</td>
       <td style="width:88px">${snapCell(r.snaps25)}</td></tr>`).join("");
   const head=st.mode==="team"
@@ -145,6 +160,12 @@ function render(){
     (the roster diff can't separate a signing from a trade); <b>ROOKIE</b> shows its
     draft slot, or UDFA. Departures are 2025 players with 250+ snaps no longer on the
     roster. Bars are 2025 offensive+defensive snaps.
+    <br><b>Availability:</b> official weekly injury reports don't exist until Week 1,
+    so preseason status comes from the roster — <b>RESERVE</b> = IR/PUP/NFI,
+    <b>NOT SIGNED</b> = unsigned or unreported draft pick (verified: that code appears on
+    17 rookies and 0 veterans, so it is a contract status, not an injury).
+    The red durability note is weeks listed <i>Out</i> for injury in 2025, excluding rest
+    and coach's-decision rows.
     <br><b>PFF grades:</b> ${D.has_pff?"loaded from data/pff/.":
     `not available — PFF is proprietary and appears in no nflverse dataset, so these
      lines use nflverse production instead. Drop your PFF season exports into
@@ -160,6 +181,7 @@ document.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{
   st.stat=b.dataset.s;document.querySelectorAll("[data-s]").forEach(x=>
     x.setAttribute("aria-pressed",x===b));render();});
 $("#only").onclick=e=>{st.only=!st.only;e.target.setAttribute("aria-pressed",st.only);render();};
+$("#hurt").onclick=e=>{st.hurt=!st.hurt;e.target.setAttribute("aria-pressed",st.hurt);render();};
 $("#pick").onchange=e=>{st.sel=e.target.value;render();};
 $("#tog").onclick=()=>{const r=document.documentElement;
   const c=r.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
