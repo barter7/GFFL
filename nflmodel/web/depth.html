@@ -1,0 +1,168 @@
+<title>2026 Depth Charts — Offseason Churn</title>
+<style>
+:root{
+  --paper:#F4F2EC;--card:#FFF;--ink:#1B1E24;--ink2:#5C6068;--ink3:#8A8E96;
+  --rule:#DCD8CC;--mark:#E8B923;--markwash:#FBF0C6;--add:#1F7A4D;--addbg:#E6F1EA;
+  --loss:#B23A2E;--lossbg:#F8E6E3;--chip:#EFEDE5;--bar:#B9B4A4;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#14161A;--card:#1C1F25;--ink:#E8E5DD;--ink2:#A2A6AE;--ink3:#71757D;
+  --rule:#2E323A;--markwash:#3A3212;--add:#3FA36C;--addbg:#1B2E24;
+  --loss:#D4574A;--lossbg:#33201D;--chip:#262A31;--bar:#454A54;
+}}
+:root[data-theme=light]{--paper:#F4F2EC;--card:#FFF;--ink:#1B1E24;--ink2:#5C6068;--ink3:#8A8E96;
+ --rule:#DCD8CC;--markwash:#FBF0C6;--add:#1F7A4D;--addbg:#E6F1EA;--loss:#B23A2E;--lossbg:#F8E6E3;--chip:#EFEDE5;--bar:#B9B4A4}
+:root[data-theme=dark]{--paper:#14161A;--card:#1C1F25;--ink:#E8E5DD;--ink2:#A2A6AE;--ink3:#71757D;
+ --rule:#2E323A;--markwash:#3A3212;--add:#3FA36C;--addbg:#1B2E24;--loss:#D4574A;--lossbg:#33201D;--chip:#262A31;--bar:#454A54}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:13.5px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1500px;margin:0 auto;padding:14px}
+h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em}
+.sub{color:var(--ink2);font-size:12px;margin-top:3px;max-width:78ch}
+.bar{position:sticky;top:0;z-index:5;background:var(--paper);padding:10px 0;
+  border-bottom:1px solid var(--rule);display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px}
+button,select,input{font:inherit;color:var(--ink);background:var(--card);
+  border:1px solid var(--rule);border-radius:5px;padding:5px 9px;font-size:12.5px}
+button{cursor:pointer}
+button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+:focus-visible{outline:2px solid var(--mark);outline-offset:2px}
+.sep{width:1px;height:22px;background:var(--rule);margin:0 4px}
+.grid{display:grid;gap:12px;margin-top:12px;
+  grid-template-columns:repeat(auto-fill,minmax(430px,1fr))}
+.pod{background:var(--card);border:1px solid var(--rule);border-radius:7px;overflow:hidden}
+.ph{display:flex;align-items:center;gap:8px;padding:7px 11px;border-bottom:1px solid var(--rule)}
+.ph .g{font-size:15px;font-weight:800;letter-spacing:.03em}
+.ph .t{font-size:15px;font-weight:800}
+.ph .churn{margin-left:auto;font-size:10.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+.ph .churn b{color:var(--mark);font-size:12px}
+table{width:100%;border-collapse:collapse}
+tr{border-bottom:1px solid var(--rule)}
+tr:last-child{border-bottom:0}
+td{padding:5px 8px;vertical-align:middle}
+td.n{width:20px;color:var(--ink3);font-size:11px;text-align:right;padding-right:2px}
+td.who{white-space:nowrap}
+td.stat{color:var(--ink2);font-size:11px;text-align:right;white-space:nowrap}
+.nm{font-weight:600}
+tr.new{background:var(--markwash)}
+tr.out{background:var(--lossbg)}
+tr.out .nm{color:var(--ink2)}
+.b{font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:3px;margin-left:5px;
+   letter-spacing:.04em;vertical-align:1px}
+.b.NEW{background:var(--addbg);color:var(--add)}
+.b.ROOKIE{background:var(--markwash);color:#8A6D14;box-shadow:inset 0 0 0 1px var(--mark)}
+.b.OUT{background:var(--lossbg);color:var(--loss)}
+:root[data-theme=dark] .b.ROOKIE{color:var(--mark)}
+@media (prefers-color-scheme:dark){.b.ROOKIE{color:var(--mark)}}
+.from{color:var(--ink3);font-size:10.5px;margin-left:4px}
+.snapwrap{display:flex;align-items:center;gap:5px;justify-content:flex-end}
+.snapbar{height:5px;background:var(--bar);border-radius:2px;min-width:1px}
+.snapn{font-size:10.5px;color:var(--ink3);width:30px;text-align:right}
+.gap{padding:6px 11px;font-size:11px;color:var(--ink3);font-style:italic;background:var(--chip)}
+footer{margin:20px 0;color:var(--ink3);font-size:11.5px;border-top:1px solid var(--rule);
+  padding-top:10px;max-width:88ch}
+footer b{color:var(--ink2)}
+.tog{margin-left:auto}
+</style>
+<div class="wrap">
+<h1>2026 Depth Charts — who's new, who's gone</h1>
+<div class="sub">Every position group with its 2026 depth chart, arrivals marked in place, and last year's contributors who left listed underneath. Snap bars and production lines show which changes actually matter.</div>
+<div class="bar">
+  <button data-m="team" aria-pressed="true">By team</button>
+  <button data-m="pos" aria-pressed="false">By position</button>
+  <span class="sep"></span>
+  <select id="pick" aria-label="Choose team or position"></select>
+  <span class="sep"></span>
+  <button data-s="2025" aria-pressed="true">2025 stats</button>
+  <button data-s="career" aria-pressed="false">Career (21–25)</button>
+  <span class="sep"></span>
+  <button id="only" aria-pressed="false">Changed groups only</button>
+  <button class="tog" id="tog" aria-label="Toggle theme">◐</button>
+</div>
+<div class="grid" id="grid"></div>
+<footer id="foot"></footer>
+</div>
+<script>
+/*__DATA__*/
+const $=s=>document.querySelector(s);
+const GROUPS=["QB","RB","WR","TE","OL","DL","LB","DB"];
+const TEAMS=[...new Set(D.depth.map(r=>r.team))].sort();
+const st={mode:"team",sel:TEAMS[0],stat:"2025",only:false};
+const maxSnap=1100;
+
+function fillPicker(){
+  const o=st.mode==="team"?TEAMS:GROUPS;
+  if(!o.includes(st.sel))st.sel=o[0];
+  $("#pick").innerHTML=o.map(v=>`<option ${v===st.sel?"selected":""}>${v}</option>`).join("");
+}
+const snapCell=s=>{
+  if(s==null)return `<div class="snapwrap"><span class="snapn">—</span></div>`;
+  const w=Math.max(1,Math.round(s/maxSnap*46));
+  return `<div class="snapwrap"><span class="snapbar" style="width:${w}px"></span><span class="snapn mono">${s}</span></div>`;
+};
+function rowsFor(team,grp){
+  const din=D.depth.filter(r=>r.team===team&&r.grp===grp)
+                   .sort((a,b)=>a.slot-b.slot);
+  const dout=D.out.filter(r=>r.team===team&&r.grp===grp)
+                  .sort((a,b)=>(b.snaps25||0)-(a.snaps25||0));
+  return {din,dout};
+}
+function pod(team,grp){
+  const {din,dout}=rowsFor(team,grp);
+  if(!din.length&&!dout.length)return "";
+  const nNew=din.filter(r=>r.status!=="RET").length;
+  if(st.only&&!nNew&&!dout.length)return "";
+  const line=r=>st.stat==="2025"?r.line_2025:r.line_career;
+  const isOL=grp==="OL";
+  const body=din.map(r=>`<tr class="${r.status!=="RET"?"new":""}">
+      <td class="n mono">${r.slot}</td>
+      <td class="who"><span class="nm">${r.player_name}</span>${
+        r.status!=="RET"?`<span class="b ${r.status}">${r.status}</span>`:""}${
+        r.from?`<span class="from">${r.from}</span>`:""}</td>
+      <td class="stat">${line(r)||(isOL?"<i>no public grade</i>":"—")}</td>
+      <td style="width:88px">${snapCell(r.snaps25)}</td></tr>`).join("");
+  const outs=dout.map(r=>`<tr class="out">
+      <td class="n">↓</td>
+      <td class="who"><span class="nm">${r.player_name}</span><span class="b OUT">OUT</span><span class="from">→ ${r.to}</span></td>
+      <td class="stat">${line(r)||(isOL?"<i>no public grade</i>":"—")}</td>
+      <td style="width:88px">${snapCell(r.snaps25)}</td></tr>`).join("");
+  const head=st.mode==="team"
+    ? `<span class="g">${grp}</span>`
+    : `<span class="t">${team}</span><span class="g" style="color:var(--ink3)">${grp}</span>`;
+  return `<section class="pod"><div class="ph">${head}
+     <span class="churn">${nNew?`<b>${nNew}</b> in`:""}${nNew&&dout.length?" · ":""}${dout.length?`<b>${dout.length}</b> out`:""}${!nNew&&!dout.length?"unchanged":""}</span></div>
+    <table><tbody>${body}${outs?`<tr><td colspan="4" class="gap">left the team (250+ snaps in 2025)</td></tr>${outs}`:""}</tbody></table></section>`;
+}
+function render(){
+  fillPicker();
+  const out = st.mode==="team"
+    ? GROUPS.map(g=>pod(st.sel,g)).join("")
+    : TEAMS.map(t=>pod(t,st.sel)).join("");
+  $("#grid").innerHTML=out||"<p>No groups match that filter.</p>";
+  $("#foot").innerHTML=`Generated ${D.generated}. Depth order is the latest 2026 camp
+    snapshot — a snapshot, not a Week 1 guarantee. <b>NEW</b> = on another team in 2025
+    (the roster diff can't separate a signing from a trade); <b>ROOKIE</b> shows its
+    draft slot, or UDFA. Departures are 2025 players with 250+ snaps no longer on the
+    roster. Bars are 2025 offensive+defensive snaps.
+    <br><b>PFF grades:</b> ${D.has_pff?"loaded from data/pff/.":
+    `not available — PFF is proprietary and appears in no nflverse dataset, so these
+     lines use nflverse production instead. Drop your PFF season exports into
+     <code>data/pff/</code> (any CSV with a <code>pff_id</code>/<code>player_id</code>
+     column plus <code>grades_*</code> columns) and they join automatically by the
+     roster crosswalk. Offensive line is where this gap bites hardest — nflverse has
+     no per-player OL signal beyond snaps.`}`;
+}
+document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{
+  st.mode=b.dataset.m;document.querySelectorAll("[data-m]").forEach(x=>
+    x.setAttribute("aria-pressed",x===b));render();});
+document.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{
+  st.stat=b.dataset.s;document.querySelectorAll("[data-s]").forEach(x=>
+    x.setAttribute("aria-pressed",x===b));render();});
+$("#only").onclick=e=>{st.only=!st.only;e.target.setAttribute("aria-pressed",st.only);render();};
+$("#pick").onchange=e=>{st.sel=e.target.value;render();};
+$("#tog").onclick=()=>{const r=document.documentElement;
+  const c=r.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  r.dataset.theme=c==="dark"?"light":"dark";};
+render();
+</script>

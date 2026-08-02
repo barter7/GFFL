@@ -5,7 +5,8 @@ data/pbp/
 data/rosters/
 data/defense/
 data/players/
-data/pff/
+data/pff/*
+!data/pff/README.md
 data/context/game_context.csv
 data/results/report_*.html
 # data/context/coordinators.csv IS committed if supplied

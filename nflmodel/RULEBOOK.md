@@ -156,6 +156,20 @@ defers incoming names to coordinators.csv. Coach-name matching is
 fuzzy (edit distance ≤2) because the schedule file contains typos
 (S17).
 
+**R2.7 — Depth-chart churn view** (depth_sheet.R). The offseason
+board is per team x position group: the 2026 depth chart (latest
+camp snapshot) with each player marked ROOKIE / NEW / returning,
+departures (2025 players with 250+ snaps no longer rostered)
+listed under each group, and a value line for 2025 and career
+(2021-2025). Rookies are detected by `years_exp == 0` on the 2026
+roster and matched to the draft class BY NAME — most 2026 draftees
+have no gsis_id yet, so an id-only join silently finds ~1 rookie
+in 90 (S18). QUALITY LIMIT: PFF grades are proprietary and in no
+nflverse dataset, so the lines carry nflverse production instead;
+real grades join automatically from data/pff/ via the roster
+pff_id crosswalk. Offensive line is the one group with no public
+per-player signal beyond snaps — labeled as such, never faked.
+
 ---
 
 ## 3. Modeling assumptions (props model core)
@@ -429,6 +443,17 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S18 — Depth-chart churn build** (2026-08). 1,184 depth slots +
+270 departures across 32 teams. Status mix 851 returning / 243 new
+/ 90 rookies. Two joins failed silently before verification: (a)
+2026 draft picks mostly have NO gsis_id in the draft release, so
+id-based rookie detection found 1 of 90 — fixed with years_exp +
+name matching; (b) re-joining snap counts inside the value helper
+collided with a pre-existing column. Illustrative output: LV's QB
+room reads Cousins (NEW, from ATL) over Mendoza (ROOKIE, R1.1);
+MIN shows Murray (NEW, from ARI) ahead of McCarthy with Harrison
+Smith (793 snaps) out to free agency.
 
 **S17 — 2026 offseason sheet** (2026-08). Derived entirely from
 cached nflverse data: 7 HC changes (BAL Harbaugh→Minter, CLE
