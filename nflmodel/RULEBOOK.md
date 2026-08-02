@@ -234,16 +234,36 @@ name lookup. Signals and their thresholds:
 
 | code | dir | trigger |
 |---|---|---|
-| `DRAFT` | down | team took a round 1-3 pick at his position; suppressed for rookies |
-| `SIGNED` | down | a same-position player arrived (status NEW); shown with the arrival's 2025 line |
-| `VACATED` | up | a same-position player left; shown with the departure's 2025 line |
-| `TGTS` | up | >=8% of the team's 2025 targets are held by players off the roster |
-| `CARR` | up | >=10% of the team's 2025 carries are held by players off the roster |
+| `DRAFT` | down | team took a round 1-3 pick at his position EARLIER than his own slot (UDFA = last); a pick never flags itself |
+| `SIGNED` | down | same-position arrival (status NEW) who cleared the relevance gate; shown with the arrival's 2025 line |
+| `VACATED` | up | same-position departure who cleared the gate; shown with his 2025 line |
+| `TGTS` | up | team's vacated target share is in the league's top third this offseason (floor 15%) |
+| `CARR` | up | same for carries (floor 20%), counting non-QB departures only |
 | `HC` / `OC` | watch | head coach change / OC vacated or presumed new (R2.4) |
 | `QB` | watch | new starting QB — pass catchers and backs only |
 | `PACE` | up/down | team's 2025 seconds-per-snap is >=1.5s off the league mean |
 | `AVAIL` | down | currently non-active per roster status (R2.8) |
 | `INJ` | down | 5+ weeks listed Out FOR INJURY in 2025 (R2.5) |
+
+**Relevance gate.** A named rival must have >=25 touches
+(targets + carries), or >=50 pass attempts for a QB, in 2025 — or
+be slotted ahead of him on the 2026 chart. Without it a camp arm
+with 13 attempts "downgraded" a starting quarterback.
+
+**Vacated share is computed from the FULL 2025->2026 roster diff**,
+never from the depth sheet's `out` list — that list is capped at
+250+ snaps for DISPLAY and excludes exactly the slot receivers and
+committee backs a vacated-share number exists to catch. Usage is
+accrued per (player, team), so a midseason trade credits each team
+only what he produced there. Departing QBs' designed runs are
+excluded from vacated carries: a back does not inherit them.
+
+**Thresholds are recalibrated per run, not frozen.** TGTS/CARR fire
+on the top third of the current league distribution because roster
+churn is large every year (2026 median team vacates 28% of its
+targets); a fixed cut tuned once fires everywhere later and stops
+carrying information. The detail line always states the league
+median so the reader can see where the bar sits.
 
 The production line is position-shaped: attempts / pass yards /
 pass TD for a QB, carries for a back, targets for a pass catcher,
@@ -530,13 +550,42 @@ targets). Kept population contains 527 stood-with-penalty snaps
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
 
-**S22 — Fantasy-stock signals** (2026-08; R2.10). 452 of the ~1,180
-skill-position depth-chart rows carry at least one signal, spread
-across all 32 teams. Frequency: TGTS 351, VACATED 271, SIGNED 251,
-OC 128, HC 112, DRAFT 105, PACE 96, QB 78, CARR 52, INJ 20, AVAIL 5.
-Largest vacated target shares: PIT 51%, WAS 46%, GB 35%, MIA/NYG/PHI
-33% — those are the receiving rooms where 2025 usage is least
-informative about 2026.
+**S22 — Fantasy-stock signals** (2026-08; R2.10). 439 of the ~1,180
+skill-position depth-chart rows carry at least one signal. Frequency:
+VACATED 292, SIGNED 194, TGTS 130, OC 128, DRAFT 115, HC 112, PACE 96,
+QB 78, CARR 40, INJ 20, AVAIL 5. Largest vacated target shares:
+MIA 53%, WAS 52%, PIT 51%, LAC 30%, ATL 29% — the receiving rooms
+where 2025 usage says least about 2026.
+
+FOUR bugs were found by auditing the shipped output rather than the
+code, and all four produced plausible-looking numbers:
+
+1. **Vacated share read off a display list.** The share was summed
+   over the depth sheet's `out` table, which is capped at 250+ snaps
+   because it is what the page renders. Every sub-250-snap departure
+   — slot receivers, committee backs, the exact usage the metric
+   exists to measure — was silently dropped. 14 of 32 teams were off
+   by 5+ points and NO read as 2% vacated against a true 25%. Fixed
+   by computing the full 2025->2026 roster diff independently. LESSON:
+   a display cutoff must never become an analytical denominator.
+2. **Traded players credited to the wrong team.** Grouping 2025 usage
+   by player alone gave a midseason trade's whole season to whichever
+   team he finished with. Now accrued per (player, team).
+3. **Thresholds calibrated against the broken numbers.** The 8%
+   target cut was set while shares were undercounted; once corrected
+   it fired for 28 of 32 teams. A signal that lights up almost
+   everywhere is not a signal. Cuts are now the top third of the
+   current league distribution, recomputed each run, with the median
+   printed in the evidence.
+4. **No relevance gate.** Any same-position arrival downgraded the
+   incumbent, so a backup QB with 13 attempts flagged the starter.
+   Gate is now 25 touches / 50 attempts, or a better depth slot.
+
+Also fixed: rookies were blanket-excluded from DRAFT, so a UDFA or
+round-6 pick got no warning that the team spent a first-rounder at
+his position. The rule is now pick-relative — only picks earlier
+than his own count, which excludes self-flagging by construction
+without excluding rookies.
 
 CATCH, and it is the R1.13 lesson again: the first build produced
 SIGNED chips with no stat line at all. The depth-sheet JSON export

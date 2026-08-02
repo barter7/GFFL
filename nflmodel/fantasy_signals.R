@@ -40,6 +40,12 @@ suppressMessages({ library(dplyr); library(tidyr); library(readr); library(jsonl
 SKILL_GRPS <- c("QB", "RB", "WR", "TE")
 FANTASY_JSON <- file.path("data", "context", "fantasy_signals.json")
 
+# Relevance gates. A rival only moves the needle if he actually
+# played: an arriving camp body with 13 pass attempts is not
+# competition, and a departure with four targets vacates nothing.
+MIN_TOUCH <- 25    # targets + carries, for RB/WR/TE
+MIN_ATT   <- 50    # pass attempts, the QB equivalent
+
 # short production line used inside signal evidence. A QB is
 # judged on his arm, a back on carries, a pass catcher on targets
 # — one stat line per position rather than a single generic one.
@@ -59,7 +65,6 @@ build_fantasy_signals <- function() {
   # ---- inputs (all previously built) -----------------------
   depth <- fromJSON(file.path("data", "context", "depth_sheet_2026.json"))
   din   <- depth$depth %>% filter(grp %in% SKILL_GRPS)
-  dout  <- depth$out   %>% filter(grp %in% SKILL_GRPS)
   off   <- read_csv(file.path("data", "context", "offseason_2026.csv"),
                     show_col_types = FALSE)
   draft <- read_csv(file.path("data", "context", "draft_picks_2026.csv"),
@@ -71,29 +76,71 @@ build_fantasy_signals <- function() {
                            position == "TE" ~ "TE", TRUE ~ NA_character_)) %>%
     filter(!is.na(grp))
 
-  # 2025 team usage, and how much of it walked out the door
+  # 2025 usage, accrued PER TEAM. Grouping by player alone credits
+  # a midseason trade's full season to whichever team he finished
+  # with, which both overstates that team's vacated share and
+  # understates the team he actually produced for.
   pg <- read_csv(file.path("data", "players", "profile_game.csv.gz"),
                  show_col_types = FALSE) %>% filter(season == 2025)
-  team25 <- pg %>% group_by(team) %>%
-    summarise(t_tgt = sum(targets), t_car = sum(carries), .groups = "drop")
-  ply25 <- pg %>% group_by(player_id) %>%
-    summarise(team = last(team), tgt = sum(targets), rec = sum(receptions),
+  acc <- pg %>% group_by(player_id, team) %>%
+    summarise(tgt = sum(targets), rec = sum(receptions),
               rec_yds = sum(rec_yds), car = sum(carries),
               rush_yds = sum(rush_yds), td = sum(rush_td) + sum(rec_td),
               att = sum(attempts), pass_yds = sum(pass_yds),
               pass_td = sum(pass_td), .groups = "drop")
+  team25 <- acc %>% group_by(team) %>%
+    summarise(t_tgt = sum(tgt), t_car = sum(car), .groups = "drop")
+  # league-wide totals, for describing an arriving player
+  ply25 <- acc %>% group_by(player_id) %>%
+    summarise(across(c(tgt, rec, rec_yds, car, rush_yds, td,
+                       att, pass_yds, pass_td), sum), .groups = "drop")
 
-  # departures carry gsis_id in the export -> join by id (R1.13)
-  gone <- dout %>%
-    left_join(ply25 %>% select(-team), by = c("gsis_id" = "player_id")) %>%
-    mutate(across(c(tgt, rec, rec_yds, car, rush_yds, td,
-                    att, pass_yds, pass_td), \(x) replace_na(x, 0)))
+  # Departures = the FULL 2025 -> 2026 roster diff. The depth
+  # sheet's `out` list is capped at 250+ snaps because it is a
+  # DISPLAY list; reusing it here silently dropped every slot
+  # receiver and change-of-pace back below that cut, which is
+  # exactly the usage a vacated-share number is supposed to catch
+  # (NO read as 2% vacated when the true figure is 25% — S22).
+  r26 <- read_csv(file.path("data", "players", "roster_2026.csv"),
+                  show_col_types = FALSE) %>%
+    filter(!is.na(gsis_id), status %in% c("ACT", "RES")) %>%
+    transmute(gsis_id, team26 = normalize_team(team)) %>%
+    distinct(gsis_id, .keep_all = TRUE)
+  nm25 <- read_csv(file.path("data", "players", "roster_2025.csv"),
+                   show_col_types = FALSE) %>%
+    filter(!is.na(gsis_id)) %>%
+    transmute(gsis_id, player_name = full_name,
+              grp = ROSTER_GROUP(position)) %>%
+    distinct(gsis_id, .keep_all = TRUE)
 
+  gone <- acc %>%
+    left_join(r26, by = c("player_id" = "gsis_id")) %>%
+    filter(is.na(team26) | team26 != team) %>%          # left this team
+    left_join(nm25, by = c("player_id" = "gsis_id")) %>%
+    mutate(to = coalesce(team26, "FA/none")) %>%
+    filter(!is.na(player_name))
+
+  # Vacated carries exclude departing QBs: their designed runs are
+  # not carries a back inherits (NO alone had 52 such carries, 6%
+  # of the league's vacated total but heavily concentrated).
   vac <- gone %>% group_by(team) %>%
-    summarise(vac_tgt = sum(tgt), vac_car = sum(car), .groups = "drop") %>%
+    summarise(vac_tgt = sum(tgt),
+              vac_car = sum(car[grp != "QB"]), .groups = "drop") %>%
     left_join(team25, by = "team") %>%
     mutate(vac_tgt_share = ifelse(t_tgt > 0, vac_tgt / t_tgt, NA),
            vac_car_share = ifelse(t_car > 0, vac_car / t_car, NA))
+
+  # Thresholds are calibrated against THIS offseason, not frozen.
+  # Roster churn is large every year (median team vacates ~28% of
+  # its targets), so a fixed 8% cut fired for 28 of 32 teams —
+  # a signal that lights up almost everywhere carries no
+  # information. Fire on the top third instead, with a floor so a
+  # genuinely quiet offseason doesn't manufacture signals.
+  q70 <- function(x, floor) max(quantile(x, 0.70, na.rm = TRUE), floor)
+  TGT_CUT <- q70(vac$vac_tgt_share, 0.15)
+  CAR_CUT <- q70(vac$vac_car_share, 0.20)
+  TGT_MED <- median(vac$vac_tgt_share, na.rm = TRUE)
+  CAR_MED <- median(vac$vac_car_share, na.rm = TRUE)
 
   # team-level context
   ctx <- off %>%
@@ -106,7 +153,14 @@ build_fantasy_signals <- function() {
   lg_pace <- mean(pace$sec_per_play, na.rm = TRUE)
 
   # ---- assemble per player ---------------------------------
+  #  own_pick: a rookie's own draft slot, parsed back out of the
+  #  depth sheet's "R{round}.{overall}" label, so the DRAFT signal
+  #  can compare picks instead of blanket-skipping every rookie.
   sig <- din %>%
+    mutate(own_pick = ifelse(status == "ROOKIE",
+             suppressWarnings(as.numeric(sub("^R\\d+\\.", "", from))), NA_real_),
+           own_pick = ifelse(is.na(own_pick) & status == "ROOKIE",
+                             Inf, own_pick)) %>%   # UDFA = last in line
     left_join(vac,  by = "team") %>%
     left_join(ctx,  by = "team") %>%
     left_join(pace, by = "team")
@@ -118,50 +172,69 @@ build_fantasy_signals <- function() {
     r <- sig[i, ]; S <- list()
 
     # --- competition drafted at his position ---------------
-    dr <- draft %>% filter(team == r$team, grp == r$grp, round <= 3)
-    if (nrow(dr) && r$status != "ROOKIE") {
-      d <- dr %>% slice_min(pick, n = 1)
+    #  A rookie is not immune: a UDFA or a round-6 pick still has
+    #  a problem if the team took someone at his position AHEAD of
+    #  him. Only picks earlier than his own count, so the drafted
+    #  player never flags himself.
+    dr <- draft %>% filter(team == r$team, grp == r$grp, round <= 3,
+                           pick < coalesce(r$own_pick, Inf))
+    if (nrow(dr)) {
+      d <- dr %>% slice_min(pick, n = 1, with_ties = FALSE)
       S <- c(S, list(mk("down", "DRAFT", sprintf("R%d %s drafted", d$round, d$grp),
         sprintf("%s (%s, pick %d) \u2014 early draft capital at his position",
                 d$pfr_player_name, d$position, d$pick))))
     }
 
     # --- veteran arrival at his position -------------------
-    rivals_in <- sig %>% filter(team == r$team, grp == r$grp,
-                                status == "NEW", player_name != r$player_name)
+    #  Relevance gate: an arrival only threatens him if he produced
+    #  last year or is slotted ahead of him. Without it a camp body
+    #  with 13 pass attempts "downgraded" a starting QB.
+    rivals_in <- sig %>%
+      filter(team == r$team, grp == r$grp, status == "NEW",
+             gsis_id != r$gsis_id) %>%       # self-exclusion by ID (R1.13)
+      left_join(ply25, by = c("gsis_id" = "player_id")) %>%
+      mutate(across(c(tgt, rec, rec_yds, car, rush_yds, td,
+                      att, pass_yds, pass_td), \(x) replace_na(x, 0)),
+             produced = if (r$grp == "QB") att >= MIN_ATT
+                        else tgt + car >= MIN_TOUCH) %>%
+      filter(produced | slot < r$slot)
     if (nrow(rivals_in)) {
-      v <- rivals_in %>% slice_max(coalesce(snaps25, 0), n = 1)
-      ln <- ply25 %>% filter(player_id %in% v$gsis_id)
-      S <- c(S, list(mk("down", "SIGNED", paste0(v$player_name[1], " added"),
-        sprintf("arrived from %s%s", coalesce(v$from[1], "another team"),
-          if (nrow(ln)) paste0(" \u2014 ", .mini_line(r$grp, ln$tgt, ln$rec,
-                ln$rec_yds, ln$car, ln$rush_yds, ln$td,
-                ln$att, ln$pass_yds, ln$pass_td)) else ""))))
+      v <- rivals_in %>% slice_max(coalesce(snaps25, 0), n = 1, with_ties = FALSE)
+      S <- c(S, list(mk("down", "SIGNED", paste0(v$player_name, " added"),
+        sprintf("arrived from %s \u2014 %s", coalesce(v$from, "another team"),
+                .mini_line(r$grp, v$tgt, v$rec, v$rec_yds, v$car,
+                           v$rush_yds, v$td, v$att, v$pass_yds, v$pass_td)))))
     }
 
     # --- same-position departure ---------------------------
-    left <- gone %>% filter(team == r$team, grp == r$grp)
+    #  Same relevance gate as an arrival: naming a player who left
+    #  with four targets is noise dressed up as a signal.
+    left <- gone %>% filter(team == r$team, grp == r$grp) %>%
+      filter(if (r$grp == "QB") att >= MIN_ATT else tgt + car >= MIN_TOUCH)
     if (nrow(left)) {
-      g <- left %>% slice_max(tgt + car, n = 1)
-      S <- c(S, list(mk("up", "VACATED", paste0(g$player_name[1], " gone"),
-        sprintf("to %s \u2014 %s", g$to[1],
-                .mini_line(r$grp, g$tgt[1], g$rec[1], g$rec_yds[1],
-                           g$car[1], g$rush_yds[1], g$td[1],
-                           g$att[1], g$pass_yds[1], g$pass_td[1])))))
+      g <- left %>% slice_max(tgt + car + att, n = 1, with_ties = FALSE)
+      S <- c(S, list(mk("up", "VACATED", paste0(g$player_name, " gone"),
+        sprintf("to %s \u2014 %s", g$to,
+                .mini_line(r$grp, g$tgt, g$rec, g$rec_yds, g$car,
+                           g$rush_yds, g$td, g$att, g$pass_yds, g$pass_td)))))
     }
 
     # --- quantified vacated opportunity --------------------
     if (r$grp %in% c("WR","TE","RB") && !is.na(r$vac_tgt_share) &&
-        r$vac_tgt_share >= 0.08)
+        r$vac_tgt_share >= TGT_CUT)
       S <- c(S, list(mk("up", "TGTS", sprintf("%.0f%% targets vacated",
               100 * r$vac_tgt_share),
-              sprintf("%d of %d team targets from 2025 are off the roster",
-                      r$vac_tgt, r$t_tgt))))
-    if (r$grp == "RB" && !is.na(r$vac_car_share) && r$vac_car_share >= 0.10)
+              sprintf(paste("%d of %d team targets from 2025 are off the",
+                            "roster \u2014 top third of the league, which",
+                            "vacates %.0f%% at the median"),
+                      r$vac_tgt, r$t_tgt, 100 * TGT_MED))))
+    if (r$grp == "RB" && !is.na(r$vac_car_share) && r$vac_car_share >= CAR_CUT)
       S <- c(S, list(mk("up", "CARR", sprintf("%.0f%% carries vacated",
               100 * r$vac_car_share),
-              sprintf("%d of %d team carries from 2025 are off the roster",
-                      r$vac_car, r$t_car))))
+              sprintf(paste("%d of %d team carries from 2025 are off the",
+                            "roster \u2014 top third of the league, which",
+                            "vacates %.0f%% at the median"),
+                      r$vac_car, r$t_car, 100 * CAR_MED))))
 
     # --- scheme / QB turnover ------------------------------
     if (isTRUE(r$hc_change))
@@ -174,7 +247,8 @@ build_fantasy_signals <- function() {
       S <- c(S, list(mk("watch", "OC", "OC likely new", r$oc_status)))
     if (isTRUE(r$qb_change) && r$grp %in% c("WR","TE","RB"))
       S <- c(S, list(mk("watch", "QB", paste0("new QB: ", r$qb26_r1),
-                        "new starter reprices the whole receiving room")))
+        if (r$grp == "RB") "new starter changes the run/pass mix and the checkdown rate"
+        else "new starter reprices the whole receiving room")))
 
     # --- his own availability ------------------------------
     if (!is.na(r$avail_note))
@@ -201,7 +275,7 @@ build_fantasy_signals <- function() {
 }
 
 if (sys.nframe() == 0) {
-  source("utils.R"); source("offseason_sheet.R")
+  source("utils.R"); source("offseason_sheet.R"); source("depth_sheet.R")
   s <- build_fantasy_signals()
   write_json(s, FANTASY_JSON, auto_unbox = TRUE, na = "null")
   message(sprintf("  fantasy signals: %d players flagged -> %s",
