@@ -12,3 +12,5 @@ data/results/report_*.html
 # data/context/coordinators.csv IS committed if supplied
 # (optional OC layer — no R-package source exists for it)
 data/web/
+data/rotowire/*
+!data/rotowire/README.md

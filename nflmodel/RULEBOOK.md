@@ -206,6 +206,18 @@ labeled "NOT SIGNED", never as hurt. Everything else on the
 reserve list reads generically as IR/PUP/NFI. Joins by gsis_id
 (R1.13).
 
+**R2.9 — Player news via RotoWire** (rotowire_links.R). Deep links
+only: URLs are built from the `rotowire_id` in the nflverse roster
+crosswalk (R1.13) — `/football/player/{slug}-{rotowire_id}`,
+verified against a live page (Kyler Murray = 13613). Coverage ~66%
+of the 2026 roster / 82% of depth-chart rows; players without an id
+get NO link rather than a guessed URL. Blurb TEXT is never
+scraped — it is RotoWire's product and bulk pulls breach their
+terms; they sell an API for in-app use. Anything the owner is
+entitled to goes in data/rotowire/ (keyed by rotowire_id) and
+load_rotowire_blurbs() renders it inline. Same drop-in pattern as
+PFF (R1.1), same reason.
+
 ---
 
 ## 3. Modeling assumptions (props model core)
@@ -479,6 +491,14 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S21 — RotoWire link layer** (2026-08). rotowire.com returns 403
+from this environment like every non-GitHub content host, so no
+fetch was possible regardless of policy. The usable path was the
+crosswalk: nflverse carries `rotowire_id` for 1,946 of 2,930
+players on the 2026 roster, and the constructed URL reproduced the
+supplied page exactly (kyler-murray-13613). Rookies have no
+rotowire_id yet (Mendoza NA) — left blank, never guessed.
 
 **S20 — Availability layer** (2026-08; injury reports 2021-2025 +
 2026 roster status). 4,240 players profiled. 2026 preseason:

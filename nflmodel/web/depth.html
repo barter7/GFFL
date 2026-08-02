@@ -60,6 +60,11 @@ tr.out .nm{color:var(--ink2)}
 :root[data-theme=dark] .b.ROOKIE{color:var(--mark)}
 @media (prefers-color-scheme:dark){.b.ROOKIE{color:var(--mark)}}
 .from{color:var(--ink3);font-size:10.5px;margin-left:4px}
+.rw{margin-left:5px;font-size:10px;color:var(--ink3);text-decoration:none;
+   border-bottom:1px dotted var(--ink3)}
+.rw:hover{color:var(--ink);border-bottom-color:var(--ink)}
+.blurb{display:block;color:var(--ink2);font-size:11px;font-style:italic;
+   white-space:normal;max-width:44ch;margin-top:2px}
 .snapwrap{display:flex;align-items:center;gap:5px;justify-content:flex-end}
 .snapbar{height:5px;background:var(--bar);border-radius:2px;min-width:1px}
 .snapn{font-size:10.5px;color:var(--ink3);width:30px;text-align:right}
@@ -106,6 +111,10 @@ const snapCell=s=>{
   const w=Math.max(1,Math.round(s/maxSnap*46));
   return `<div class="snapwrap"><span class="snapbar" style="width:${w}px"></span><span class="snapn mono">${s}</span></div>`;
 };
+const news=r=>r.rotowire_url?
+  `<a class="rw" href="${r.rotowire_url}" target="_blank" rel="noopener"
+      title="RotoWire player page — news &amp; blurbs">news ↗</a>`:"";
+const blurb=r=>r.blurb?`<span class="blurb">${r.blurb}</span>`:"";
 const avail=r=>{ if(!r.avail_note)return "";
   const pend=/unsigned|exempt/.test(r.avail_note);
   return `<span class="b ${pend?"PEND":"AVL"}" title="${r.avail_note}">${
@@ -134,7 +143,7 @@ function pod(team,grp){
       <td class="n mono">${r.slot}</td>
       <td class="who"><span class="nm">${r.player_name}</span>${
         r.status!=="RET"?`<span class="b ${r.status}">${r.status}</span>`:""}${
-        r.from?`<span class="from">${r.from}</span>`:""}${avail(r)}${dur(r)}</td>
+        r.from?`<span class="from">${r.from}</span>`:""}${avail(r)}${dur(r)}${news(r)}${blurb(r)}</td>
       <td class="stat">${line(r)||(isOL?"<i>no public grade</i>":"—")}</td>
       <td style="width:88px">${snapCell(r.snaps25)}</td></tr>`).join("");
   const outs=dout.map(r=>`<tr class="out">
@@ -166,6 +175,12 @@ function render(){
     17 rookies and 0 veterans, so it is a contract status, not an injury).
     The red durability note is weeks listed <i>Out</i> for injury in 2025, excluding rest
     and coach's-decision rows.
+    <br><b>Player news:</b> each row links to that player's RotoWire page, built from the
+    <code>rotowire_id</code> in the nflverse crosswalk (verified: Kyler Murray 13613),
+    covering 82% of depth-chart rows — no link is shown where no id exists rather than a
+    guessed URL. Blurb TEXT is not scraped: it is RotoWire's product and their terms
+    prohibit bulk pulls; drop anything you're entitled to into <code>data/rotowire/</code>
+    (keyed by <code>rotowire_id</code>) and it renders inline under each player.
     <br><b>PFF grades:</b> ${D.has_pff?"loaded from data/pff/.":
     `not available — PFF is proprietary and appears in no nflverse dataset, so these
      lines use nflverse production instead. Drop your PFF season exports into
