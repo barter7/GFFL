@@ -141,6 +141,21 @@ Out/Doubtful rows can be "Coaching Decision" (e.g., KC week 18
 2024). Availability logic must not read every designation as
 health.
 
+**R2.6 — Offseason sheet is data-derived only** (offseason_sheet.R).
+The 2026 schedule file ships with head coaches attached, so HC
+changes are verifiable; QB1/QB2 come from the latest depth-chart
+snapshot, draft classes from the draft_picks release, and veteran
+movement from a 2025→2026 roster diff. Three honesty constraints
+are baked in: (a) a roster diff CANNOT distinguish a free-agent
+signing from a trade — both are labeled "veteran additions";
+(b) preseason depth charts are camp snapshots, not Week 1 truth;
+(c) coordinator NAMES remain unavailable (R2.2), so the sheet
+reports only what is derivable — a 2025 OC who appears as a 2026
+head coach (vacancy certain) or a new HC (turnover likely) — and
+defers incoming names to coordinators.csv. Coach-name matching is
+fuzzy (edit distance ≤2) because the schedule file contains typos
+(S17).
+
 ---
 
 ## 3. Modeling assumptions (props model core)
@@ -414,6 +429,19 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S17 — 2026 offseason sheet** (2026-08). Derived entirely from
+cached nflverse data: 7 HC changes (BAL Harbaugh→Minter, CLE
+Stefanski→Monken, LV Carroll→Kubiak, MIA McDaniel→Hafley, NYG
+Daboll→Harbaugh, PIT Tomlin→McCarthy, TEN Callahan→Saleh); 6 new
+QB1s (ATL Penix→Tagovailoa, CLE Sanders→Watson, LV Smith→Cousins,
+MIA Tagovailoa→Willis, MIN McCarthy→Murray, NYJ Taylor→Smith); 257
+draft picks with 22 teams taking a QB/RB/WR/TE in rounds 1-3.
+DATA-QUALITY FINDING: the schedule file misspells LV's new HC as
+"Klint Kubliak", which silently broke the exact-match test for
+"did a 2025 OC leave to become a head coach" — SEA's vacancy went
+undetected until fuzzy matching (edit distance ≤2) was added.
+Any future coach-name join must be fuzzy or explicitly aliased.
 
 **S16 — Pass-split ladder & end-to-end volume** (2026-07; test 2025,
 n=570). Rate MAE: league .0808 → script curve .0793 → +team .0796 →
