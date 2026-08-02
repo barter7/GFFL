@@ -306,6 +306,16 @@ normalizing generational suffixes ("Omar Cooper Jr." vs "Omar
 Cooper"). Every row records `id_source` as `fp_id`,
 `name-fallback (rookie)` or `unmatched`, so a name match is never
 mistaken downstream for an ID match.
+
+The draft board (web/depth.html, mode "rank") is a flat ranked list
+across all 32 teams, filterable by position (FLEX = RB/WR/TE) and
+sortable by ADP or either ECR. It keeps depth-chart context on every
+row — arrival badge, depth slot, availability, stock chips — because
+a rank divorced from the roster situation behind it is how you draft
+a back who lost his job. The ADP option renders DISABLED and labeled
+"no data" until an export is present, and `board()` re-checks
+`has_adp` at render time so the view can never silently order by a
+different column than its header claims.
 ---
 
 ## 3. Modeling assumptions (props model core)
@@ -579,6 +589,27 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S24 — The `{}` truthiness trap** (2026-08). render_page.R
+splices a payload by reading the built JSON with
+`fromJSON(simplifyVector = FALSE)` and re-emitting it with
+`toJSON()`. jsonlite's DEFAULT writes an R `NULL` as `{}`, and `{}`
+is TRUTHY in JavaScript — so every `if (r.avail_note)` guard in the
+template fired for the 1,177 players who have no note at all, and
+the published page marked essentially the entire league RESERVE.
+The same round trip broke `from`, rendering `{}` where a prior team
+belongs.
+
+It surfaced only because a new filter produced an impossible count:
+175 of 236 receivers passing an availability filter that should
+match 8. Nothing errored, the page rendered, and the chips and
+tables all looked right. Fix is one argument — `toJSON(...,
+null = "null")` — but the lesson is the general one: a
+serialization round trip is a transformation, not a copy, and the
+JS falsiness of `{}` versus `null` is exactly the kind of
+difference that survives every syntax check. Verify a splice by
+COUNTING what renders (1 RESERVE badge, 6 NOT SIGNED, 0 broken
+markers), not by confirming the page loads.
 
 **S23 — FantasyPros availability audit** (2026-08). Established
 what is actually reachable. `fantasypros.com`: `000` (blocked, like

@@ -90,6 +90,28 @@ footer{margin:20px 0;color:var(--ink3);font-size:11.5px;border-top:1px solid var
   padding-top:10px;max-width:88ch}
 footer b{color:var(--ink2)}
 .tog{margin-left:auto}
+.lbl{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+select:disabled,option:disabled{color:var(--ink3);opacity:.6}
+/* draft board: one flat ranked table instead of per-team pods */
+.board{background:var(--card);border:1px solid var(--rule);border-radius:7px;overflow:hidden}
+.board table{width:100%}
+.board thead th{position:sticky;top:52px;background:var(--card);z-index:2;
+  text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink3);font-weight:700;padding:7px 8px;border-bottom:1px solid var(--rule)}
+.board th.r,.board td.r{text-align:right}
+.board td.ovr{font-weight:800;font-size:13px;width:44px;text-align:right;color:var(--ink2)}
+.board td.pr{width:52px;font-size:11px;color:var(--ink3);letter-spacing:.03em}
+.board td.val{width:64px;text-align:right;font-size:12px}
+.board td.val b{font-weight:700}
+.board .tm{font-size:11px;color:var(--ink3);margin-left:5px}
+.board tr.tier{background:var(--chip)}
+.board tr.tier td{font-size:10.5px;color:var(--ink3);letter-spacing:.06em;
+  text-transform:uppercase;padding:4px 8px;font-weight:700}
+.nomatch{padding:14px;color:var(--ink3);font-style:italic}
+.warnbar{margin-top:10px;padding:7px 11px;border-radius:6px;background:var(--markwash);
+  color:#6E5710;font-size:11.5px;border:1px solid var(--mark)}
+:root[data-theme=dark] .warnbar{color:var(--mark)}
+@media (prefers-color-scheme:dark){.warnbar{color:var(--mark)}}
 </style>
 <div class="wrap">
 <h1>2026 Depth Charts — who's new, who's gone</h1>
@@ -98,8 +120,13 @@ fantasy-stock chips — ▲ helps, ▼ hurts, ◆ watch — with the evidence on
 <div class="bar">
   <button data-m="team" aria-pressed="true">By team</button>
   <button data-m="pos" aria-pressed="false">By position</button>
+  <button data-m="rank" aria-pressed="false">Draft board</button>
   <span class="sep"></span>
   <select id="pick" aria-label="Choose team or position"></select>
+  <span id="sortwrap" hidden><span class="sep"></span>
+    <label class="lbl" for="sort">Sort</label>
+    <select id="sort" aria-label="Sort the board by"></select>
+  </span>
   <span class="sep"></span>
   <button data-s="2025" aria-pressed="true">2025 stats</button>
   <button data-s="career" aria-pressed="false">Career (21–25)</button>
@@ -117,7 +144,14 @@ fantasy-stock chips — ▲ helps, ▼ hurts, ◆ watch — with the evidence on
 const $=s=>document.querySelector(s);
 const GROUPS=["QB","RB","WR","TE","OL","DL","LB","DB"];
 const TEAMS=[...new Set(D.depth.map(r=>r.team))].sort();
-const st={mode:"team",sel:TEAMS[0],stat:"2025",only:false,hurt:false,stock:false};
+const st={mode:"team",sel:TEAMS[0],stat:"2025",only:false,hurt:false,stock:false,
+          sort:(D.has_adp?"adp":"r1"),posf:"ALL"};
+// board: skill positions only, plus the two multi-position views a
+// draft actually uses
+const BPOS=["ALL","FLEX","QB","RB","WR","TE"];
+const SORTS=[{k:"adp",t:"ADP",need:"adp"},{k:"r1",t:"ECR — 1QB"},
+             {k:"r2",t:"ECR — superflex"}];
+const RANK={}; (D.rank||[]).forEach(r=>{RANK[r.gsis_id]=r;});
 const maxSnap=1100;
 // fantasy-stock signals, keyed by gsis_id (R1.13 — id joins, never names)
 const SIG={}; (D.sig||[]).forEach(r=>{SIG[r.gsis_id]=r.signals;});
@@ -126,6 +160,22 @@ const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
                       .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 
 function fillPicker(){
+  if(st.mode==="rank"){
+    $("#pick").setAttribute("aria-label","Filter the board by position");
+    $("#pick").innerHTML=BPOS.map(v=>
+      `<option value="${v}" ${v===st.posf?"selected":""}>${
+        v==="ALL"?"All positions":v==="FLEX"?"FLEX (RB/WR/TE)":v}</option>`).join("");
+    // ADP stays visible but disabled until an export lands, so the
+    // control never silently orders by a different column (R2.11)
+    $("#sort").innerHTML=SORTS.map(s=>{
+      const off=s.need==="adp"&&!D.has_adp;
+      return `<option value="${s.k}" ${s.k===st.sort?"selected":""} ${
+        off?"disabled":""}>${s.t}${off?" — no data":""}</option>`;}).join("");
+    $("#sortwrap").hidden=false;
+    return;
+  }
+  $("#sortwrap").hidden=true;
+  $("#pick").setAttribute("aria-label","Choose team or position");
   const o=st.mode==="team"?TEAMS:GROUPS;
   if(!o.includes(st.sel))st.sel=o[0];
   $("#pick").innerHTML=o.map(v=>`<option ${v===st.sel?"selected":""}>${v}</option>`).join("");
@@ -194,11 +244,62 @@ function pod(team,grp){
      <span class="churn">${nNew?`<b>${nNew}</b> in`:""}${nNew&&dout.length?" · ":""}${dout.length?`<b>${dout.length}</b> out`:""}${!nNew&&!dout.length?"unchanged":""}</span></div>
     <table><tbody>${body}${outs?`<tr><td colspan="4" class="gap">left the team (250+ snaps in 2025)</td></tr>${outs}`:""}</tbody></table></section>`;
 }
+// ── draft board ─────────────────────────────────────────────
+//  One flat ranked list across all 32 teams. Depth-chart context
+//  travels with each player, so a name and a rank are never shown
+//  without the roster situation that produced them.
+const DEPTH_BY_ID={}; D.depth.forEach(r=>{DEPTH_BY_ID[r.gsis_id]=r;});
+function board(){
+  if(st.sort==="adp"&&!D.has_adp)st.sort="r1";   // never sort by a column we lack
+  const key=st.sort, want=st.posf;
+  let rows=(D.rank||[]).filter(r=>{
+    if(key==="adp"&&r.adp==null)return false;      // unranked ≠ rank 999
+    if(want==="ALL")return true;
+    if(want==="FLEX")return ["RB","WR","TE"].includes(r.pos);
+    return r.pos===want;});
+  if(st.stock)rows=rows.filter(r=>SIG[r.gsis_id]);
+  if(st.hurt)rows=rows.filter(r=>{const d=DEPTH_BY_ID[r.gsis_id];
+    return d&&(d.avail_note||(d.y25_weeks_out_injury||0)>=5);});
+  rows.sort((a,b)=>(a[key]??1e9)-(b[key]??1e9));
+  if(!rows.length)return `<div class="board"><p class="nomatch">
+    Nothing matches that combination of position and filters.</p></div>`;
+
+  const posn={}, line=r=>st.stat==="2025"?r.line_2025:r.line_career;
+  const body=rows.map((r,i)=>{
+    posn[r.pos]=(posn[r.pos]||0)+1;
+    const d=DEPTH_BY_ID[r.gsis_id]||{};
+    const val=key==="adp"?r.adp:(key==="r2"?r.ecr2:r.ecr1);
+    const slot=d.slot?`<span class="tm">${r.pos}${d.slot} on depth chart</span>`:"";
+    return `<tr class="${d.status&&d.status!=="RET"?"new":""}">
+      <td class="ovr mono">${i+1}</td>
+      <td class="pr mono">${r.pos}${posn[r.pos]}</td>
+      <td class="who"><span class="nm">${esc(r.player)}</span><span class="tm">${
+        r.team}</span>${d.status&&d.status!=="RET"?
+        `<span class="b ${d.status}">${d.status}</span>`:""}${
+        d.from?`<span class="from">${d.from}</span>`:""}${slot}${
+        avail(d)}${dur(d)}${news(d)}${stock(r)}</td>
+      <td class="val mono"><b>${val==null?"—":val}</b></td>
+      <td class="stat">${line(d)||"—"}</td>
+      <td style="width:88px">${snapCell(d.snaps25??null)}</td></tr>`;}).join("");
+
+  const what=key==="adp"?"ADP":key==="r2"?"ECR (superflex)":"ECR (1QB)";
+  return `${D.has_adp?"":`<div class="warnbar"><b>Sorted by ECR, not ADP.</b>
+      No ADP export is present, and expert consensus rank is not a stand-in for where
+      players actually get drafted — the gap between the two is the thing worth having.
+      Drop a FantasyPros ADP export into <code>data/fantasypros/</code> and this control
+      switches over.</div>`}
+    <div class="board"><table><thead><tr>
+      <th class="r">#</th><th>Pos</th><th>Player</th><th class="r">${what}</th>
+      <th class="r">${st.stat==="2025"?"2025":"Career"}</th><th class="r">Snaps</th>
+    </tr></thead><tbody>${body}</tbody></table></div>`;
+}
 function render(){
   fillPicker();
-  const out = st.mode==="team"
+  const out = st.mode==="rank" ? board()
+    : st.mode==="team"
     ? GROUPS.map(g=>pod(st.sel,g)).join("")
     : TEAMS.map(t=>pod(t,st.sel)).join("");
+  $("#grid").className=st.mode==="rank"?"":"grid";
   $("#grid").innerHTML=out||"<p>No groups match that filter.</p>";
   $("#foot").innerHTML=`Generated ${D.generated}. Depth order is the latest 2026 camp
     snapshot — a snapshot, not a Week 1 guarantee. <b>NEW</b> = on another team in 2025
@@ -223,6 +324,21 @@ function render(){
     roster status or 5+ weeks lost in 2025. All of it joins on <code>gsis_id</code>, never
     on name. These are volume-context flags, not projections — the projection model
     consumes the same inputs directly.
+    <br><b>Draft board:</b> one flat ranked list across all 32 teams, filterable by
+    position (FLEX = RB/WR/TE) and sortable by ADP or ECR. Each row keeps its depth-chart
+    context — arrival badge, depth slot, availability, stock chips — because a rank without
+    the roster situation behind it is how you end up drafting a back who lost his job.
+    Ranks come from FantasyPros via the DynastyProcess mirror${D.ecr_date?
+    ", scraped "+D.ecr_date:""}, joined on <code>gsis_id</code> (99% matched; the
+    2026 rookie class isn't in that crosswalk yet, so those rows fall back to a
+    name+position match against our own roster and say so).
+    <b>ADP and ECR are not the same thing</b> and this page never substitutes one for the
+    other: ECR is where analysts rank a player, ADP is where drafters actually take him,
+    and the gap between them is the exploitable part. ${D.has_adp?
+    "Both are loaded, so the ADP sort is live.":
+    `Only ECR is loaded, so the ADP sort is disabled rather than quietly reordering by
+     the wrong column — drop a FantasyPros ADP export into <code>data/fantasypros/</code>
+     to enable it.`}
     <br><b>Player news:</b> each row links to that player's RotoWire page, built from the
     <code>rotowire_id</code> in the nflverse crosswalk (verified: Kyler Murray 13613),
     covering 82% of depth-chart rows — no link is shown where no id exists rather than a
@@ -250,7 +366,10 @@ $("#stock").onclick=e=>{st.stock=!st.stock;e.target.setAttribute("aria-pressed",
 $("#grid").addEventListener("click",e=>{
   const b=e.target.closest(".sg"); if(!b)return;
   document.getElementById(b.dataset.why).classList.toggle("on");});
-$("#pick").onchange=e=>{st.sel=e.target.value;render();};
+$("#pick").onchange=e=>{
+  if(st.mode==="rank")st.posf=e.target.value; else st.sel=e.target.value;
+  render();};
+$("#sort").onchange=e=>{st.sort=e.target.value;render();};
 $("#tog").onclick=()=>{const r=document.documentElement;
   const c=r.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
   r.dataset.theme=c==="dark"?"light":"dark";};
