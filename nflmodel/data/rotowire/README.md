@@ -1,11 +1,26 @@
 # RotoWire blurb drop-in
 
-**This repo does not scrape RotoWire.** Their player-news blurbs are
-the product they sell; bulk-pulling them would breach their terms.
-RotoWire publishes an official API/feed for subscribers who want the
-text inside an application — that is the sanctioned path.
+Two ways blurbs get here (R2.9), matching how PropSZN already
+handles RotoWire in `default_lineups.R`:
 
-What the pipeline does instead (R2.9):
+**A. scrape_rotowire.R** — the NFL sibling of PropSZN's RotoWire
+scraper: rvest + CSS selectors, player IDs read out of hrefs, one
+news-feed request per page rather than 1,200 player pages, 2s
+between requests, and the whole fetch in a tryCatch so a 403 or
+CAPTCHA warns and keeps the cache instead of failing the run.
+
+    Rscript -e 'source("scrape_rotowire.R"); inspect_rotowire_page()'
+    Rscript scrape_rotowire.R
+
+Run `inspect_rotowire_page()` FIRST — the selectors in `RW_SEL`
+are unverified (rotowire.com 403s from the dev sandbox, so they
+were never exercised against live markup). It prints the real
+container classes so you can correct them in one edit.
+
+**B. drop-in** — if you'd rather export from a feed/API you have
+access to, put the file here and it is picked up automatically.
+
+What the pipeline does regardless:
 
 - **Deep links** are built for every player from the `rotowire_id`
   in the nflverse roster crosswalk (~66% of the 2026 roster).

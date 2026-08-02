@@ -211,12 +211,17 @@ only: URLs are built from the `rotowire_id` in the nflverse roster
 crosswalk (R1.13) — `/football/player/{slug}-{rotowire_id}`,
 verified against a live page (Kyler Murray = 13613). Coverage ~66%
 of the 2026 roster / 82% of depth-chart rows; players without an id
-get NO link rather than a guessed URL. Blurb TEXT is never
-scraped — it is RotoWire's product and bulk pulls breach their
-terms; they sell an API for in-app use. Anything the owner is
-entitled to goes in data/rotowire/ (keyed by rotowire_id) and
-load_rotowire_blurbs() renders it inline. Same drop-in pattern as
-PFF (R1.1), same reason.
+get NO link rather than a guessed URL. Blurb TEXT comes from scrape_rotowire.R,
+the NFL sibling of PropSZN's RotoWire scraper (default_lineups.R)
+and built to the same house pattern: rvest + CSS selectors, IDs
+read out of hrefs, ONE news-feed request per page instead of
+per-player pages, 2s spacing, and the fetch wrapped in tryCatch so
+a 403/CAPTCHA warns and preserves the cache rather than failing
+the run. Selectors in RW_SEL are UNVERIFIED — rotowire.com 403s
+from the dev sandbox, so run inspect_rotowire_page() on an open
+network and correct them before the first real run. A manual
+drop-in (any file keyed by rotowire_id) still works and is picked
+up by the same loader.
 
 ---
 
