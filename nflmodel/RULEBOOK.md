@@ -276,6 +276,36 @@ a signal is never allowed to double-count. Output:
 web/depth.html where the arrow glyph (▲ ▼ ◆) carries the
 direction so it survives without colour (S22).
 
+
+**R2.11 — FantasyPros: ECR is fetched, ADP is a drop-in, and they
+are never conflated** (fantasypros.R).
+
+- **ECR** (expert consensus rank) comes from the DynastyProcess
+  mirror on `raw.githubusercontent.com` — the same source
+  `nflreadr::load_ff_rankings()` uses. Public, reachable, refreshed
+  daily upstream, cached to `data/context/fp_ecr.csv` with the
+  upstream `scrape_date` preserved. Carries `ecr_1qb`, `ecr_2qb`
+  (superflex), `ecr_pos`, and derived overall ranks.
+- **ADP** (average draft position) is NOT fetched. `fantasypros.com`
+  returns `000` from the sandbox and ADP is mirrored nowhere on
+  GitHub, so it arrives as a user export in `data/fantasypros/`
+  (gitignored, README committed) and is read by `load_fp_adp()`.
+
+ECR is what analysts SAY; ADP is what drafters DO. They diverge on
+recency bias, name-brand inertia and post-hype discounts, so the
+GAP between them is the signal — substituting one for the other
+destroys the thing worth measuring. `fp_market_gap()` returns NULL
+with a message when only ECR is present rather than approximating.
+
+Joins are ID-first (R1.13) through `fp_id` -> `gsis_id` via the
+DynastyProcess crosswalk. The 2026 rookie class is absent from that
+crosswalk ENTIRELY — no gsis, pfr, espn or sleeper id to chain
+through — so rookies fall back to name+position matched against our
+own `roster_2026.csv`, accepting unambiguous hits only and
+normalizing generational suffixes ("Omar Cooper Jr." vs "Omar
+Cooper"). Every row records `id_source` as `fp_id`,
+`name-fallback (rookie)` or `unmatched`, so a name match is never
+mistaken downstream for an ID match.
 ---
 
 ## 3. Modeling assumptions (props model core)
@@ -549,6 +579,31 @@ targets). Kept population contains 527 stood-with-penalty snaps
 (1.5%), 1,352 sacks, 1,149 scrambles, zero kneels/spikes. Outcome:
 rule R1.10 + penalty flag added to FEATURE_PBP_COLS; penalty-drawn
 targets flagged as a future usage feature.
+
+**S23 — FantasyPros availability audit** (2026-08). Established
+what is actually reachable. `fantasypros.com`: `000` (blocked, like
+every non-GitHub host). `api.github.com`: 403, so repo directories
+cannot be listed to prove a negative. `raw.githubusercontent.com`:
+200 — this is the usable channel, and it is NOT the same as the
+`github.com/<org>/<repo>/raw/...` path, which 403s.
+
+Found on the DynastyProcess mirror: `values-players.csv` (ECR, 641
+skill players, scraped 2026-07-31) and `db_playerids.csv` (12,470-row
+crosswalk carrying both `fantasypros_id` and `gsis_id`). Probed for
+a true ADP file — `adp.csv`, `db_adp.csv`, `fp_adp.csv` all 404.
+CONCLUSION: ECR is automatable, ADP is not; recorded as R2.11 rather
+than papering over the difference.
+
+ID coverage, and why the number moved: a straight `fp_id` join
+matched 542 of 641 (85%). All 99 misses were 2026 rookies, and they
+were absent from the crosswalk ENTIRELY rather than merely missing a
+gsis_id — so unlike the draft-class problem in S19 there was no
+alternate id (pfr/espn/sleeper) to hop through. Name+position
+matching against our own roster_2026 recovered 84, and normalizing
+generational suffixes recovered 9 more: 635 of 641 (99%), 99% of the
+top 100, zero duplicate gsis_ids. The final 6 are ranks 336-576 and
+two of them are free agents on no roster — correctly unmatched, not
+a defect.
 
 **S22 — Fantasy-stock signals** (2026-08; R2.10). 439 of the ~1,180
 skill-position depth-chart rows carry at least one signal. Frequency:

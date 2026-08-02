@@ -14,3 +14,8 @@ data/results/report_*.html
 data/web/
 data/rotowire/*
 !data/rotowire/README.md
+data/fantasypros/*
+!data/fantasypros/README.md
+# fp_xwalk.csv is a regenerable public mirror; fp_ecr.csv IS committed
+# as the dated snapshot the model was built against
+data/context/fp_xwalk.csv
