@@ -1,0 +1,435 @@
+/* Depth charts + draft board, ESPN Fantasy visual language:
+   white panels, 1px rules, uppercase grey column heads, blue player
+   names, hover highlight, tight vertical rhythm.
+
+   Position colour is carried by a left rail on every row and by the
+   position pill, so a scan down the board reads by position without
+   looking at the letters. */
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--paper);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.sep {
+  width: 1px;
+  height: 20px;
+  background: var(--rule2);
+  margin: 0 4px;
+}
+.lbl {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  font-weight: 700;
+}
+
+.grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
+}
+@media (max-width: 520px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pod {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  overflow: hidden;
+}
+/* group header: ESPN's grey band, with the position colour as a
+   3px underline so the panel is identifiable at a glance */
+.podHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  background: var(--head);
+  border-bottom: 3px solid var(--rule2);
+}
+.grp {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.team {
+  font-size: 13px;
+  font-weight: 800;
+}
+.churn {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--ink3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.churn b {
+  color: var(--ink2);
+  font-size: 11.5px;
+}
+
+/* A panel clips its overflow for the rounded corners, which means a
+   row that doesn't fit loses its right-hand columns silently — the
+   snaps count just vanishes. Scroll instead of hiding. */
+.tblWrap {
+  overflow-x: auto;
+}
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+}
+.tbl tr {
+  border-bottom: 1px solid var(--rule);
+}
+.tbl tbody tr:last-child {
+  border-bottom: 0;
+}
+.tbl tbody tr:hover {
+  background: var(--hover);
+}
+.tbl td {
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+.tbl th {
+  background: var(--head);
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  font-weight: 700;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--rule2);
+}
+.num {
+  width: 22px;
+  text-align: right;
+  color: var(--ink3);
+  font-size: 11px;
+  padding-right: 2px !important;
+}
+/* the name line stays on one line — letting it wrap split "Marvin
+   Harrison Jr." across two rows. Only the stat column wraps. */
+.who {
+  white-space: nowrap;
+}
+.stat {
+  color: var(--ink2);
+  font-size: 11px;
+  text-align: right;
+  /* wrap rather than run under the panel edge — these lines get long
+     for a full-season QB and the panel clips its overflow */
+  white-space: normal;
+  min-width: 13ch;
+}
+.mono {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+/* player name reads as an ESPN link even where it isn't one */
+.nm {
+  font-weight: 600;
+  color: var(--link);
+}
+.rowNew {
+  background: var(--markwash);
+}
+.rowOut {
+  background: var(--lossbg);
+}
+.rowOut .nm {
+  color: var(--ink2);
+}
+.gap {
+  padding: 5px 11px;
+  font-size: 10px;
+  color: var(--ink3);
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  background: var(--head);
+}
+.from {
+  color: var(--ink3);
+  font-size: 10.5px;
+  margin-left: 4px;
+}
+
+/* ── position colour ──────────────────────────────────────── */
+.posRail {
+  border-left: 3px solid transparent;
+}
+.railQB {
+  border-left-color: var(--pos-qb);
+}
+.railRB {
+  border-left-color: var(--pos-rb);
+}
+.railWR {
+  border-left-color: var(--pos-wr);
+}
+.railTE {
+  border-left-color: var(--pos-te);
+}
+.headQB {
+  border-bottom-color: var(--pos-qb);
+}
+.headRB {
+  border-bottom-color: var(--pos-rb);
+}
+.headWR {
+  border-bottom-color: var(--pos-wr);
+}
+.headTE {
+  border-bottom-color: var(--pos-te);
+}
+.inkQB {
+  color: var(--pos-qb-ink);
+}
+.inkRB {
+  color: var(--pos-rb-ink);
+}
+.inkWR {
+  color: var(--pos-wr-ink);
+}
+.inkTE {
+  color: var(--pos-te-ink);
+}
+/* pill: 12% wash of the hue, darkened hue for the text */
+.pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--chip);
+  color: var(--ink2);
+}
+.pillQB {
+  background: color-mix(in srgb, var(--pos-qb) 16%, transparent);
+  color: var(--pos-qb-ink);
+}
+.pillRB {
+  background: color-mix(in srgb, var(--pos-rb) 22%, transparent);
+  color: var(--pos-rb-ink);
+}
+.pillWR {
+  background: color-mix(in srgb, var(--pos-wr) 16%, transparent);
+  color: var(--pos-wr-ink);
+}
+.pillTE {
+  background: color-mix(in srgb, var(--pos-te) 20%, transparent);
+  color: var(--pos-te-ink);
+}
+
+.badge {
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 5px;
+  letter-spacing: 0.04em;
+  vertical-align: 1px;
+}
+.bNEW {
+  background: var(--addbg);
+  color: var(--add);
+}
+.bROOKIE {
+  background: var(--markwash);
+  color: var(--marktext);
+  box-shadow: inset 0 0 0 1px var(--mark);
+}
+.bOUT,
+.bAVL {
+  background: var(--lossbg);
+  color: var(--loss);
+}
+.bPEND {
+  background: var(--chip);
+  color: var(--ink2);
+}
+.dur {
+  font-size: 10px;
+  color: var(--loss);
+  white-space: nowrap;
+  margin-left: 5px;
+  font-weight: 600;
+}
+.durMild {
+  color: var(--ink3);
+  font-weight: 400;
+}
+.news {
+  margin-left: 5px;
+  font-size: 10px;
+  color: var(--ink3);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--ink3);
+}
+.news:hover {
+  color: var(--link);
+  border-bottom-color: var(--link);
+}
+.blurb {
+  display: block;
+  color: var(--ink2);
+  font-size: 11px;
+  font-style: italic;
+  white-space: normal;
+  max-width: 44ch;
+  margin-top: 2px;
+}
+
+.snapWrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: flex-end;
+}
+.snapBar {
+  height: 5px;
+  background: var(--bar);
+  border-radius: 2px;
+  min-width: 1px;
+}
+.snapN {
+  font-size: 10.5px;
+  color: var(--ink3);
+  width: 30px;
+  text-align: right;
+}
+
+/* fantasy-stock chips — the glyph carries direction, not the colour,
+   so the meaning survives for a colour-blind reader */
+.sigs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+  max-width: 46ch;
+}
+.chip {
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 9px;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  letter-spacing: 0.01em;
+}
+.arrow {
+  font-size: 8.5px;
+  vertical-align: 0.5px;
+  margin-right: 2px;
+}
+.up {
+  background: var(--addbg);
+  color: var(--add);
+  border-color: var(--add);
+}
+.down {
+  background: var(--lossbg);
+  color: var(--loss);
+  border-color: var(--loss);
+}
+.watch {
+  background: var(--markwash);
+  color: var(--marktext);
+  border-color: var(--mark);
+}
+.why {
+  display: block;
+  margin-top: 3px;
+  padding: 5px 8px;
+  background: var(--head);
+  border-left: 3px solid var(--rule2);
+  border-radius: 0 4px 4px 0;
+  font-size: 10.5px;
+  color: var(--ink2);
+  white-space: normal;
+  max-width: 48ch;
+  line-height: 1.5;
+}
+.why > div {
+  display: flex;
+  gap: 5px;
+}
+.whyCode {
+  font-weight: 700;
+  min-width: 8.5ch;
+  flex: none;
+}
+.whyUp {
+  color: var(--add);
+}
+.whyDown {
+  color: var(--loss);
+}
+.whyWatch {
+  color: var(--marktext);
+}
+
+/* draft board */
+.board {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+.ovr {
+  font-weight: 800;
+  font-size: 12.5px;
+  width: 46px;
+  text-align: right;
+  color: var(--ink2);
+}
+.posRankCell {
+  width: 58px;
+}
+.val {
+  width: 70px;
+  text-align: right;
+  font-size: 12px;
+}
+.tm {
+  font-size: 10.5px;
+  color: var(--ink3);
+  margin-left: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.warn {
+  margin-top: 12px;
+  padding: 8px 11px;
+  border-radius: 4px;
+  background: var(--markwash);
+  border-left: 3px solid var(--mark);
+  color: var(--marktext);
+  font-size: 11.5px;
+}
+.empty {
+  padding: 14px;
+  color: var(--ink3);
+  font-style: italic;
+}

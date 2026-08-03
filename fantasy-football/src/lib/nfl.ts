@@ -165,3 +165,24 @@ export const BOARD_SORTS = [
   { key: "r2", label: "ECR — superflex", needsAdp: false },
 ] as const;
 export type BoardSort = (typeof BOARD_SORTS)[number]["key"];
+
+/** Position colours are fixed by spec. QB and WR share a hue, so the
+ *  position letters still have to do the disambiguating work between
+ *  those two — the colour alone cannot. */
+export const POS_COLOR: Record<string, string> = {
+  QB: "#46a2cb",
+  RB: "#73c3a6",
+  WR: "#46a2cb",
+  TE: "#cc8d4a",
+};
+
+/** Returns the CSS-module class for a position, or "" for non-skill
+ *  groups (OL/DL/LB/DB have no assigned colour). */
+export function posClass(
+  styles: Record<string, string>,
+  prefix: "rail" | "head" | "ink" | "pill",
+  pos: string | undefined,
+): string {
+  if (!pos) return "";
+  return styles[`${prefix}${pos}`] ?? "";
+}

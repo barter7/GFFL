@@ -8,3 +8,5 @@
 *.Rproj
 /.Renviron.example
 /nflmodel/
+# the standalone fantasy-football app is its own Vercel project
+/fantasy-football/

@@ -1,8 +1,11 @@
 # ============================================================
 #  export_site.R  (nflmodel)
 #
-#  Writes the depth-chart / draft-board data into the Next.js app
-#  at the repo root, which deploys to Vercel.
+#  Writes the depth-chart / draft-board data into the standalone
+#  fantasy-football Next.js app, which deploys as its own Vercel
+#  project (root directory: fantasy-football/). It is separate from
+#  the GFFL archives app at the repo root — different site, own
+#  build, own domain.
 #
 #  The site is a STATIC export (next.config.mjs sets
 #  output: "export"), so there is no server and no API route to
@@ -23,14 +26,14 @@
 #  na = "null", null = "null". Do not remove those.
 #
 #  Usage:  Rscript export_site.R
-#  Output: ../src/data/nfl-depth.json
+#  Output: ../fantasy-football/src/data/nfl-depth.json
 # ============================================================
 
 suppressMessages({
   library(dplyr); library(readr); library(jsonlite); library(purrr)
 })
 
-SITE_DATA <- file.path("..", "src", "data")
+SITE_DATA <- file.path("..", "fantasy-football", "src", "data")
 SITE_JSON <- file.path(SITE_DATA, "nfl-depth.json")
 
 # data.frame -> {columns, rows}

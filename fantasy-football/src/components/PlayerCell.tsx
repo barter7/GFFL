@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { DepthRow, Signal, SignalDir } from "@/lib/nfl";
-import s from "./styles.module.css";
+import s from "./depth.module.css";
 
 const ARROW: Record<SignalDir, string> = { up: "▲", down: "▼", watch: "◆" };
 
@@ -81,7 +81,11 @@ export function StockChips({ signals }: { signals: Signal[] | undefined }) {
         <span className={s.why}>
           {signals.map((sig, i) => (
             <div key={i}>
-              <b className={s[sig.dir]} style={{ background: "none", border: 0 }}>
+              <b
+                className={`${s.whyCode} ${
+                  sig.dir === "up" ? s.whyUp : sig.dir === "down" ? s.whyDown : s.whyWatch
+                }`}
+              >
                 {ARROW[sig.dir]} {sig.code}
               </b>
               <span>
