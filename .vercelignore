@@ -7,3 +7,4 @@
 *.R
 *.Rproj
 /.Renviron.example
+/nflmodel/
