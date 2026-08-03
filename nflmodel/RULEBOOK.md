@@ -872,11 +872,12 @@ standalone artifact HTML in `web/` stays as the no-build preview
 path and reads the same tables, so the two can differ in styling
 but never in what they compute.
 
-Position colours on the site are fixed by spec: RB `#73c3a6`,
-WR `#46a2cb`, QB `#46a2cb`, TE `#cc8d4a`. QB and WR share a hue,
-so colour alone cannot separate those two — the position letters
-carry that, and colour is redundant encoding rather than the only
-channel.
+Position colours on the site are fixed by spec: QB `#c05e85`,
+RB `#73c3a6`, WR `#46a2cb`, TE `#cc8d4a` — four distinct hues, so
+position reads from the row rail alone. Colour is still redundant
+with the position letters rather than the sole channel, and text
+on a colour wash uses a darkened variant of the same hue because
+at full strength most of these fall under 3:1 on white.
 
 Before 2026 week 1:
 1. coordinators.csv: add 2026 rows (validate: 0 gaps / 0 overlaps)

@@ -166,11 +166,10 @@ export const BOARD_SORTS = [
 ] as const;
 export type BoardSort = (typeof BOARD_SORTS)[number]["key"];
 
-/** Position colours are fixed by spec. QB and WR share a hue, so the
- *  position letters still have to do the disambiguating work between
- *  those two — the colour alone cannot. */
+/** Position colours are fixed by spec — all four distinct, so a row's
+ *  position is legible from its rail alone. */
 export const POS_COLOR: Record<string, string> = {
-  QB: "#46a2cb",
+  QB: "#c05e85",
   RB: "#73c3a6",
   WR: "#46a2cb",
   TE: "#cc8d4a",

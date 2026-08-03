@@ -4,11 +4,12 @@
    UI is a toolbar, some tables and a few hundred chips.
 
    POSITION COLOURS are fixed by spec:
-     RB #73c3a6   WR #46a2cb   QB #46a2cb   TE #cc8d4a
-   Those hues are used for solid accents (rails, underlines) and as
-   10% washes behind pills. Text on a wash uses a darkened variant
-   of the same hue, because the spec colours are light enough that
-   white or full-strength text on them falls under 3:1. */
+     QB #c05e85   RB #73c3a6   WR #46a2cb   TE #cc8d4a
+   All four are distinct, so position is legible from colour alone.
+   The hues are used for solid accents (rails, underlines) and as
+   washes behind pills. Text on a wash uses a darkened variant of
+   the same hue, because at full strength most of them fall under
+   3:1 on a light background. */
 
 :root {
   --paper: #f2f3f5;
@@ -32,11 +33,11 @@
   --chip: #eef0f3;
   --bar: #c3c8ce;
 
-  --pos-qb: #46a2cb;
+  --pos-qb: #c05e85;
   --pos-rb: #73c3a6;
   --pos-wr: #46a2cb;
   --pos-te: #cc8d4a;
-  --pos-qb-ink: #1a6489;
+  --pos-qb-ink: #8f3a5e;
   --pos-rb-ink: #2b7a5e;
   --pos-wr-ink: #1a6489;
   --pos-te-ink: #8a5a1f;
@@ -63,7 +64,7 @@
     --chip: #272b32;
     --bar: #454a54;
     /* on dark the spec hues are already high-contrast — use them as-is */
-    --pos-qb-ink: #46a2cb;
+    --pos-qb-ink: #c05e85;
     --pos-rb-ink: #73c3a6;
     --pos-wr-ink: #46a2cb;
     --pos-te-ink: #cc8d4a;
@@ -88,7 +89,7 @@
   --lossbg: #f8e6e3;
   --chip: #eef0f3;
   --bar: #c3c8ce;
-  --pos-qb-ink: #1a6489;
+  --pos-qb-ink: #8f3a5e;
   --pos-rb-ink: #2b7a5e;
   --pos-wr-ink: #1a6489;
   --pos-te-ink: #8a5a1f;
@@ -112,7 +113,7 @@
   --lossbg: #33201d;
   --chip: #272b32;
   --bar: #454a54;
-  --pos-qb-ink: #46a2cb;
+  --pos-qb-ink: #c05e85;
   --pos-rb-ink: #73c3a6;
   --pos-wr-ink: #46a2cb;
   --pos-te-ink: #cc8d4a;

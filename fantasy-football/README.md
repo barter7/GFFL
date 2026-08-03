@@ -62,9 +62,10 @@ only as fresh as the last commit.
 - **ADP and ECR are different things** and the UI never substitutes one
   for the other. Until a FantasyPros ADP export exists, the ADP sort
   renders disabled rather than silently ordering by ECR (rule R2.11).
-- **Position colours** are fixed: RB `#73c3a6`, WR `#46a2cb`,
-  QB `#46a2cb`, TE `#cc8d4a`. QB and WR share a hue by spec, so the
-  position letters — not the colour — distinguish those two. Text on a
-  colour wash uses a darkened variant of the same hue for contrast.
+- **Position colours** are fixed: QB `#c05e85`, RB `#73c3a6`,
+  WR `#46a2cb`, TE `#cc8d4a` — all four distinct, so a row's position
+  reads from its rail alone. Text on a colour wash uses a darkened
+  variant of the same hue, since at full strength most of these fall
+  under 3:1 on white.
 - **Stock chips encode direction with a glyph** (▲ ▼ ◆), not colour
   alone, so they survive for a colour-blind reader.
