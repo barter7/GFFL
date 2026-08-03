@@ -8,5 +8,10 @@
 *.Rproj
 /.Renviron.example
 /nflmodel/
-# the standalone fantasy-football app is its own Vercel project
-/fantasy-football/
+# NOTE: deliberately NOT excluding /fantasy-football/ here. That
+# directory is a second Vercel project whose Root Directory points at
+# it, and a root-level ignore risks excluding the very folder that
+# project builds from. Excluding it saved a few hundred KB of upload
+# on the archives project and was not worth that failure mode -- the
+# archives build never compiles it anyway (Next only builds src/app,
+# and tsconfig.json excludes it from typechecking).

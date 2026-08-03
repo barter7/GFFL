@@ -857,12 +857,20 @@ Publishing the depth charts / draft board to the web
 (`Rscript export_site.R`): writes
 `fantasy-football/src/data/nfl-depth.json` for the STANDALONE
 `fantasy-football` Next.js app, which deploys as its own Vercel
-project (project `fantasy_football`, root directory
-`fantasy-football/`). It is separate from the GFFL archives app at
+project (project `fantasy_football`, ROOT DIRECTORY
+`fantasy-football`). It is separate from the GFFL archives app at
 the repo root — same repo, different site; the root
-`.vercelignore` excludes `/fantasy-football/` and the root
 `tsconfig.json` excludes it from typechecking so the two never
-build each other.
+typecheck each other.
+
+The Root Directory setting is the whole separation. Leave it at
+the repo default and Vercel finds the Next.js app at the root, so
+the `fantasy_football` project silently serves the ARCHIVES site —
+the build succeeds, nothing warns, it is just the wrong app. Note
+also that the root `.vercelignore` deliberately does NOT exclude
+`/fantasy-football/`: a root-level ignore risks excluding the very
+directory the second project builds from, which is a worse failure
+than the few hundred KB of upload it would have saved.
 
 Both are STATIC exports (`output: "export"`), so there is no
 server and no API route — the JSON is committed and imported at

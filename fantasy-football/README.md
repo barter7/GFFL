@@ -16,9 +16,15 @@ Import the repo at [vercel.com/new](https://vercel.com/new) and set:
 | Root Directory | `fantasy-football` |
 | Framework preset | Next.js (auto-detected) |
 
-Vercel builds only this subdirectory; the archives project at the repo
-root is untouched. The root's `.vercelignore` excludes `/fantasy-football/`
-so the two never build each other.
+**Root Directory is the setting that matters.** If it is left at the
+repo default, Vercel finds the Next.js app at the repo root and this
+project serves the GFFL Archives site instead — same repo, wrong app,
+and the build succeeds so nothing warns you. Set it under
+Settings → Build and Deployment → Root Directory, then redeploy.
+
+The archives project at the repo root is unaffected: its build only
+compiles `src/app`, and its `tsconfig.json` excludes this directory
+from typechecking.
 
 ## Local development
 
