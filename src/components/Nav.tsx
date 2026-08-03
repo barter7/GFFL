@@ -15,6 +15,7 @@ const LINKS: [string, string][] = [
   ["/player-records", "Player Records"],
   ["/achievements", "Achievements"],
   ["/top-performances", "Top Performances"],
+  ["/depth-charts", "2026 Depth Charts"],
   ["/recap-photos", "Recap Photos"],
   ["/commissioner", "Commissioner of the Year"],
 ];

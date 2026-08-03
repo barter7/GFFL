@@ -1,0 +1,333 @@
+/* 2026 depth charts + draft board.
+   Palette follows globals.css (navy / gold / red) rather than
+   inventing a second one. */
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0.75rem;
+}
+.sep {
+  width: 1px;
+  height: 22px;
+  background: #dde1e7;
+  margin: 0 2px;
+}
+.lbl {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6c757d;
+}
+
+.grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
+}
+@media (max-width: 520px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pod {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(1, 51, 105, 0.12);
+  overflow: hidden;
+}
+.podHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-bottom: 1px solid #e6e9ee;
+  color: var(--gffl-navy);
+}
+.podHead .g {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+.podHead .t {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.churn {
+  margin-left: auto;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8b9099;
+}
+.churn b {
+  color: var(--gffl-gold-dark);
+  font-size: 0.75rem;
+}
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.tbl tr {
+  border-bottom: 1px solid #eef1f4;
+}
+.tbl tr:last-child {
+  border-bottom: 0;
+}
+.tbl td,
+.tbl th {
+  padding: 5px 8px;
+  vertical-align: middle;
+}
+.tbl th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 2;
+  text-align: left;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8b9099;
+  font-weight: 700;
+  border-bottom: 1px solid #e6e9ee;
+}
+.num {
+  width: 22px;
+  text-align: right;
+  color: #a0a5ad;
+  font-size: 0.7rem;
+  padding-right: 2px !important;
+}
+.who {
+  white-space: nowrap;
+}
+.stat {
+  color: #6c757d;
+  font-size: 0.7rem;
+  text-align: right;
+  white-space: nowrap;
+}
+.mono {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.nm {
+  font-weight: 600;
+}
+.rowNew {
+  background: #fdf6e0;
+}
+.rowOut {
+  background: #fbeae8;
+}
+.rowOut .nm {
+  color: #6c757d;
+}
+.gap {
+  padding: 6px 11px;
+  font-size: 0.7rem;
+  color: #8b9099;
+  font-style: italic;
+  background: #f2f4f7;
+}
+.from {
+  color: #a0a5ad;
+  font-size: 0.68rem;
+  margin-left: 4px;
+}
+.badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 5px;
+  letter-spacing: 0.04em;
+  vertical-align: 1px;
+}
+.bNEW {
+  background: #e3f1e9;
+  color: #1f7a4d;
+}
+.bROOKIE {
+  background: #fbf0c6;
+  color: var(--gffl-gold-dark);
+  box-shadow: inset 0 0 0 1px var(--gffl-gold);
+}
+.bOUT,
+.bAVL {
+  background: #f8e6e3;
+  color: #b23a2e;
+}
+.bPEND {
+  background: #eceff3;
+  color: #6c757d;
+}
+.dur {
+  font-size: 0.65rem;
+  color: #b23a2e;
+  white-space: nowrap;
+  margin-left: 5px;
+  font-weight: 600;
+}
+.durMild {
+  color: #a0a5ad;
+  font-weight: 400;
+}
+.news {
+  margin-left: 5px;
+  font-size: 0.65rem;
+  color: #8b9099;
+  text-decoration: none;
+  border-bottom: 1px dotted #b6bbc2;
+}
+.news:hover {
+  color: var(--gffl-navy);
+}
+.blurb {
+  display: block;
+  color: #6c757d;
+  font-size: 0.7rem;
+  font-style: italic;
+  white-space: normal;
+  max-width: 44ch;
+  margin-top: 2px;
+}
+
+/* snap bars */
+.snapWrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: flex-end;
+}
+.snapBar {
+  height: 5px;
+  background: #b9c0ca;
+  border-radius: 2px;
+  min-width: 1px;
+}
+.snapN {
+  font-size: 0.68rem;
+  color: #8b9099;
+  width: 30px;
+  text-align: right;
+}
+
+/* fantasy-stock chips: the glyph carries direction, not the colour */
+.sigs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+  max-width: 46ch;
+}
+.chip {
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 9px;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  letter-spacing: 0.01em;
+}
+.chip .arrow {
+  font-size: 0.55rem;
+  vertical-align: 0.5px;
+  margin-right: 2px;
+}
+.up {
+  background: #e3f1e9;
+  color: #1f7a4d;
+  border-color: #1f7a4d;
+}
+.down {
+  background: #f8e6e3;
+  color: #b23a2e;
+  border-color: #b23a2e;
+}
+.watch {
+  background: #fbf0c6;
+  color: var(--gffl-gold-dark);
+  border-color: var(--gffl-gold);
+}
+.why {
+  margin-top: 3px;
+  padding: 4px 7px;
+  background: #f2f4f7;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  color: #55595f;
+  white-space: normal;
+  max-width: 48ch;
+  line-height: 1.5;
+}
+.why > div {
+  display: flex;
+  gap: 5px;
+}
+.why b {
+  font-weight: 700;
+  min-width: 8.5ch;
+  flex: none;
+}
+
+/* draft board */
+.board {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(1, 51, 105, 0.12);
+  overflow: hidden;
+}
+.ovr {
+  font-weight: 800;
+  font-size: 0.85rem;
+  width: 44px;
+  text-align: right;
+  color: #55595f;
+}
+.posRank {
+  width: 54px;
+  font-size: 0.7rem;
+  color: #8b9099;
+  letter-spacing: 0.03em;
+}
+.val {
+  width: 66px;
+  text-align: right;
+  font-size: 0.78rem;
+}
+.tm {
+  font-size: 0.68rem;
+  color: #8b9099;
+  margin-left: 5px;
+}
+.warn {
+  padding: 8px 11px;
+  border-radius: 6px;
+  background: #fbf0c6;
+  border: 1px solid var(--gffl-gold);
+  color: #6e5710;
+  font-size: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.empty {
+  padding: 14px;
+  color: #8b9099;
+  font-style: italic;
+}
+.notes {
+  font-size: 0.72rem;
+  color: #6c757d;
+  line-height: 1.55;
+}
+.notes b {
+  color: #45494f;
+}

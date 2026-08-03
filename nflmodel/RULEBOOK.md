@@ -853,6 +853,17 @@ props (Action Network; ledger dedupes to genuine ticks, line is part
 of market identity for CLV) → snapshot + card + report → match
 results to actuals.
 
+Publishing the depth charts / draft board to the web
+(`Rscript export_site.R`): writes `src/data/nfl-depth.json` for the
+Next.js app at the repo root, which Vercel builds and serves. The
+site is a STATIC export (`output: "export"`), so there is no server
+and no API route — the JSON is committed and imported at build
+time, matching the league tables that `scripts/convert_data.py`
+produces. Refreshing the model therefore means: rebuild the model
+caches, run `export_site.R`, commit the JSON, push. Page lives at
+`/depth-charts`; the standalone artifact HTML in `web/` stays as
+the no-build preview path and reads the same tables.
+
 Before 2026 week 1:
 1. coordinators.csv: add 2026 rows (validate: 0 gaps / 0 overlaps)
 2. verify Action Network NFL market slugs (`discover_prop_markets()`)
