@@ -16,6 +16,7 @@ const LINKS: [string, string][] = [
   ["/achievements", "Achievements"],
   ["/top-performances", "Top Performances"],
   ["/recap-photos", "Recap Photos"],
+  ["/constitution", "Constitution"],
   ["/commissioner", "Commissioner of the Year"],
 ];
 
