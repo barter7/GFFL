@@ -8,6 +8,7 @@ const LINKS: [string, string][] = [
   ["/standings", "Standings"],
   ["/drafts", "Drafts"],
   ["/keepers", "Keepers"],
+  ["/keeper-history", "Keeper History"],
   ["/matchups", "Matchups"],
   ["/head-to-head", "H2H"],
   ["/trophy-room", "Trophy Room"],
