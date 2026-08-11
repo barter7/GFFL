@@ -3,9 +3,10 @@
 //   * eligible = you drafted the player in 2025 AND he finished the season on
 //     your roster
 //   * a player who was already a keeper in 2025 costs 2 rounds more in 2026
-//   * everything else on your final roster (trades, waiver pickups) and every
-//     drafted player who left your roster is ineligible
+//     (gold rows; the arrow shows old -> new cost)
+//   * everything else is listed under two ineligibility headers per owner
 
+import type { CSSProperties } from "react";
 import { getLeagueData, headshotUrl, DraftRow } from "@/lib/data";
 import Card from "@/components/Card";
 
@@ -17,7 +18,6 @@ const TARGET_SEASON = 2026; // season being kept INTO
 interface EligibleRow {
   name: string;
   pos: string;
-  team: string | null;
   round: number;
   keptLastYear: boolean;
   /** round the keep occupies in 2026 (round - 2 when kept last year) */
@@ -27,12 +27,11 @@ interface EligibleRow {
 interface IneligibleRow {
   name: string;
   pos: string;
-  team: string | null;
-  /** extra context shown as muted subtext (e.g. "2025 keeper", "drafted by RJ") */
+  /** tiny muted context (e.g. "2025 keeper", "via RJ", "FA") */
   note?: string;
 }
 
-function Headshot({ name, pos, size = 44 }: { name: string; pos: string; size?: number }) {
+function Headshot({ name, pos, size = 30 }: { name: string; pos: string; size?: number }) {
   const url = headshotUrl(name);
   if (!url || pos === "DST") {
     return (
@@ -40,12 +39,12 @@ function Headshot({ name, pos, size = 44 }: { name: string; pos: string; size?: 
         style={{
           width: size,
           height: Math.round(size * 0.73),
-          borderRadius: 6,
+          borderRadius: 4,
           background: "#e9ecef",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: size * 0.45,
+          fontSize: size * 0.5,
           flex: "0 0 auto",
         }}
       >
@@ -61,7 +60,7 @@ function Headshot({ name, pos, size = 44 }: { name: string; pos: string; size?: 
       width={size}
       height={Math.round(size * 0.73)}
       loading="lazy"
-      style={{ borderRadius: 6, background: "#e9ecef", objectFit: "cover", flex: "0 0 auto" }}
+      style={{ borderRadius: 4, background: "#e9ecef", objectFit: "cover", flex: "0 0 auto" }}
     />
   );
 }
@@ -74,16 +73,16 @@ export default function KeepersPage() {
     ...starters.filter((s) => s.season === KEEPER_SEASON).map((s) => s.week)
   );
 
-  // Final rosters by owner: player_id -> {name,pos,team}
-  const finalRoster = new Map<string, Map<number, { name: string; pos: string; team: string | null }>>();
+  // Final rosters by owner: player_id -> {name,pos}
+  const finalRoster = new Map<string, Map<number, { name: string; pos: string }>>();
   for (const s of starters) {
     if (s.season !== KEEPER_SEASON || s.week !== finalWeek) continue;
     const m = finalRoster.get(s.owner) ?? new Map();
-    m.set(s.player_id, { name: s.player_name, pos: s.pos, team: s.team });
+    m.set(s.player_id, { name: s.player_name, pos: s.pos });
     finalRoster.set(s.owner, m);
   }
 
-  // Who drafted each player in 2025 (for ineligible reasons)
+  // Who drafted each player in 2025 (for ineligible notes)
   const draftedBy = new Map<number, DraftRow>();
   for (const d of draft25) draftedBy.set(d.player_id, d);
 
@@ -96,8 +95,6 @@ export default function KeepersPage() {
       .sort((a, b) => a.round - b.round);
 
     const eligible: EligibleRow[] = [];
-    // Two ineligibility buckets, rendered as subsections with the reason as
-    // the heading rather than repeated per player.
     const draftedGone: IneligibleRow[] = [];
     const notDrafted: IneligibleRow[] = [];
 
@@ -107,7 +104,6 @@ export default function KeepersPage() {
         eligible.push({
           name: p.player_name,
           pos: p.pos,
-          team: roster.get(p.player_id)!.team ?? p.team,
           round: p.round,
           keptLastYear: kept,
           cost: kept ? p.round - 2 : p.round,
@@ -116,26 +112,44 @@ export default function KeepersPage() {
         draftedGone.push({
           name: p.player_name,
           pos: p.pos,
-          team: p.team,
           note: kept ? `${KEEPER_SEASON} keeper` : undefined,
         });
       }
     }
 
-    // On the final roster but not eligible (not drafted by this owner)
     for (const [pid, info] of roster) {
       const d = draftedBy.get(pid);
-      if (d?.owner === owner) continue; // eligible, handled above
+      if (d?.owner === owner) continue;
       notDrafted.push({
         name: info.name,
         pos: info.pos,
-        team: info.team,
-        note: d ? `drafted by ${d.owner}` : "free agent pickup",
+        note: d ? `via ${d.owner}` : "FA",
       });
     }
 
     return { owner, eligible, draftedGone, notDrafted };
   });
+
+  const rowStyle = (highlight: boolean): CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "2px 4px",
+    fontSize: 13,
+    borderRadius: 6,
+    ...(highlight
+      ? { background: "#fff3cd", border: "1px solid #d4a84b" }
+      : { borderBottom: "1px solid #f2f2f2" }),
+  });
+
+  const nameStyle: CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    fontWeight: 600,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  };
 
   return (
     <>
@@ -144,112 +158,82 @@ export default function KeepersPage() {
           {TARGET_SEASON} Keeper Options
         </h2>
         <hr style={{ borderColor: "#013369", width: 200, margin: "0 auto" }} />
-        <p className="text-muted mt-2 mb-0" style={{ fontSize: 14 }}>
-          Eligible = drafted by you in {KEEPER_SEASON} <em>and</em> on your roster after the
-          Week {finalWeek} championship (Constitution §1.3). Keeping a player a second
-          consecutive year costs <strong>2 rounds more</strong> —{" "}
+        <p
+          className="text-muted mt-2 mb-0"
+          style={{ fontSize: 13, maxWidth: 720, marginLeft: "auto", marginRight: "auto" }}
+        >
+          Eligible = drafted by you in {KEEPER_SEASON} <em>and</em> on your roster after
+          the Week {finalWeek} championship (§1.3).{" "}
           <span
             style={{
               background: "#fff3cd",
               border: "1px solid #d4a84b",
               borderRadius: 4,
-              padding: "0 6px",
+              padding: "0 5px",
             }}
           >
-            highlighted
+            Gold rows
           </span>{" "}
-          players were {KEEPER_SEASON} keepers. Declarations lock one hour before the
-          draft (Sept 8, {TARGET_SEASON}, 8:00 PM ET). ESPN&apos;s Keeper Selection screen
-          is the final authority.
+          were 1st-year keepers in {KEEPER_SEASON} — keeping them again costs 2 rounds
+          more (old→new). Declarations lock one hour before the draft (Sept 8,{" "}
+          {TARGET_SEASON}). ESPN&apos;s Keeper Selection screen is the final authority.
         </p>
       </div>
 
-      <div className="row">
+      <div className="row g-2">
         {byOwner.map(({ owner, eligible, draftedGone, notDrafted }) => (
-          <div className="col-md-6 col-xl-4" key={owner}>
+          <div className="col-6 col-md-4 col-xl-3" key={owner}>
             <Card
               header={
-                <span>
+                <span style={{ fontSize: 15 }}>
                   {owner}
-                  <span className="text-muted fw-normal" style={{ fontSize: 13 }}>
+                  <span className="text-muted fw-normal" style={{ fontSize: 12 }}>
                     {" "}
-                    · {eligible.length} eligible
+                    · {eligible.length}
                   </span>
                 </span>
               }
             >
-              <div className="d-flex flex-column gap-1">
+              <div className="d-flex flex-column" style={{ gap: 2 }}>
                 {eligible.map((p) => (
-                  <div
-                    key={p.name + p.round}
-                    className="d-flex align-items-center gap-2"
-                    style={{
-                      padding: "4px 6px",
-                      borderRadius: 8,
-                      ...(p.keptLastYear
-                        ? { background: "#fff3cd", border: "1px solid #d4a84b" }
-                        : { borderBottom: "1px solid #f0f0f0" }),
-                    }}
-                  >
+                  <div key={p.name + p.round} style={rowStyle(p.keptLastYear)}>
+                    <Headshot name={p.name} pos={p.pos} />
+                    <span style={nameStyle}>{p.name}</span>
                     <span
                       style={{
                         fontWeight: 700,
                         color: "#013369",
-                        minWidth: 76,
-                        fontSize: 13,
+                        fontSize: 12,
                         whiteSpace: "nowrap",
                       }}
                     >
                       {p.keptLastYear ? (
                         <>
-                          Rd {p.round} <span style={{ color: "#b02a37" }}>→ {p.cost}</span>
+                          {p.round}
+                          <span style={{ color: "#b02a37" }}>→{p.cost}</span>
                         </>
                       ) : (
                         <>Rd {p.round}</>
                       )}
                     </span>
-                    <Headshot name={p.name} pos={p.pos} />
-                    <div style={{ minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontWeight: 600,
-                          fontSize: 14,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {p.name}
-                      </div>
-                      <div className="text-muted" style={{ fontSize: 11.5 }}>
-                        {p.pos}
-                        {p.team ? ` · ${p.team}` : ""}
-                        {p.keptLastYear && (
-                          <span style={{ color: "#8a6d00" }}>
-                            {" "}
-                            · 1st year keeper in {KEEPER_SEASON}
-                          </span>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 ))}
               </div>
 
               {(draftedGone.length > 0 || notDrafted.length > 0) && (
-                <details className="mt-3">
+                <details className="mt-2">
                   <summary
-                    style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#6c757d" }}
+                    style={{ cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#6c757d" }}
                   >
                     Ineligible ({draftedGone.length + notDrafted.length})
                   </summary>
                   {[
                     {
-                      heading: "Drafted, but not on the roster at the end of the season",
+                      heading: "Drafted, but not on roster at end of season",
                       rows: draftedGone,
                     },
                     {
-                      heading: "On the roster at the end of the season, but not drafted",
+                      heading: "On roster at end of season, but not drafted",
                       rows: notDrafted,
                     },
                   ]
@@ -258,32 +242,29 @@ export default function KeepersPage() {
                       <div key={g.heading} className="mt-2" style={{ opacity: 0.8 }}>
                         <div
                           style={{
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: 700,
                             color: "#b02a37",
                             borderBottom: "1px solid #e3c2c6",
                             paddingBottom: 2,
-                            marginBottom: 4,
+                            marginBottom: 3,
                           }}
                         >
                           {g.heading}
                         </div>
-                        <div className="d-flex flex-column gap-1">
+                        <div className="d-flex flex-column" style={{ gap: 2 }}>
                           {g.rows.map((p, i) => (
-                            <div
-                              key={p.name + i}
-                              className="d-flex align-items-center gap-2"
-                              style={{ padding: "3px 6px", borderBottom: "1px solid #f4f4f4" }}
-                            >
-                              <Headshot name={p.name} pos={p.pos} size={36} />
-                              <div style={{ minWidth: 0, fontSize: 13.5, fontWeight: 600 }}>
-                                {p.name}{" "}
-                                <span className="text-muted fw-normal" style={{ fontSize: 11 }}>
-                                  {p.pos}
-                                  {p.team ? ` · ${p.team}` : ""}
-                                  {p.note ? ` · ${p.note}` : ""}
+                            <div key={p.name + i} style={rowStyle(false)}>
+                              <Headshot name={p.name} pos={p.pos} size={24} />
+                              <span style={{ ...nameStyle, fontSize: 12.5 }}>{p.name}</span>
+                              {p.note && (
+                                <span
+                                  className="text-muted"
+                                  style={{ fontSize: 10.5, whiteSpace: "nowrap" }}
+                                >
+                                  {p.note}
                                 </span>
-                              </div>
+                              )}
                             </div>
                           ))}
                         </div>
