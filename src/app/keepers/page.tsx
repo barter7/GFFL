@@ -8,7 +8,6 @@
 
 import type { CSSProperties } from "react";
 import { getLeagueData, headshotUrl, DraftRow } from "@/lib/data";
-import Card from "@/components/Card";
 
 export const metadata = { title: "Keepers" };
 
@@ -65,8 +64,15 @@ function Headshot({ name, pos, size = 30 }: { name: string; pos: string; size?: 
   );
 }
 
+// 2026 draft order. Sean and Joe are returning owners with no 2025 roster,
+// so they have no keeper options (rendered as N/A).
+const DRAFT_ORDER_2026 = [
+  "Harry", "Jack", "Matt", "Mike", "Sean", "Tom",
+  "RJ", "Kerley", "Connor", "Joe", "Faz", "Alex",
+];
+
 export default function KeepersPage() {
-  const { drafts, starters, owners } = getLeagueData();
+  const { drafts, starters } = getLeagueData();
 
   const draft25 = drafts.filter((d) => d.season === KEEPER_SEASON);
   const finalWeek = Math.max(
@@ -86,10 +92,11 @@ export default function KeepersPage() {
   const draftedBy = new Map<number, DraftRow>();
   for (const d of draft25) draftedBy.set(d.player_id, d);
 
-  const keeperOwners = owners.filter((o) => finalRoster.has(o)).sort();
-
-  const byOwner = keeperOwners.map((owner) => {
-    const roster = finalRoster.get(owner)!;
+  const byOwner = DRAFT_ORDER_2026.map((owner) => {
+    const roster = finalRoster.get(owner);
+    if (!roster) {
+      return { owner, eligible: [], draftedGone: [], notDrafted: [], na: true };
+    }
     const picks = draft25
       .filter((d) => d.owner === owner)
       .sort((a, b) => a.round - b.round);
@@ -127,7 +134,7 @@ export default function KeepersPage() {
       });
     }
 
-    return { owner, eligible, draftedGone, notDrafted };
+    return { owner, eligible, draftedGone, notDrafted, na: false };
   });
 
   const rowStyle = (highlight: boolean): CSSProperties => ({
@@ -181,19 +188,32 @@ export default function KeepersPage() {
       </div>
 
       <div className="row g-2">
-        {byOwner.map(({ owner, eligible, draftedGone, notDrafted }) => (
+        {byOwner.map(({ owner, eligible, draftedGone, notDrafted, na }) => (
           <div className="col-6 col-md-4 col-xl-3" key={owner}>
-            <Card
-              header={
-                <span style={{ fontSize: 15 }}>
-                  {owner}
-                  <span className="text-muted fw-normal" style={{ fontSize: 12 }}>
-                    {" "}
-                    · {eligible.length}
-                  </span>
-                </span>
-              }
-            >
+            <div className="card">
+              <div
+                className="card-header"
+                style={{
+                  background: "#013369",
+                  color: "#fff",
+                  textAlign: "center",
+                  fontSize: 19,
+                  fontWeight: 700,
+                  letterSpacing: 1,
+                  padding: "7px 6px",
+                }}
+              >
+                {owner}
+              </div>
+              <div className="card-body">
+              {na && (
+                <div
+                  className="text-muted text-center"
+                  style={{ fontSize: 16, fontWeight: 600, padding: "10px 0" }}
+                >
+                  N/A
+                </div>
+              )}
               <div className="d-flex flex-column" style={{ gap: 2 }}>
                 {eligible.map((p) => (
                   <div key={p.name + p.round} style={rowStyle(p.keptLastYear)}>
@@ -272,7 +292,8 @@ export default function KeepersPage() {
                     ))}
                 </details>
               )}
-            </Card>
+              </div>
+            </div>
           </div>
         ))}
       </div>
