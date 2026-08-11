@@ -48,7 +48,7 @@ REQUIRED_COLUMNS = {
     ],
     "drafts": [
         "season", "round", "pick", "overall", "franchise_id", "franchise_name",
-        "user_nickname", "player_id", "player_name", "pos", "team",
+        "user_nickname", "player_id", "player_name", "pos", "team", "is_keeper",
     ],
     "starters": [
         "season", "week", "franchise_id", "franchise_name", "franchise_score",
