@@ -60,6 +60,8 @@ export interface DraftRow {
   player_name: string;
   pos: string;
   team: string | null;
+  /** true when the pick was a keeper slot rather than a live pick */
+  is_keeper: boolean | null;
   owner: string;
 }
 
