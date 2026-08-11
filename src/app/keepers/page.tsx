@@ -227,7 +227,7 @@ export default function KeepersPage() {
                         {p.keptLastYear && (
                           <span style={{ color: "#8a6d00" }}>
                             {" "}
-                            · kept {KEEPER_SEASON}, 2nd consecutive year
+                            · 1st year keeper in {KEEPER_SEASON}
                           </span>
                         )}
                       </div>
