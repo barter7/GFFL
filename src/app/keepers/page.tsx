@@ -28,8 +28,8 @@ interface IneligibleRow {
   name: string;
   pos: string;
   team: string | null;
-  reason: string;
-  keptLastYear?: boolean;
+  /** extra context shown as muted subtext (e.g. "2025 keeper", "drafted by RJ") */
+  note?: string;
 }
 
 function Headshot({ name, pos, size = 44 }: { name: string; pos: string; size?: number }) {
@@ -96,7 +96,10 @@ export default function KeepersPage() {
       .sort((a, b) => a.round - b.round);
 
     const eligible: EligibleRow[] = [];
-    const ineligible: IneligibleRow[] = [];
+    // Two ineligibility buckets, rendered as subsections with the reason as
+    // the heading rather than repeated per player.
+    const draftedGone: IneligibleRow[] = [];
+    const notDrafted: IneligibleRow[] = [];
 
     for (const p of picks) {
       const kept = p.is_keeper === true;
@@ -110,14 +113,11 @@ export default function KeepersPage() {
           cost: kept ? p.round - 2 : p.round,
         });
       } else {
-        ineligible.push({
+        draftedGone.push({
           name: p.player_name,
           pos: p.pos,
           team: p.team,
-          keptLastYear: kept,
-          reason: kept
-            ? `Kept in ${KEEPER_SEASON}, but did not finish the season on the roster`
-            : "Drafted, but did not finish the season on the roster",
+          note: kept ? `${KEEPER_SEASON} keeper` : undefined,
         });
       }
     }
@@ -126,17 +126,15 @@ export default function KeepersPage() {
     for (const [pid, info] of roster) {
       const d = draftedBy.get(pid);
       if (d?.owner === owner) continue; // eligible, handled above
-      ineligible.push({
+      notDrafted.push({
         name: info.name,
         pos: info.pos,
         team: info.team,
-        reason: d
-          ? `Drafted by ${d.owner} — acquired during the season, not eligible`
-          : "Undrafted free-agent pickup — not eligible",
+        note: d ? `drafted by ${d.owner}` : "free agent pickup",
       });
     }
 
-    return { owner, eligible, ineligible };
+    return { owner, eligible, draftedGone, notDrafted };
   });
 
   return (
@@ -167,7 +165,7 @@ export default function KeepersPage() {
       </div>
 
       <div className="row">
-        {byOwner.map(({ owner, eligible, ineligible }) => (
+        {byOwner.map(({ owner, eligible, draftedGone, notDrafted }) => (
           <div className="col-md-6 col-xl-4" key={owner}>
             <Card
               header={
@@ -229,7 +227,7 @@ export default function KeepersPage() {
                         {p.keptLastYear && (
                           <span style={{ color: "#8a6d00" }}>
                             {" "}
-                            · kept {KEEPER_SEASON}, 2nd consecutive year
+                            · 1st year keeper in {KEEPER_SEASON}
                           </span>
                         )}
                       </div>
@@ -238,34 +236,59 @@ export default function KeepersPage() {
                 ))}
               </div>
 
-              {ineligible.length > 0 && (
+              {(draftedGone.length > 0 || notDrafted.length > 0) && (
                 <details className="mt-3">
                   <summary
                     style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#6c757d" }}
                   >
-                    Ineligible ({ineligible.length})
+                    Ineligible ({draftedGone.length + notDrafted.length})
                   </summary>
-                  <div className="d-flex flex-column gap-1 mt-2" style={{ opacity: 0.75 }}>
-                    {ineligible.map((p, i) => (
-                      <div
-                        key={p.name + i}
-                        className="d-flex align-items-center gap-2"
-                        style={{ padding: "3px 6px", borderBottom: "1px solid #f4f4f4" }}
-                      >
-                        <Headshot name={p.name} pos={p.pos} size={36} />
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 600 }}>
-                            {p.name}{" "}
-                            <span className="text-muted fw-normal" style={{ fontSize: 11 }}>
-                              {p.pos}
-                              {p.team ? ` · ${p.team}` : ""}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: 11.5, color: "#b02a37" }}>{p.reason}</div>
+                  {[
+                    {
+                      heading: "Drafted, but not on the roster at the end of the season",
+                      rows: draftedGone,
+                    },
+                    {
+                      heading: "On the roster at the end of the season, but not drafted",
+                      rows: notDrafted,
+                    },
+                  ]
+                    .filter((g) => g.rows.length > 0)
+                    .map((g) => (
+                      <div key={g.heading} className="mt-2" style={{ opacity: 0.8 }}>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: "#b02a37",
+                            borderBottom: "1px solid #e3c2c6",
+                            paddingBottom: 2,
+                            marginBottom: 4,
+                          }}
+                        >
+                          {g.heading}
+                        </div>
+                        <div className="d-flex flex-column gap-1">
+                          {g.rows.map((p, i) => (
+                            <div
+                              key={p.name + i}
+                              className="d-flex align-items-center gap-2"
+                              style={{ padding: "3px 6px", borderBottom: "1px solid #f4f4f4" }}
+                            >
+                              <Headshot name={p.name} pos={p.pos} size={36} />
+                              <div style={{ minWidth: 0, fontSize: 13.5, fontWeight: 600 }}>
+                                {p.name}{" "}
+                                <span className="text-muted fw-normal" style={{ fontSize: 11 }}>
+                                  {p.pos}
+                                  {p.team ? ` · ${p.team}` : ""}
+                                  {p.note ? ` · ${p.note}` : ""}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}
-                  </div>
                 </details>
               )}
             </Card>
