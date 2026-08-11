@@ -92,10 +92,10 @@ export default function KeepersPage() {
   const draftedBy = new Map<number, DraftRow>();
   for (const d of draft25) draftedBy.set(d.player_id, d);
 
-  const byOwner = DRAFT_ORDER_2026.map((owner) => {
+  const byOwner = DRAFT_ORDER_2026.map((owner, idx) => {
     const roster = finalRoster.get(owner);
     if (!roster) {
-      return { owner, eligible: [], draftedGone: [], notDrafted: [], na: true };
+      return { owner, slot: idx + 1, eligible: [], draftedGone: [], notDrafted: [], na: true };
     }
     const picks = draft25
       .filter((d) => d.owner === owner)
@@ -134,7 +134,7 @@ export default function KeepersPage() {
       });
     }
 
-    return { owner, eligible, draftedGone, notDrafted, na: false };
+    return { owner, slot: idx + 1, eligible, draftedGone, notDrafted, na: false };
   });
 
   const rowStyle = (highlight: boolean): CSSProperties => ({
@@ -188,7 +188,7 @@ export default function KeepersPage() {
       </div>
 
       <div className="row g-2">
-        {byOwner.map(({ owner, eligible, draftedGone, notDrafted, na }) => (
+        {byOwner.map(({ owner, slot, eligible, draftedGone, notDrafted, na }) => (
           <div className="col-6 col-md-4 col-xl-3" key={owner}>
             <div className="card">
               <div
@@ -203,6 +203,7 @@ export default function KeepersPage() {
                   padding: "7px 6px",
                 }}
               >
+                <span style={{ opacity: 0.65, fontWeight: 600, marginRight: 6 }}>#{slot}</span>
                 {owner}
               </div>
               <div className="card-body">
@@ -223,7 +224,7 @@ export default function KeepersPage() {
                       style={{
                         fontWeight: 700,
                         color: "#013369",
-                        fontSize: 12,
+                        fontSize: 15,
                         whiteSpace: "nowrap",
                       }}
                     >
@@ -233,7 +234,7 @@ export default function KeepersPage() {
                           <span style={{ color: "#b02a37" }}>→{p.cost}</span>
                         </>
                       ) : (
-                        <>Rd {p.round}</>
+                        <>{p.round}</>
                       )}
                     </span>
                   </div>
