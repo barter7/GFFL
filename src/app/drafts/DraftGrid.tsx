@@ -167,6 +167,7 @@ export default function DraftGrid({ drafts, starters, season, posFilter = null }
                 const highlighted =
                   posFilter !== null && matchesPos(p.pos, posFilter);
                 const dimmed = posFilter !== null && !highlighted;
+                const keeper = p.is_keeper === true;
                 return (
                   <td
                     key={o}
@@ -174,7 +175,13 @@ export default function DraftGrid({ drafts, starters, season, posFilter = null }
                       padding: "3px 4px",
                       // Highlighted picks get a stronger position tint
                       background: highlighted ? `${bg}88` : `${bg}33`,
-                      border: highlighted ? "2px solid #013369" : "1px solid #ddd",
+                      // Keeper slots get a gold double border, beating the filter border
+                      border: keeper
+                        ? "3px double #b8860b"
+                        : highlighted
+                          ? "2px solid #013369"
+                          : "1px solid #ddd",
+                      boxShadow: keeper ? "inset 0 0 6px rgba(184,134,11,0.35)" : undefined,
                       fontSize: 10,
                       textAlign: "center",
                       verticalAlign: "top",
@@ -182,6 +189,18 @@ export default function DraftGrid({ drafts, starters, season, posFilter = null }
                       transition: "opacity 0.15s",
                     }}
                   >
+                    {keeper && (
+                      <div
+                        style={{
+                          fontSize: 7.5,
+                          fontWeight: "bold",
+                          letterSpacing: 1.5,
+                          color: "#8a6508",
+                        }}
+                      >
+                        ★ KEEPER
+                      </div>
+                    )}
                     <div
                       style={{
                         fontWeight: "bold",
@@ -212,6 +231,21 @@ export default function DraftGrid({ drafts, starters, season, posFilter = null }
           ))}
         </tbody>
       </table>
+      {picks.some((p) => p.is_keeper === true) && (
+        <div style={{ fontSize: 11, color: "#8a6508", marginTop: 6 }}>
+          <span
+            style={{
+              display: "inline-block",
+              width: 14,
+              height: 10,
+              border: "3px double #b8860b",
+              verticalAlign: "middle",
+              marginRight: 5,
+            }}
+          />
+          ★ Keeper — slot used to retain the player from the previous season
+        </div>
+      )}
     </div>
   );
 }
