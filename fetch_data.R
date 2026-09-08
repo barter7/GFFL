@@ -9,6 +9,33 @@
 library(ffscrapr)
 library(dplyr)
 
+# --- ESPN moved: fantasy.espn.com/apis/v3 answers 302 "Redirecting"
+# to every request (probed from a runner, 2026-09-08, with and
+# without cookies), while lm-api-reads.fantasy.espn.com serves the
+# same paths — 401 JSON anonymous, 200 JSON with our cookies. The
+# installed ffscrapr still hard-codes the old host inside its
+# functions, so rewrite it across the package namespace. Scheme-
+# anchored, so an already-correct URL can never be double-patched.
+local({
+  ns <- asNamespace("ffscrapr")
+  patched <- 0L
+  for (nm in ls(ns, all.names = TRUE)) {
+    fn <- get(nm, envir = ns)
+    if (!is.function(fn)) next
+    src <- deparse(body(fn))
+    if (!any(grepl("https://fantasy.espn.com", src, fixed = TRUE))) next
+    src <- gsub("https://fantasy.espn.com",
+                "https://lm-api-reads.fantasy.espn.com", src, fixed = TRUE)
+    body(fn) <- parse(text = paste(src, collapse = "\n"))[[1]]
+    assignInNamespace(nm, fn, ns = "ffscrapr")
+    patched <- patched + 1L
+  }
+  cat("ffscrapr: pointed", patched, "functions at lm-api-reads.fantasy.espn.com\n")
+  if (patched == 0L)
+    cat("ffscrapr: no functions carried the old host — package likely",
+        "fixed upstream; patch is a no-op\n")
+})
+
 # --- Configuration ---
 LEAGUE_ID <- 570237
 # Latest season = year as of 180 days ago, so the new season is only picked up

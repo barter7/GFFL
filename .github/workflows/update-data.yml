@@ -75,10 +75,14 @@ jobs:
           probe "old host, cookies"     "$U_OLD" "espn_s2=$ESPN_S2; SWID=$ESPN_SWID"
           probe "new host, cookies"     "$U_NEW" "espn_s2=$ESPN_S2; SWID=$ESPN_SWID"
 
+      # BRANCH TEST MODE: checkout and push target this branch so the
+      # lm-api-reads patch in fetch_data.R can be proven end to end
+      # without touching main. Restore ref: main (and the plain
+      # `git push origin main` below) when this lands on main.
       - name: Checkout main
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: claude/nfl-model-br1otf
           fetch-depth: 0
 
       - name: Set up R
@@ -134,7 +138,7 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add data src/data
             git commit -m "Daily league data refresh"
-            git push origin main
+            git push origin HEAD:claude/nfl-model-br1otf
           else
             echo "No data changes today."
           fi
