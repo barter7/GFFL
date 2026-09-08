@@ -119,6 +119,51 @@ local({
   }
 })
 
+# ESPN's mTeam stopped shipping location/nickname — a modern league
+# carries a single "name" — and v1.4.8 builds franchise_name by
+# pasting the two now-missing fields, which turned every franchise
+# into "NA NA" across standings, starters and drafts. Wrap the
+# method: when the stock result is degenerate, rebuild names from
+# the raw mTeam name field (falling back to location+nickname for
+# any old season that still carries them). Guarded, so a fixed
+# upstream release makes this a no-op.
+local({
+  ns <- asNamespace("ffscrapr")
+  orig <- get("ff_franchises.espn_conn", envir = ns)
+  fixed <- function(conn) {
+    res <- orig(conn)
+    bad <- is.na(res$franchise_name) |
+      trimws(res$franchise_name) %in% c("NA NA", "NA", "")
+    if (any(bad)) {
+      teams <- tryCatch(
+        ffscrapr::espn_getendpoint(conn, view = "mTeam")$content$teams,
+        error = function(e) NULL)
+      if (length(teams)) {
+        ids <- vapply(teams, function(t) as.integer(t$id), 1L)
+        nms <- vapply(teams, function(t) {
+          n <- t$name
+          if (is.null(n) || !nzchar(trimws(n)))
+            n <- trimws(paste(
+              if (is.null(t$location)) "" else t$location,
+              if (is.null(t$nickname)) "" else t$nickname))
+          if (is.null(n) || !nzchar(trimws(n))) NA_character_ else trimws(n)
+        }, "")
+        hit <- match(res$franchise_id, ids)
+        fill <- bad & !is.na(hit)
+        res$franchise_name[fill] <- nms[hit[fill]]
+      }
+    }
+    res
+  }
+  assignInNamespace("ff_franchises.espn_conn", fixed, ns = "ffscrapr")
+  # S3 dispatch resolves through the methods table, not the namespace
+  # binding — update both or the generic keeps calling the original
+  mt <- get(".__S3MethodsTable__.", envir = ns)
+  if (exists("ff_franchises.espn_conn", envir = mt, inherits = FALSE))
+    assign("ff_franchises.espn_conn", fixed, envir = mt)
+  cat("ffscrapr: franchise names rebuilt from mTeam's single name field\n")
+})
+
 # Warnings surface at the moment they happen, next to the season and
 # call that raised them — "There were 12 warnings" at the end of a CI
 # log identifies nothing.
