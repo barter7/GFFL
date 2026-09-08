@@ -35,16 +35,19 @@ local({
         hit <- TRUE
       }
       fm <- formals(obj)
+      fm_hit <- FALSE
       for (a in names(fm)) {
-        d <- fm[[a]]
-        ds <- paste(deparse(d), collapse = "\n")
-        if (grepl(OLD, ds, fixed = TRUE)) {
-          fm[[a]] <- parse(text = gsub(OLD, NEW, ds, fixed = TRUE))[[1]]
-          hit <- TRUE
-        }
+        # an argument with no default is the "missing" sentinel: it
+        # must never be bound to a variable (evaluating that variable
+        # errors), so deparse it straight off the list and skip blanks
+        ds <- tryCatch(paste(deparse(fm[[a]]), collapse = "\n"),
+                       error = function(e) "")
+        if (!nzchar(ds) || !grepl(OLD, ds, fixed = TRUE)) next
+        fm[[a]] <- parse(text = gsub(OLD, NEW, ds, fixed = TRUE))[[1]]
+        fm_hit <- TRUE
       }
+      if (fm_hit) { formals(obj) <- fm; hit <- TRUE }
       if (hit) {
-        formals(obj) <- fm
         assignInNamespace(nm, obj, ns = "ffscrapr")
         patched <- c(patched, nm)
       }
