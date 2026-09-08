@@ -303,9 +303,14 @@ tryCatch({
 # Fetch full NFL player season stats from nflreadr (not ESPN-dependent)
 cat("\nFetching full NFL player season stats from nflreadr...\n")
 tryCatch({
-  player_stats <- nflreadr::load_player_stats(seasons = SEASONS, stat_type = "offense")
+  # nflreadr refuses seasons beyond its own most_recent_season(), and
+  # early September still reads as last season until week-1 stats
+  # publish — clamp rather than fail the whole fetch over it
+  stat_seasons <- SEASONS[SEASONS <= nflreadr::most_recent_season()]
+  player_stats <- nflreadr::load_player_stats(seasons = stat_seasons, stat_type = "offense")
   saveRDS(player_stats, "data/player_stats.rds")
-  cat("  Saved player stats (", nrow(player_stats), "rows)\n")
+  cat("  Saved player stats (", nrow(player_stats), "rows, seasons",
+      min(stat_seasons), "-", max(stat_seasons), ")\n")
 }, error = function(e) cat("  Could not fetch player stats:", e$message, "\n"))
 
 cat("\nSaved cached data to data/ folder:\n")
