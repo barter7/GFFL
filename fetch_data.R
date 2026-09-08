@@ -85,6 +85,28 @@ local({
         "fixed upstream; patch is a no-op\n")
 })
 
+# .espn_week_checkmax trims the requested weeks to what the API's
+# status block claims — and via lm-api-reads that claim comes up one
+# short on every COMPLETED season, which silently dropped each
+# season's final week of starters (weeks 1-16 fetched where the
+# committed data has 1-17, all other weeks byte-identical). Let the
+# per-week fetch decide instead: a week with no lineups already
+# warns and contributes nothing (season 2026 proves that path), so
+# the shim answers every request with the weeks it was asked about.
+local({
+  ns <- asNamespace("ffscrapr")
+  if (exists(".espn_week_checkmax", envir = ns, inherits = FALSE)) {
+    assignInNamespace(".espn_week_checkmax", function(...) {
+      a <- list(...)
+      num <- Filter(is.numeric, a)
+      if (!length(num)) return(invisible(NULL))
+      # the weeks vector is the longest numeric argument
+      num[[which.max(vapply(num, length, 0L))]]
+    }, ns = "ffscrapr")
+    cat("ffscrapr: .espn_week_checkmax no longer trims requested weeks\n")
+  }
+})
+
 # Warnings surface at the moment they happen, next to the season and
 # call that raised them — "There were 12 warnings" at the end of a CI
 # log identifies nothing.
