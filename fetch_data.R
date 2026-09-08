@@ -20,36 +20,58 @@ local({
   OLD <- "https://fantasy.espn.com"
   NEW <- "https://lm-api-reads.fantasy.espn.com"
   ns <- asNamespace("ffscrapr")
+
+  # Rewrite one function's body AND default arguments (body() does
+  # not cover formals). Returns the patched function, or NULL if it
+  # never mentions the old host.
+  patch_fn <- function(fn) {
+    hit <- FALSE
+    src <- deparse(body(fn))
+    if (any(grepl(OLD, src, fixed = TRUE))) {
+      src <- gsub(OLD, NEW, src, fixed = TRUE)
+      body(fn) <- parse(text = paste(src, collapse = "\n"))[[1]]
+      hit <- TRUE
+    }
+    fm <- formals(fn)
+    fm_hit <- FALSE
+    for (a in names(fm)) {
+      # an argument with no default is the "missing" sentinel: never
+      # bind it to a variable (evaluating that variable errors)
+      ds <- tryCatch(paste(deparse(fm[[a]]), collapse = "\n"),
+                     error = function(e) "")
+      if (!nzchar(ds) || !grepl(OLD, ds, fixed = TRUE)) next
+      fm[[a]] <- parse(text = gsub(OLD, NEW, ds, fixed = TRUE))[[1]]
+      fm_hit <- TRUE
+    }
+    if (fm_hit) { formals(fn) <- fm; hit <- TRUE }
+    if (hit) fn else NULL
+  }
+
   patched <- character(0)
   for (nm in ls(ns, all.names = TRUE)) {
     obj <- get(nm, envir = ns)
     if (is.function(obj)) {
-      hit <- FALSE
-      # the URL can live in the body OR in a default argument —
-      # body() does not cover formals, and the drafts endpoint was
-      # the one call still on the old host after a body-only pass
-      src <- deparse(body(obj))
-      if (any(grepl(OLD, src, fixed = TRUE))) {
-        src <- gsub(OLD, NEW, src, fixed = TRUE)
-        body(obj) <- parse(text = paste(src, collapse = "\n"))[[1]]
-        hit <- TRUE
-      }
-      fm <- formals(obj)
-      fm_hit <- FALSE
-      for (a in names(fm)) {
-        # an argument with no default is the "missing" sentinel: it
-        # must never be bound to a variable (evaluating that variable
-        # errors), so deparse it straight off the list and skip blanks
-        ds <- tryCatch(paste(deparse(fm[[a]]), collapse = "\n"),
-                       error = function(e) "")
-        if (!nzchar(ds) || !grepl(OLD, ds, fixed = TRUE)) next
-        fm[[a]] <- parse(text = gsub(OLD, NEW, ds, fixed = TRUE))[[1]]
-        fm_hit <- TRUE
-      }
-      if (fm_hit) { formals(obj) <- fm; hit <- TRUE }
-      if (hit) {
-        assignInNamespace(nm, obj, ns = "ffscrapr")
+      p <- patch_fn(obj)
+      if (!is.null(p)) {
+        assignInNamespace(nm, p, ns = "ffscrapr")
         patched <- c(patched, nm)
+      }
+      # MEMOISED functions (espn_players — the players_wl call that
+      # kept ff_draft empty) are cache wrappers: the real function
+      # with the URL lives in the wrapper's closure environment, so
+      # patch functions found there in place.
+      e <- environment(obj)
+      if (!is.null(e) && !identical(e, ns) &&
+          !identical(e, globalenv()) && !identical(e, baseenv())) {
+        for (inm in ls(e, all.names = TRUE)) {
+          io <- tryCatch(get(inm, envir = e), error = function(err) NULL)
+          if (!is.function(io)) next
+          ip <- patch_fn(io)
+          if (!is.null(ip)) {
+            assign(inm, ip, envir = e)
+            patched <- c(patched, paste0(nm, "<closure>", inm))
+          }
+        }
       }
     } else if (is.character(obj) && any(grepl(OLD, obj, fixed = TRUE))) {
       assignInNamespace(nm, gsub(OLD, NEW, obj, fixed = TRUE), ns = "ffscrapr")
