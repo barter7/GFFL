@@ -96,27 +96,26 @@ local({
 local({
   ns <- asNamespace("ffscrapr")
   if (exists(".espn_week_checkmax", envir = ns, inherits = FALSE)) {
-    # Signature per ffscrapr source (R/espn_starters.R): ONE argument,
-    # the mSettings response, returning a scalar max week as
-    # min(status$latestScoringPeriod, status$finalScoringPeriod).
-    # Via lm-api-reads, latestScoringPeriod reads one week short on
-    # COMPLETED seasons, so that min() dropped every season's final
-    # week of starters. A finished season's lineups run to its FINAL
-    # week, so answer finalScoringPeriod for past seasons and keep
-    # the original behaviour for the season in progress (where
-    # latestScoringPeriod is the honest cap — the converter already
-    # drops in-progress weeks itself).
-    assignInNamespace(".espn_week_checkmax", function(settings) {
-      cur <- purrr::pluck(settings, "content", "status", "latestScoringPeriod")
-      fin <- purrr::pluck(settings, "content", "status", "finalScoringPeriod")
-      season <- purrr::pluck(settings, "content", "seasonId")
-      this_year <- as.integer(format(Sys.Date(), "%Y"))
-      if (!is.null(fin) && !is.null(season) && season < this_year)
-        return(fin)
-      min(cur, fin, na.rm = TRUE)
+    # v1.4.8 (installed): .espn_week_checkmax(conn) fetches mSettings
+    # itself and returns min(latestScoringPeriod, finalScoringPeriod);
+    # ff_starters then keeps `weeks[weeks < max_week]` — STRICTLY
+    # less, an upstream off-by-one that always drops a completed
+    # season's final week (master later fixed it with <=). Wrap the
+    # original (whose URL the rewrite above already moved to
+    # lm-api-reads): a past season answers one higher so its final
+    # week survives the strict filter; the in-progress season keeps
+    # the strict cap on its current, incomplete week.
+    orig <- get(".espn_week_checkmax", envir = ns)
+    assignInNamespace(".espn_week_checkmax", function(conn) {
+      mx <- orig(conn)
+      if (is.numeric(mx) && length(mx) == 1L && is.finite(mx) &&
+          !is.null(conn$season) &&
+          as.integer(conn$season) < as.integer(format(Sys.Date(), "%Y")))
+        return(mx + 1L)
+      mx
     }, ns = "ffscrapr")
-    cat("ffscrapr: .espn_week_checkmax runs completed seasons to",
-        "their final week\n")
+    cat("ffscrapr: completed seasons keep their final week",
+        "(v1.4.8 strict-< off-by-one)\n")
   }
 })
 
