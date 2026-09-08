@@ -96,14 +96,27 @@ local({
 local({
   ns <- asNamespace("ffscrapr")
   if (exists(".espn_week_checkmax", envir = ns, inherits = FALSE)) {
-    assignInNamespace(".espn_week_checkmax", function(...) {
-      a <- list(...)
-      num <- Filter(is.numeric, a)
-      if (!length(num)) return(invisible(NULL))
-      # the weeks vector is the longest numeric argument
-      num[[which.max(vapply(num, length, 0L))]]
+    # Signature per ffscrapr source (R/espn_starters.R): ONE argument,
+    # the mSettings response, returning a scalar max week as
+    # min(status$latestScoringPeriod, status$finalScoringPeriod).
+    # Via lm-api-reads, latestScoringPeriod reads one week short on
+    # COMPLETED seasons, so that min() dropped every season's final
+    # week of starters. A finished season's lineups run to its FINAL
+    # week, so answer finalScoringPeriod for past seasons and keep
+    # the original behaviour for the season in progress (where
+    # latestScoringPeriod is the honest cap — the converter already
+    # drops in-progress weeks itself).
+    assignInNamespace(".espn_week_checkmax", function(settings) {
+      cur <- purrr::pluck(settings, "content", "status", "latestScoringPeriod")
+      fin <- purrr::pluck(settings, "content", "status", "finalScoringPeriod")
+      season <- purrr::pluck(settings, "content", "seasonId")
+      this_year <- as.integer(format(Sys.Date(), "%Y"))
+      if (!is.null(fin) && !is.null(season) && season < this_year)
+        return(fin)
+      min(cur, fin, na.rm = TRUE)
     }, ns = "ffscrapr")
-    cat("ffscrapr: .espn_week_checkmax no longer trims requested weeks\n")
+    cat("ffscrapr: .espn_week_checkmax runs completed seasons to",
+        "their final week\n")
   }
 })
 
