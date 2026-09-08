@@ -9,6 +9,121 @@
 library(ffscrapr)
 library(dplyr)
 
+# --- ESPN moved: fantasy.espn.com/apis/v3 answers 302 "Redirecting"
+# to every request (probed from a runner, 2026-09-08, with and
+# without cookies), while lm-api-reads.fantasy.espn.com serves the
+# same paths — 401 JSON anonymous, 200 JSON with our cookies. The
+# installed ffscrapr still hard-codes the old host inside its
+# functions, so rewrite it across the package namespace. Scheme-
+# anchored, so an already-correct URL can never be double-patched.
+local({
+  OLD <- "https://fantasy.espn.com"
+  NEW <- "https://lm-api-reads.fantasy.espn.com"
+  ns <- asNamespace("ffscrapr")
+
+  # Rewrite one function's body AND default arguments (body() does
+  # not cover formals). Returns the patched function, or NULL if it
+  # never mentions the old host.
+  patch_fn <- function(fn) {
+    hit <- FALSE
+    src <- deparse(body(fn))
+    if (any(grepl(OLD, src, fixed = TRUE))) {
+      src <- gsub(OLD, NEW, src, fixed = TRUE)
+      body(fn) <- parse(text = paste(src, collapse = "\n"))[[1]]
+      hit <- TRUE
+    }
+    fm <- formals(fn)
+    fm_hit <- FALSE
+    for (a in names(fm)) {
+      # an argument with no default is the "missing" sentinel: never
+      # bind it to a variable (evaluating that variable errors)
+      ds <- tryCatch(paste(deparse(fm[[a]]), collapse = "\n"),
+                     error = function(e) "")
+      if (!nzchar(ds) || !grepl(OLD, ds, fixed = TRUE)) next
+      fm[[a]] <- parse(text = gsub(OLD, NEW, ds, fixed = TRUE))[[1]]
+      fm_hit <- TRUE
+    }
+    if (fm_hit) { formals(fn) <- fm; hit <- TRUE }
+    if (hit) fn else NULL
+  }
+
+  patched <- character(0)
+  for (nm in ls(ns, all.names = TRUE)) {
+    obj <- get(nm, envir = ns)
+    if (is.function(obj)) {
+      p <- patch_fn(obj)
+      if (!is.null(p)) {
+        assignInNamespace(nm, p, ns = "ffscrapr")
+        patched <- c(patched, nm)
+      }
+      # MEMOISED functions (espn_players — the players_wl call that
+      # kept ff_draft empty) are cache wrappers: the real function
+      # with the URL lives in the wrapper's closure environment, so
+      # patch functions found there in place.
+      e <- environment(obj)
+      if (!is.null(e) && !identical(e, ns) &&
+          !identical(e, globalenv()) && !identical(e, baseenv())) {
+        for (inm in ls(e, all.names = TRUE)) {
+          io <- tryCatch(get(inm, envir = e), error = function(err) NULL)
+          if (!is.function(io)) next
+          ip <- patch_fn(io)
+          if (!is.null(ip)) {
+            assign(inm, ip, envir = e)
+            patched <- c(patched, paste0(nm, "<closure>", inm))
+          }
+        }
+      }
+    } else if (is.character(obj) && any(grepl(OLD, obj, fixed = TRUE))) {
+      assignInNamespace(nm, gsub(OLD, NEW, obj, fixed = TRUE), ns = "ffscrapr")
+      patched <- c(patched, nm)
+    }
+  }
+  cat("ffscrapr: pointed", length(patched), "objects at lm-api-reads:",
+      paste(patched, collapse = ", "), "\n")
+  if (!length(patched))
+    cat("ffscrapr: nothing carried the old host — package likely",
+        "fixed upstream; patch is a no-op\n")
+})
+
+# .espn_week_checkmax trims the requested weeks to what the API's
+# status block claims — and via lm-api-reads that claim comes up one
+# short on every COMPLETED season, which silently dropped each
+# season's final week of starters (weeks 1-16 fetched where the
+# committed data has 1-17, all other weeks byte-identical). Let the
+# per-week fetch decide instead: a week with no lineups already
+# warns and contributes nothing (season 2026 proves that path), so
+# the shim answers every request with the weeks it was asked about.
+local({
+  ns <- asNamespace("ffscrapr")
+  if (exists(".espn_week_checkmax", envir = ns, inherits = FALSE)) {
+    # v1.4.8 (installed): .espn_week_checkmax(conn) fetches mSettings
+    # itself and returns min(latestScoringPeriod, finalScoringPeriod);
+    # ff_starters then keeps `weeks[weeks < max_week]` — STRICTLY
+    # less, an upstream off-by-one that always drops a completed
+    # season's final week (master later fixed it with <=). Wrap the
+    # original (whose URL the rewrite above already moved to
+    # lm-api-reads): a past season answers one higher so its final
+    # week survives the strict filter; the in-progress season keeps
+    # the strict cap on its current, incomplete week.
+    orig <- get(".espn_week_checkmax", envir = ns)
+    assignInNamespace(".espn_week_checkmax", function(conn) {
+      mx <- orig(conn)
+      if (is.numeric(mx) && length(mx) == 1L && is.finite(mx) &&
+          !is.null(conn$season) &&
+          as.integer(conn$season) < as.integer(format(Sys.Date(), "%Y")))
+        return(mx + 1L)
+      mx
+    }, ns = "ffscrapr")
+    cat("ffscrapr: completed seasons keep their final week",
+        "(v1.4.8 strict-< off-by-one)\n")
+  }
+})
+
+# Warnings surface at the moment they happen, next to the season and
+# call that raised them — "There were 12 warnings" at the end of a CI
+# log identifies nothing.
+options(warn = 1)
+
 # --- Configuration ---
 LEAGUE_ID <- 570237
 # Latest season = year as of 180 days ago, so the new season is only picked up
@@ -72,6 +187,15 @@ for (s in SEASONS) {
     }
 
     cat("OK\n")
+    # One line per season saying which weeks actually arrived — this
+    # is what identified the dropped-final-week bug, and it makes the
+    # next silent shrink identifiable from the log alone.
+    if (!is.null(starters) && nrow(starters) > 0 && "week" %in% names(starters)) {
+      wk <- table(starters$week)
+      cat("    starters weeks: ",
+          paste(sprintf("%s=%d", names(wk), as.integer(wk)), collapse = " "),
+          "\n", sep = "")
+    }
   }, error = function(e) {
     cat("ERROR:", e$message, "\n")
   })
