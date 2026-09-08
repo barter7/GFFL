@@ -187,9 +187,9 @@ for (s in SEASONS) {
     }
 
     cat("OK\n")
-    # TEMPORARY DIAGNOSTIC: the lm-api-reads move shrank starters by
-    # ~one week per season vs the committed JSON — name the weeks so
-    # the missing one is identifiable, then remove this.
+    # One line per season saying which weeks actually arrived — this
+    # is what identified the dropped-final-week bug, and it makes the
+    # next silent shrink identifiable from the log alone.
     if (!is.null(starters) && nrow(starters) > 0 && "week" %in% names(starters)) {
       wk <- table(starters$week)
       cat("    starters weeks: ",
