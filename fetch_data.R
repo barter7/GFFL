@@ -153,6 +153,15 @@ for (s in SEASONS) {
     }
 
     cat("OK\n")
+    # TEMPORARY DIAGNOSTIC: the lm-api-reads move shrank starters by
+    # ~one week per season vs the committed JSON — name the weeks so
+    # the missing one is identifiable, then remove this.
+    if (!is.null(starters) && nrow(starters) > 0 && "week" %in% names(starters)) {
+      wk <- table(starters$week)
+      cat("    starters weeks: ",
+          paste(sprintf("%s=%d", names(wk), as.integer(wk)), collapse = " "),
+          "\n", sep = "")
+    }
   }, error = function(e) {
     cat("ERROR:", e$message, "\n")
   })
