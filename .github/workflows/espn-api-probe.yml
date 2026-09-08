@@ -1,0 +1,51 @@
+# Probe ESPN's fantasy v3 API from a runner, to separate "the API
+# host moved" from "the cookies are wrong" when update-data fails
+# with "did not return json".
+#
+# Prints status codes, content types, response shape (JSON or not)
+# and secret LENGTHS only — never cookie values, never bodies beyond
+# ESPN's own unauthenticated error text.
+
+name: Probe ESPN API
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe both hosts, with and without cookies
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+        run: |
+          probe () {  # $1 label, $2 url, $3 cookie ("" for none)
+            if [ -n "$3" ]; then
+              code=$(curl -sS -o body.out -w '%{http_code} %{content_type}' \
+                     --max-time 30 -H "Cookie: $3" "$2" || echo "curl-failed")
+            else
+              code=$(curl -sS -o body.out -w '%{http_code} %{content_type}' \
+                     --max-time 30 "$2" || echo "curl-failed")
+            fi
+            first=$(head -c 1 body.out)
+            shape="NOT-JSON"
+            [ "$first" = "{" ] || [ "$first" = "[" ] && shape="JSON"
+            echo "[$1] $code  shape=$shape  bytes=$(wc -c < body.out)"
+            if [ "$shape" = "NOT-JSON" ] && [ -z "$3" ]; then
+              echo "  first 200 bytes (unauthenticated response only):"
+              head -c 200 body.out | tr -d '\0'; echo
+            fi
+          }
+          U_OLD="https://fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/570237?view=mSettings"
+          U_NEW="https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/570237?view=mSettings"
+          echo "secret lengths: ESPN_S2=${#ESPN_S2} ESPN_SWID=${#ESPN_SWID}"
+          case "$ESPN_SWID" in
+            {*}) echo "SWID braces: present" ;;
+            *)   echo "SWID braces: MISSING (ESPN wants {GUID})" ;;
+          esac
+          probe "old host, no cookies"  "$U_OLD" ""
+          probe "new host, no cookies"  "$U_NEW" ""
+          probe "old host, cookies"     "$U_OLD" "espn_s2=$ESPN_S2; SWID=$ESPN_SWID"
+          probe "new host, cookies"     "$U_NEW" "espn_s2=$ESPN_S2; SWID=$ESPN_SWID"
