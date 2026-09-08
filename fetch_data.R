@@ -17,24 +17,53 @@ library(dplyr)
 # functions, so rewrite it across the package namespace. Scheme-
 # anchored, so an already-correct URL can never be double-patched.
 local({
+  OLD <- "https://fantasy.espn.com"
+  NEW <- "https://lm-api-reads.fantasy.espn.com"
   ns <- asNamespace("ffscrapr")
-  patched <- 0L
+  patched <- character(0)
   for (nm in ls(ns, all.names = TRUE)) {
-    fn <- get(nm, envir = ns)
-    if (!is.function(fn)) next
-    src <- deparse(body(fn))
-    if (!any(grepl("https://fantasy.espn.com", src, fixed = TRUE))) next
-    src <- gsub("https://fantasy.espn.com",
-                "https://lm-api-reads.fantasy.espn.com", src, fixed = TRUE)
-    body(fn) <- parse(text = paste(src, collapse = "\n"))[[1]]
-    assignInNamespace(nm, fn, ns = "ffscrapr")
-    patched <- patched + 1L
+    obj <- get(nm, envir = ns)
+    if (is.function(obj)) {
+      hit <- FALSE
+      # the URL can live in the body OR in a default argument —
+      # body() does not cover formals, and the drafts endpoint was
+      # the one call still on the old host after a body-only pass
+      src <- deparse(body(obj))
+      if (any(grepl(OLD, src, fixed = TRUE))) {
+        src <- gsub(OLD, NEW, src, fixed = TRUE)
+        body(obj) <- parse(text = paste(src, collapse = "\n"))[[1]]
+        hit <- TRUE
+      }
+      fm <- formals(obj)
+      for (a in names(fm)) {
+        d <- fm[[a]]
+        ds <- paste(deparse(d), collapse = "\n")
+        if (grepl(OLD, ds, fixed = TRUE)) {
+          fm[[a]] <- parse(text = gsub(OLD, NEW, ds, fixed = TRUE))[[1]]
+          hit <- TRUE
+        }
+      }
+      if (hit) {
+        formals(obj) <- fm
+        assignInNamespace(nm, obj, ns = "ffscrapr")
+        patched <- c(patched, nm)
+      }
+    } else if (is.character(obj) && any(grepl(OLD, obj, fixed = TRUE))) {
+      assignInNamespace(nm, gsub(OLD, NEW, obj, fixed = TRUE), ns = "ffscrapr")
+      patched <- c(patched, nm)
+    }
   }
-  cat("ffscrapr: pointed", patched, "functions at lm-api-reads.fantasy.espn.com\n")
-  if (patched == 0L)
-    cat("ffscrapr: no functions carried the old host — package likely",
+  cat("ffscrapr: pointed", length(patched), "objects at lm-api-reads:",
+      paste(patched, collapse = ", "), "\n")
+  if (!length(patched))
+    cat("ffscrapr: nothing carried the old host — package likely",
         "fixed upstream; patch is a no-op\n")
 })
+
+# Warnings surface at the moment they happen, next to the season and
+# call that raised them — "There were 12 warnings" at the end of a CI
+# log identifies nothing.
+options(warn = 1)
 
 # --- Configuration ---
 LEAGUE_ID <- 570237
