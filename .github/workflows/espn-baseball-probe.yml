@@ -1,0 +1,41 @@
+# One-shot probe: do the repo's ESPN_S2 / ESPN_SWID cookies (added
+# for the football league) also read the owner's FANTASY BASEBALL
+# league (flb 5846, season 2026)? The cookies are account-level,
+# so they should. Prints HTTP statuses and league metadata only —
+# never the cookie values.
+name: ESPN baseball probe
+on: workflow_dispatch
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe flb league 5846
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+        run: |
+          set -e
+          if [ -z "$ESPN_S2" ] || [ -z "$ESPN_SWID" ]; then
+            echo "::error::ESPN_S2 / ESPN_SWID secrets not set"
+            exit 1
+          fi
+          code=000
+          for host in "https://lm-api-reads.fantasy.espn.com" \
+                      "https://fantasy.espn.com"; do
+            u="$host/apis/v3/games/flb/seasons/2026/segments/0/leagues/5846?view=mSettings&view=mTeam"
+            code=$(curl -s -o body.json -w "%{http_code}" \
+              -H "Accept: application/json" \
+              -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" \
+              --cookie "espn_s2=${ESPN_S2}; SWID=${ESPN_SWID}" "$u")
+            echo "$host -> HTTP $code"
+            [ "$code" = "200" ] && break
+          done
+          if [ "$code" != "200" ]; then
+            echo "::error::no host returned 200 (cookies expired, or account not in league 5846)"
+            head -c 300 body.json; echo
+            exit 1
+          fi
+          jq -r '"league: \(.settings.name // "?") | teams: \(.teams | length) | season: \(.seasonId // "?")"' body.json
+          jq -r '.teams[] | "  team \(.id): \(.name // ((.location // "") + " " + (.nickname // "")))"' body.json
+          jq -r '.teams[] | select(.id == 6) | "team 6 record: \(.record.overall.wins // "?")-\(.record.overall.losses // "?")"' body.json
