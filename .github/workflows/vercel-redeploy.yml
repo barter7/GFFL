@@ -1,5 +1,7 @@
 # Ask Vercel to deploy the head of main to production — from a
 # runner, because the assistant's sandbox cannot reach api.vercel.com.
+# (GFFL copy of the props site's workflow; matches the project linked
+# to this repo.)
 # Dispatch-only. The lever for when the daily deployment budget was
 # exhausted and Vercel silently skipped a push: once the rolling
 # window frees up, this retries without needing another commit. The
@@ -40,7 +42,7 @@ jobs:
               q = f"?teamId={tid}" if tid else ""
               try:
                   for p in api("/v9/projects" + q).get("projects", []):
-                      if (p.get("link") or {}).get("repo") == "fantasy_football":
+                      if ((p.get("link") or {}).get("repo") or "").lower() == "gffl":
                           target = (tid, p)
                           break
               except Exception:
