@@ -35,20 +35,20 @@ const card = (banner, title, sub) => {
       type: "div",
       props: {
         style: { width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between",
-          padding: "56px 72px", background: "radial-gradient(circle at 50% 45%, #1a1a2e 0%, #000008 100%)", color: "#ffffff", fontFamily: "sans-serif" },
+          padding: "56px 72px", background: "#013369", color: "#ffffff", fontFamily: "sans-serif" },
         children: [
           { type: "div", props: { style: { display: "flex", alignItems: "center", gap: 22 }, children: [
-            { type: "div", props: { style: { display: "flex", alignItems: "center", gap: 14, background: "#dc2626", color: "#ffffff", fontSize: 34, fontWeight: 800, letterSpacing: 2, padding: "10px 26px", borderRadius: 999 },
+            { type: "div", props: { style: { display: "flex", alignItems: "center", gap: 14, background: "#D50A0A", color: "#ffffff", fontSize: 34, fontWeight: 800, letterSpacing: 2, padding: "10px 26px", borderRadius: 999 },
               children: [{ type: "div", props: { style: { width: 18, height: 18, borderRadius: 999, background: "#ffffff" } } }, "LIVE"] } },
             { type: "div", props: { style: { display: "flex", fontSize: 40, fontWeight: 800, letterSpacing: 3, color: "#d4af37" }, children: banner } },
           ] } },
           { type: "div", props: { style: { display: "flex", flexDirection: "column", gap: 18 }, children: [
             { type: "div", props: { style: { display: "flex", fontSize: titleSize, fontWeight: 800, lineHeight: 1.1, maxWidth: 1056 }, children: title } },
-            { type: "div", props: { style: { display: "flex", fontSize: 34, fontWeight: 600, color: "#c9c9d6" }, children: sub } },
+            { type: "div", props: { style: { display: "flex", fontSize: 34, fontWeight: 600, color: "#dbe4f3" }, children: sub } },
           ] } },
           { type: "div", props: { style: { display: "flex", flexDirection: "column", gap: 14 }, children: [
             { type: "div", props: { style: { display: "flex", height: 4, width: 1056, background: "linear-gradient(90deg, #d4af37 0%, #f5e08a 50%, #d4af37 100%)" } } },
-            { type: "div", props: { style: { display: "flex", fontSize: 30, fontWeight: 700, letterSpacing: 4, color: "#d4af37" }, children: "GROUPIES FANTASY FOOTBALL LEAGUE · EST. 2016" } },
+            { type: "div", props: { style: { display: "flex", fontSize: 30, fontWeight: 700, letterSpacing: 4, color: "#d4af37" }, children: "GROUPIES FANTASY FOOTBALL LEAGUE" } },
           ] } },
         ],
       },
@@ -70,7 +70,7 @@ for (const r of recaps) {
 if (recaps[0]) {
   const r = recaps[0];
   try {
-    const png = Buffer.from(await card(`WEEK ${r.week} RECAP IS LIVE`, r.title, `${r.season} · Week ${r.week} · the newest column`).arrayBuffer());
+    const png = Buffer.from(await card(`WEEK ${r.week} RECAP IS LIVE`, r.title, `${r.season} · Week ${r.week}`).arrayBuffer());
     fs.writeFileSync(path.join(OUT, "latest.png"), png);
   } catch (e) {
     console.error(`[og] latest: ${e.message}`);
