@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Card from "@/components/Card";
 import RecapBody from "@/components/RecapBody";
-import { getRecap, listRecaps } from "@/lib/recaps";
+import { cardUrl, getRecap, listRecaps } from "@/lib/recaps";
 
 export function generateStaticParams() {
   return listRecaps().map((r) => ({ slug: r.slug }));
@@ -19,7 +19,7 @@ export async function generateMetadata({
   // the link-preview card: a real .png under public/og/recaps/, rendered
   // by scripts/og_recaps.mjs before every build (metadataBase makes the
   // URL absolute, which iMessage requires)
-  const image = { url: `/og/recaps/${recap.slug}.png`, width: 1200, height: 630, alt: `GFFL Recap — ${recap.title}` };
+  const image = { url: cardUrl(recap.slug), width: 1200, height: 630, alt: `GFFL Recap — ${recap.title}` };
   const description = `Week ${recap.week} of the ${recap.season} GFFL season, recapped.`;
   return {
     title: recap.title,

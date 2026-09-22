@@ -57,6 +57,11 @@ const card = (banner, title, sub) => {
   );
 };
 
+// Never fail a build over a card: the .png files are committed, so a
+// render error here means the previous card ships, not no site.
+process.on("uncaughtException", (e) => { console.error(`[og] ${e.message}`); process.exit(0); });
+process.on("unhandledRejection", (e) => { console.error(`[og] ${e?.message ?? e}`); process.exit(0); });
+
 let n = 0;
 for (const r of recaps) {
   try {

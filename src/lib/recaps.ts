@@ -2,7 +2,8 @@
 // src/data/recaps/, named <season>-week-<NN>.md, each opening with
 // a small front matter block (title / season / week / date).
 
-import { readFileSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 export interface Recap {
@@ -56,4 +57,14 @@ export function listRecaps(): Recap[] {
 export function getRecap(slug: string): Recap | null {
   // slugs come from route params; only allow known files
   return listRecaps().find((r) => r.slug === slug) ?? null;
+}
+
+/** the share card's URL for a recap (or "latest" for the index), with a
+ *  content hash so a regenerated card is a new URL to every cache -
+ *  iMessage, Vercel's CDN and browsers all key on the URL */
+export function cardUrl(name: string): string {
+  const f = path.join(process.cwd(), "public", "og", "recaps", `${name}.png`);
+  if (!existsSync(f)) return `/og/recaps/${name}.png`;
+  const h = createHash("sha1").update(readFileSync(f)).digest("hex").slice(0, 10);
+  return `/og/recaps/${name}.png?v=${h}`;
 }
