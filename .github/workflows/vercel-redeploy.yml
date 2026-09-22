@@ -1,0 +1,93 @@
+# Ask Vercel to deploy the head of main to production — from a
+# runner, because the assistant's sandbox cannot reach api.vercel.com.
+# (GFFL copy of the props site's workflow; matches the project linked
+# to this repo.)
+# Dispatch-only. The lever for when the daily deployment budget was
+# exhausted and Vercel silently skipped a push: once the rolling
+# window frees up, this retries without needing another commit. The
+# token never appears in output.
+name: Vercel redeploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Create a production deployment of main
+        env:
+          VT: ${{ secrets.VERCEL_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.error
+
+          TOK = os.environ["VT"]
+          SHA = os.environ["SHA"]
+
+          def api(path, payload=None):
+              req = urllib.request.Request(
+                  "https://api.vercel.com" + path,
+                  data=json.dumps(payload).encode() if payload else None,
+                  headers={"Authorization": "Bearer " + TOK,
+                           "Content-Type": "application/json"})
+              with urllib.request.urlopen(req, timeout=60) as r:
+                  return json.load(r)
+
+          teams = [None] + [t["id"] for t in api("/v2/teams").get("teams", [])]
+          target = None
+          for tid in teams:
+              q = f"?teamId={tid}" if tid else ""
+              try:
+                  for p in api("/v9/projects" + q).get("projects", []):
+                      if ((p.get("link") or {}).get("repo") or "").lower() == "gffl":
+                          target = (tid, p)
+                          break
+              except Exception:
+                  pass
+              if target:
+                  break
+          if not target:
+              raise SystemExit("project not found")
+
+          tid, p = target
+          q = f"?teamId={tid}" if tid else ""
+          repo_id = (p.get("link") or {}).get("repoId")
+
+          # BUILD WITHOUT THE CACHE. On 8/25 the build cache went
+          # stale-sticky: new commits went READY while their bundles
+          # still carried the previous generation's chunks. This env
+          # var is Vercel's documented lever for a cache-less build;
+          # upsert=true makes re-running this workflow idempotent.
+          try:
+              api(f"/v10/projects/{p['id']}/env?upsert=true" +
+                  (f"&teamId={tid}" if tid else ""),
+                  {"key": "VERCEL_FORCE_NO_BUILD_CACHE", "value": "1",
+                   "type": "plain", "target": ["production", "preview"]})
+              print("build cache disabled for this project's builds")
+          except urllib.error.HTTPError as e:
+              print("env upsert failed:", e.code,
+                    e.read().decode("utf-8", "ignore")[:200])
+
+          payload = {
+              "name": p["name"],
+              "target": "production",
+              "gitSource": {
+                  "type": "github",
+                  "repoId": repo_id,
+                  "ref": "main",
+                  "sha": SHA,
+              },
+          }
+          try:
+              d = api("/v13/deployments" + q, payload)
+              print("created:", d.get("id"), d.get("readyState"),
+                    "sha", SHA[:7])
+              print("url hidden; check the diagnostics workflow for state")
+          except urllib.error.HTTPError as e:
+              body = e.read().decode("utf-8", "ignore")[:400]
+              print("FAILED", e.code, body)
+              raise SystemExit(1)
+          PY
