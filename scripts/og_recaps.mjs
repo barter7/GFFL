@@ -10,9 +10,24 @@
 // hand: node scripts/og_recaps.mjs
 import fs from "node:fs";
 import path from "node:path";
-import { ImageResponse } from "next/og.js";
+import { fileURLToPath } from "node:url";
 
-const ROOT = path.join(import.meta.dirname, "..");
+// Never fail a build over a card: the .png files are committed, so any
+// error here means the previous card ships, not no site. (The first
+// version used import.meta.dirname, which older Node runtimes on the
+// build host do not have; that threw before any handler was installed
+// and failed every deployment for an afternoon.)
+process.on("uncaughtException", (e) => { console.error(`[og] ${e.message}`); process.exit(0); });
+process.on("unhandledRejection", (e) => { console.error(`[og] ${e?.message ?? e}`); process.exit(0); });
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+let ImageResponse;
+try {
+  ({ ImageResponse } = await import("next/og.js"));
+} catch (e) {
+  console.error(`[og] next/og unavailable (${e.message}); keeping the committed cards`);
+  process.exit(0);
+}
 const SRC = path.join(ROOT, "src", "data", "recaps");
 const OUT = path.join(ROOT, "public", "og", "recaps");
 fs.mkdirSync(OUT, { recursive: true });
@@ -56,11 +71,6 @@ const card = (banner, title, sub) => {
     { width: 1200, height: 630 },
   );
 };
-
-// Never fail a build over a card: the .png files are committed, so a
-// render error here means the previous card ships, not no site.
-process.on("uncaughtException", (e) => { console.error(`[og] ${e.message}`); process.exit(0); });
-process.on("unhandledRejection", (e) => { console.error(`[og] ${e?.message ?? e}`); process.exit(0); });
 
 let n = 0;
 for (const r of recaps) {
