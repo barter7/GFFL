@@ -7,7 +7,11 @@
 // hosting can serve with a generic content type that iMessage and other
 // link scrapers reject. A .png under public/ has no such ambiguity.
 // Runs before every build (package.json "prebuild") and can be run by
-// hand: node scripts/og_recaps.mjs
+// hand: node src/og/render-cards.mjs
+//
+// Lives under src/ (not scripts/) on purpose: .vercelignore excludes
+// /scripts/ from the deployment upload, and a prebuild pointing there
+// failed every build with 'cannot find module'.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "prebuild": "node scripts/og_recaps.mjs"
+    "prebuild": "node src/og/render-cards.mjs || true"
   },
   "repository": {
     "type": "git",
