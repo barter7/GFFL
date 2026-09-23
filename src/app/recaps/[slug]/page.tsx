@@ -17,7 +17,7 @@ export async function generateMetadata({
   const recap = getRecap(slug);
   if (!recap) return { title: "Recap" };
   // the link-preview card: a real .png under public/og/recaps/, rendered
-  // by scripts/og_recaps.mjs before every build (metadataBase makes the
+  // by src/og/render-cards.mjs before every build (metadataBase makes the
   // URL absolute, which iMessage requires)
   const image = { url: cardUrl(recap.slug), width: 1200, height: 630, alt: `GFFL Recap — ${recap.title}` };
   const description = `Week ${recap.week} of the ${recap.season} GFFL season, recapped.`;
