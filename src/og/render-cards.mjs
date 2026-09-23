@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 process.on("uncaughtException", (e) => { console.error(`[og] ${e.message}`); process.exit(0); });
 process.on("unhandledRejection", (e) => { console.error(`[og] ${e?.message ?? e}`); process.exit(0); });
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 let ImageResponse;
 try {
   ({ ImageResponse } = await import("next/og.js"));
