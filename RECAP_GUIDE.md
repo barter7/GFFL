@@ -16,6 +16,7 @@ recorded the week as final (dispatch `update-data.yml` if it hasn't run).
   swings, outlier lines, QB stints and the week's RotoWire injury news. A
   2.5-point first-rounder reads very differently when his team scored 7, or
   when he left in the first quarter with a torn ACL.
+- **Check every superlative against the whole week.** "Closest game", "highest", "first", "only": compute it across all matchups before writing it. Week 3 called a 7.5-point game "the closest game of the week" one paragraph above a 2.68-point game, and the league noticed.
 - **Projections**: after the fact, ESPN often reports a player's projection
   as his final score. Quote a projection only when it clearly differs from
   the final.
