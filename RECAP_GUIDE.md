@@ -53,3 +53,12 @@ About 1,500–2,000 words. The original ran about 1,300.
   Grep the last two recaps before publishing ("the log", "roast", "editorial
   policy" were overused in weeks 1–2).
 - The recapper is also a manager. Self-deprecation beats gloating.
+
+## 4. Editing a posted recap
+
+Every recap page has **✎ Edit this recap** at the bottom. It opens the
+markdown file in GitHub's editor (you must be signed in to GitHub with
+write access to barter7/GFFL). Edit, use the Preview tab if you like,
+then **Commit changes** to `main`. Vercel redeploys and the change is live
+in about two minutes. Every edit is a commit, so nothing is ever lost:
+the file's History shows each version and any of them can be restored.

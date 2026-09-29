@@ -57,6 +57,19 @@ export default async function RecapPage({
       >
         <RecapBody body={recap.body} />
       </Card>
+      {/* The site is a static export, so editing happens in GitHub's
+          editor (needs write access to the repo): commit, and the site
+          redeploys in a couple of minutes. See RECAP_GUIDE.md. */}
+      <div className="mt-2 text-end">
+        <a
+          href={`https://github.com/barter7/GFFL/edit/main/src/data/recaps/${recap.slug}.md`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="small text-muted text-decoration-none"
+        >
+          ✎ Edit this recap
+        </a>
+      </div>
     </div>
   );
 }
