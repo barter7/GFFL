@@ -7,6 +7,8 @@ import DataTable, { Column } from "@/components/DataTable";
 import Plot from "@/components/Plot";
 import { getLeagueData, fmt } from "@/lib/data";
 import { computeOwnerVsOwner } from "@/lib/league";
+import PageHeader from "@/components/PageHeader";
+import { WIN, LOSS } from "@/lib/palette";
 
 // Sync selector state into the query string without triggering navigation
 // (history.replaceState keeps scroll position; router.push would not).
@@ -108,7 +110,7 @@ function HeadToHeadInner() {
         x: h2hGames.map((g) => `${g.season} W${g.week}`),
         y: margins,
         marker: {
-          color: margins.map((m) => (m >= 0 ? "#28a745" : "#dc3545")),
+          color: margins.map((m) => (m >= 0 ? WIN : LOSS)),
         },
         hovertemplate: "%{y:.2f}<extra></extra>",
         showlegend: false,
@@ -150,7 +152,7 @@ function HeadToHeadInner() {
           style={{
             fontWeight: "bold",
             color:
-              r.result === "W" ? "#28a745" : r.result === "L" ? "#dc3545" : undefined,
+              r.result === "W" ? WIN : r.result === "L" ? LOSS : undefined,
           }}
         >
           {r.result}
@@ -300,8 +302,13 @@ function HeadToHeadInner() {
 // boundary, otherwise the build fails with missing-suspense-with-csr-bailout.
 export default function HeadToHeadPage() {
   return (
-    <Suspense fallback={null}>
-      <HeadToHeadInner />
-    </Suspense>
+    <>
+      <PageHeader kicker="History" title="Head-to-Head">
+        Pick any two owners for their full series, or scan the matrix for every rivalry.
+      </PageHeader>
+      <Suspense fallback={null}>
+        <HeadToHeadInner />
+      </Suspense>
+    </>
   );
 }

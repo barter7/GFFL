@@ -8,6 +8,8 @@ import Card from "@/components/Card";
 import DataTable, { Column } from "@/components/DataTable";
 import Plot from "@/components/Plot";
 import { getLeagueData, headshotUrl, fmt, BENCH_SLOTS, StarterRow } from "@/lib/data";
+import PageHeader from "@/components/PageHeader";
+import { GOLD, NAVY } from "@/lib/palette";
 
 const POS_CHOICES = ["All", "QB", "RB", "WR", "TE", "K", "D/ST"];
 
@@ -26,37 +28,6 @@ function updateQuery(params: Record<string, string | null>) {
   }
   const qs = sp.toString();
   window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
-}
-
-// ggplot2's default discrete fill palette (scales::hue_pal): evenly spaced
-// hues in HCL space with c = 100, l = 65 — converted to sRGB hex.
-function hclToHex(h: number, c: number, l: number): string {
-  const hr = (h * Math.PI) / 180;
-  const U = c * Math.cos(hr);
-  const V = c * Math.sin(hr);
-  const Y = l > 7.999592 ? Math.pow((l + 16) / 116, 3) : l / 903.3;
-  const un = 0.1978398;
-  const vn = 0.4683363;
-  const u = U / (13 * l) + un;
-  const v = V / (13 * l) + vn;
-  const X = (9 * Y * u) / (4 * v);
-  const Z = (Y * (12 - 3 * u - 20 * v)) / (4 * v);
-  const rl = 3.240479 * X - 1.53715 * Y - 0.498535 * Z;
-  const gl = -0.969256 * X + 1.875992 * Y + 0.041556 * Z;
-  const bl = 0.055648 * X - 0.204043 * Y + 1.057311 * Z;
-  const enc = (x: number) => {
-    const cl = Math.max(0, Math.min(1, x));
-    const s = cl <= 0.0031308 ? 12.92 * cl : 1.055 * Math.pow(cl, 1 / 2.4) - 0.055;
-    return Math.round(s * 255)
-      .toString(16)
-      .padStart(2, "0");
-  };
-  return `#${enc(rl)}${enc(gl)}${enc(bl)}`;
-}
-
-function huePalette(n: number): string[] {
-  // hues = seq(15, 375, length.out = n + 1)[1:n]
-  return Array.from({ length: n }, (_, i) => hclToHex(15 + (i * 360) / n, 100, 65));
 }
 
 const score = (s: StarterRow) => s.player_score ?? -Infinity;
@@ -274,7 +245,6 @@ function TopPerformancesInner() {
       .slice(0, 15);
   }, [activeStarters]);
 
-  const palette = useMemo(() => huePalette(appearances.length), [appearances.length]);
 
   const appearancesTrace = useMemo(
     () => [
@@ -284,13 +254,13 @@ function TopPerformancesInner() {
         y: appearances.map((a) => a.name),
         x: appearances.map((a) => a.n),
         marker: {
-          // factor levels were reversed in the R code, so the bottom bar gets the first hue
-          color: appearances.map((_, i) => palette[appearances.length - 1 - i]),
+          // navy bars, the leader in gold
+          color: appearances.map((a) => (a.n === appearances[0]?.n ? GOLD : NAVY)),
         },
         hovertemplate: "%{x}<extra></extra>",
       } as Record<string, unknown>,
     ],
-    [appearances, palette]
+    [appearances]
   );
 
   return (
@@ -387,8 +357,13 @@ function TopPerformancesInner() {
 // boundary, otherwise the build fails with missing-suspense-with-csr-bailout.
 export default function TopPerformancesPage() {
   return (
-    <Suspense fallback={null}>
-      <TopPerformancesInner />
-    </Suspense>
+    <>
+      <PageHeader kicker="History" title="Top Performances">
+        The biggest single-week scores ever started in a GFFL lineup.
+      </PageHeader>
+      <Suspense fallback={null}>
+        <TopPerformancesInner />
+      </Suspense>
+    </>
   );
 }

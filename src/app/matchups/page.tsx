@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import Card from "@/components/Card";
 import DataTable, { Column } from "@/components/DataTable";
 import { getLeagueData, fmt } from "@/lib/data";
+import PageHeader from "@/components/PageHeader";
+import { WIN, LOSS } from "@/lib/palette";
 
 // Sync selector state into the query string without triggering navigation
 // (history.replaceState keeps scroll position; router.push would not).
@@ -122,7 +124,17 @@ function MatchupsInner() {
 
   const matchupColumns: Column<MatchupRow>[] = [
     { key: "week", label: "Week", numeric: true },
-    { key: "type", label: "Type" },
+    {
+      key: "type",
+      label: "Type",
+      hideOnMobile: true,
+      render: (r) =>
+        r.type === "Playoffs" ? (
+          <span style={{ color: "#8b6914", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em" }}>PLAYOFFS</span>
+        ) : (
+          <span style={{ color: "#8a93a3", fontSize: "0.72rem", letterSpacing: "0.06em" }}>REG</span>
+        ),
+    },
     { key: "owner", label: "Owner" },
     { key: "score", label: "Score", numeric: true, render: (r) => fmt(r.score, 2) },
     { key: "opponent", label: "Opponent" },
@@ -133,16 +145,15 @@ function MatchupsInner() {
       render: (r) => (
         <span
           style={{
-            display: "block",
-            margin: "-0.5rem",
-            padding: "0.5rem",
-            fontWeight: "bold",
+            display: "inline-block",
+            minWidth: 24,
+            padding: "1px 6px",
+            borderRadius: 4,
+            fontWeight: 800,
+            fontSize: "0.75rem",
             textAlign: "center",
-            ...(r.result === "W"
-              ? { background: "rgba(40,167,69,0.2)", color: "#1d7a36" }
-              : r.result === "L"
-                ? { background: "rgba(220,53,69,0.2)", color: "#b02a37" }
-                : {}),
+            color: "#fff",
+            background: r.result === "W" ? WIN : r.result === "L" ? LOSS : "#8a93a3",
           }}
         >
           {r.result}
@@ -282,8 +293,13 @@ function MatchupsInner() {
 // boundary, otherwise the build fails with missing-suspense-with-csr-bailout.
 export default function MatchupsPage() {
   return (
-    <Suspense fallback={null}>
-      <MatchupsInner />
-    </Suspense>
+    <>
+      <PageHeader kicker="This Season" title="Matchups">
+        Every weekly result, the highest-scoring weeks and the biggest blowouts in league history.
+      </PageHeader>
+      <Suspense fallback={null}>
+        <MatchupsInner />
+      </Suspense>
+    </>
   );
 }

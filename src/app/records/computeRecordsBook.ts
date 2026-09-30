@@ -67,9 +67,15 @@ export function computeRecordsBook(
     valueFn: (r: PfgRow) => string
   ) => {
     if (df.length === 0) return;
+    // Ties across seasons: pair each holder with his year ("Mike '22, Mike
+    // '24"), or a repeat holder reads like a typo and the season column
+    // can't be matched back to the names.
+    const multiSeason = new Set(df.map((r) => r.season)).size > 1;
     records.push({
       record: label,
-      holder: df.map((r) => r.owner).join(", "),
+      holder: df
+        .map((r) => (multiSeason ? `${r.owner} '${String(r.season).slice(2)}` : r.owner))
+        .join(", "),
       value: valueFn(df[0]),
       season: [...new Set(df.map((r) => r.season))].join(", "),
     });

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Card from "@/components/Card";
+import PageHeader from "@/components/PageHeader";
 import RecapBody from "@/components/RecapBody";
 import { cardUrl, getRecap, listRecaps } from "@/lib/recaps";
 
@@ -37,26 +37,25 @@ export default async function RecapPage({
   const { slug } = await params;
   const recap = getRecap(slug);
   if (!recap) notFound();
+  const date = recap.date
+    ? new Date(`${recap.date}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    : "";
   return (
-    <div className="mx-auto" style={{ maxWidth: 820 }}>
-      <Card
-        header={
-          <div>
-            <div className="small text-uppercase fw-semibold text-muted">
-              {recap.season} · Week {recap.week}
-              {recap.date ? ` · ${recap.date}` : ""}
-            </div>
-            <div className="fs-4 fw-bold">{recap.title}</div>
-          </div>
-        }
-        headerExtra={
+    <div className="mx-auto" style={{ maxWidth: 860 }}>
+      <PageHeader
+        kicker={`${recap.season} · Week ${recap.week}${date ? ` · ${date}` : ""}`}
+        title={recap.title}
+        extra={
           <Link href="/recaps" className="btn btn-sm btn-outline-secondary">
             ← All recaps
           </Link>
         }
-      >
-        <RecapBody body={recap.body} />
-      </Card>
+      />
+      <article className="card">
+        <div className="card-body gffl-recap-body">
+          <RecapBody body={recap.body} />
+        </div>
+      </article>
       {/* The site is a static export, so editing happens in GitHub's
           editor (needs write access to the repo): commit, and the site
           redeploys in a couple of minutes. See RECAP_GUIDE.md. */}
