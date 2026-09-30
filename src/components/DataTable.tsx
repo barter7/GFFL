@@ -7,7 +7,12 @@ export interface Column<T> {
   label: string;
   numeric?: boolean;
   render?: (row: T) => ReactNode;
+  /** hide below the sm breakpoint (low-value columns on phones) */
+  hideOnMobile?: boolean;
 }
+
+const cellClass = (c: { numeric?: boolean; hideOnMobile?: boolean }) =>
+  [c.numeric ? "text-end" : "", c.hideOnMobile ? "d-none d-sm-table-cell" : ""].join(" ").trim();
 
 interface Props<T> {
   columns: Column<T>[];
@@ -90,7 +95,7 @@ export default function DataTable<T extends object>({
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={c.numeric ? "text-end" : ""}
+                  className={cellClass(c)}
                   onClick={() => toggleSort(c.key)}
                 >
                   {c.label}
@@ -105,7 +110,7 @@ export default function DataTable<T extends object>({
             {visible.map((row, i) => (
               <tr key={i}>
                 {columns.map((c) => (
-                  <td key={c.key} className={c.numeric ? "text-end" : ""}>
+                  <td key={c.key} className={cellClass(c)}>
                     {c.render ? c.render(row) : String(row[c.key] ?? "")}
                   </td>
                 ))}

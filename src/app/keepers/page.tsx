@@ -8,6 +8,7 @@
 
 import type { CSSProperties } from "react";
 import { getLeagueData, headshotUrl, DraftRow } from "@/lib/data";
+import PageHeader from "@/components/PageHeader";
 
 export const metadata = { title: "Keepers" };
 
@@ -64,11 +65,11 @@ function Headshot({ name, pos, size = 30 }: { name: string; pos: string; size?: 
   );
 }
 
-// 2026 draft order. Sean and Joe are returning owners with no 2025 roster,
+// 2026 draft order. Sean (returning) and Mooney (new) had no 2025 roster,
 // so they have no keeper options (rendered as N/A).
 const DRAFT_ORDER_2026 = [
   "Harry", "Jack", "Matt", "Mike", "Sean", "Tom",
-  "RJ", "Kerley", "Connor", "Joe", "Faz", "Alex",
+  "RJ", "Kerley", "Connor", "Mooney", "Faz", "Alex",
 ];
 
 export default function KeepersPage() {
@@ -160,15 +161,7 @@ export default function KeepersPage() {
 
   return (
     <>
-      <div className="text-center my-3">
-        <h2 style={{ color: "#013369", fontFamily: "Georgia,serif" }}>
-          {TARGET_SEASON} Keeper Options
-        </h2>
-        <hr style={{ borderColor: "#013369", width: 200, margin: "0 auto" }} />
-        <p
-          className="text-muted mt-2 mb-0"
-          style={{ fontSize: 13, maxWidth: 720, marginLeft: "auto", marginRight: "auto" }}
-        >
+      <PageHeader kicker="This Season" title={`${TARGET_SEASON} Keeper Options`}>
           Eligible = drafted by you in {KEEPER_SEASON} <em>and</em> on your roster after
           the Week {finalWeek} championship (§1.3).{" "}
           <span
@@ -184,8 +177,7 @@ export default function KeepersPage() {
           were 1st-year keepers in {KEEPER_SEASON} — keeping them again costs 2 rounds
           more (old→new). Declarations lock one hour before the draft (Sept 8,{" "}
           {TARGET_SEASON}). ESPN&apos;s Keeper Selection screen is the final authority.
-        </p>
-      </div>
+      </PageHeader>
 
       <div className="row g-2">
         {byOwner.map(({ owner, slot, eligible, draftedGone, notDrafted, na }) => (

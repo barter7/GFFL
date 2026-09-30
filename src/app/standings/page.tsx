@@ -7,6 +7,8 @@ import DataTable, { Column } from "@/components/DataTable";
 import Plot from "@/components/Plot";
 import { getLeagueData, fmt } from "@/lib/data";
 import { computeAlltimeStandings } from "@/lib/league";
+import PageHeader from "@/components/PageHeader";
+import { WIN_BG, LOSS_BG } from "@/lib/palette";
 
 // Sync selector state into the query string without triggering navigation
 // (history.replaceState keeps scroll position; router.push would not).
@@ -21,10 +23,10 @@ function updateQuery(params: Record<string, string | null>) {
   window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
 }
 
-// styleInterval colors from app.R (good = green, mid = yellow, bad = red)
-const GOOD = "rgba(40,167,69,0.2)";
-const MID = "rgba(255,193,7,0.2)";
-const BAD = "rgba(220,53,69,0.2)";
+// top third tinted green, bottom third red, the middle left plain
+const GOOD = WIN_BG;
+const MID = "transparent";
+const BAD = LOSS_BG;
 
 // R quantile (type 7) at probs 0.33 / 0.66
 function quantile(values: number[], p: number): number {
@@ -334,8 +336,13 @@ function StandingsInner() {
 // boundary, otherwise the build fails with missing-suspense-with-csr-bailout.
 export default function StandingsPage() {
   return (
-    <Suspense fallback={null}>
-      <StandingsInner />
-    </Suspense>
+    <>
+      <PageHeader kicker="This Season" title="Standings">
+        Every season since 2017 and the all-time table. Switch seasons from the menu on the table.
+      </PageHeader>
+      <Suspense fallback={null}>
+        <StandingsInner />
+      </Suspense>
+    </>
   );
 }

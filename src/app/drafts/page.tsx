@@ -10,6 +10,7 @@ import { getLeagueData } from "@/lib/data";
 import DraftGrid from "./DraftGrid";
 import PosBreakdownPlot from "./PosBreakdownPlot";
 import { computeDraftValueData, DraftValueRow } from "./draftValue";
+import PageHeader from "@/components/PageHeader";
 
 // Sync selector state into the query string without triggering navigation
 // (history.replaceState keeps scroll position; router.push would not).
@@ -334,8 +335,13 @@ function DraftsInner() {
 // boundary, otherwise the build fails with missing-suspense-with-csr-bailout.
 export default function DraftsPage() {
   return (
-    <Suspense fallback={null}>
-      <DraftsInner />
-    </Suspense>
+    <>
+      <PageHeader kicker="This Season" title="Drafts">
+        Every draft board since 2017, with each pick&apos;s points and how it compared to its slot.
+      </PageHeader>
+      <Suspense fallback={null}>
+        <DraftsInner />
+      </Suspense>
+    </>
   );
 }

@@ -4,6 +4,7 @@
 
 import { getLeagueData, headshotUrl } from "@/lib/data";
 import Card from "@/components/Card";
+import PageHeader from "@/components/PageHeader";
 
 export const metadata = { title: "Keeper History" };
 
@@ -65,10 +66,7 @@ export default function KeeperHistoryPage() {
 
   return (
     <>
-      <div className="text-center my-3">
-        <h2 style={{ color: "#013369", fontFamily: "Georgia,serif" }}>Keeper History</h2>
-        <hr style={{ borderColor: "#013369", width: 200, margin: "0 auto" }} />
-        <p className="text-muted mt-2 mb-0" style={{ fontSize: 14 }}>
+      <PageHeader kicker="History" title="Keeper History">
           Every keeper slot recorded on the ESPN draft board, by owner. Keeper slots are
           marked with a gold ★ border on the{" "}
           <a href="/drafts" style={{ color: "#013369" }}>
@@ -76,8 +74,7 @@ export default function KeeperHistoryPage() {
           </a>
           . ESPN&apos;s records flag keepers in {flaggedSeasons.join(", ")} — keepers used in
           other seasons weren&apos;t recorded on the platform.
-        </p>
-      </div>
+      </PageHeader>
 
       <div className="row">
         {withKeeps.map((owner) => {

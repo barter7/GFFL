@@ -100,9 +100,21 @@ const NICKNAME_TO_OWNER: Record<string, string> = {
   "rjvasi5159015": "RJ",
   "tfasan9991529": "Faz",
   "thomasmikalonis": "Tom",
+  // joined 2026
+  "espn76944089": "Sean",
+  "bmooney99": "Mooney",
 };
 
 interface RawDraftRow extends Omit<DraftRow, "owner"> {}
+
+// ESPN serves its legacy three-letter codes (KCC, NEP, GBP, OAK...). Show the
+// codes everyone uses. ESPN labels every season by the franchise (LAR, LAC even
+// before the moves), so OAK maps to LV throughout, and a player's history
+// stays in one group on the records pages.
+const TEAM_CODE: Record<string, string> = {
+  KCC: "KC", NEP: "NE", GBP: "GB", TBB: "TB", NOS: "NO", SFO: "SF", JAC: "JAX", OAK: "LV",
+};
+export const teamCode = (t: string | null): string | null => (t ? TEAM_CODE[t] ?? t : t);
 
 function buildOwnerLookup(drafts: RawDraftRow[]): Map<string, string> {
   const lookup = new Map<string, string>();
@@ -173,6 +185,7 @@ export function getLeagueData(): LeagueData {
 
   const drafts: DraftRow[] = rawDrafts.map((d) => ({
     ...d,
+    team: teamCode(d.team),
     owner: ownerOf(d.season, d.franchise_id, d.franchise_name),
   }));
 
@@ -219,7 +232,7 @@ export function getLeagueData(): LeagueData {
     startersJson as Columnar
   )
     .filter((s) => draftSeasons.has(s.season))
-    .map((s) => ({ ...s, owner: ownerOf(s.season, s.franchise_id, s.franchise_name) }));
+    .map((s) => ({ ...s, team: teamCode(s.team), owner: ownerOf(s.season, s.franchise_id, s.franchise_name) }));
 
   const seasons = [...new Set(standings.map((s) => s.season))].sort((a, b) => a - b);
   const owners = [...new Set(standings.map((s) => s.owner))].sort();

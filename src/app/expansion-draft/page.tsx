@@ -6,6 +6,7 @@
 
 import type { CSSProperties } from "react";
 import { getLeagueData, headshotUrl } from "@/lib/data";
+import PageHeader from "@/components/PageHeader";
 
 export const metadata = { title: "Expansion Draft" };
 
@@ -88,18 +89,11 @@ export default function ExpansionDraftPage() {
 
   return (
     <>
-      <div className="text-center my-3">
-        <h2 style={{ color: "#013369", fontFamily: "Georgia,serif" }}>Expansion Draft</h2>
-        <hr style={{ borderColor: "#013369", width: 200, margin: "0 auto" }} />
-        <p
-          className="text-muted mt-2 mb-0"
-          style={{ fontSize: 13, maxWidth: 720, marginLeft: "auto", marginRight: "auto" }}
-        >
+      <PageHeader kicker="League" title="Expansion Draft">
           Every player drafted in {KEEPER_SEASON} who is <strong>not</strong> an eligible
           keeper because he did not end the season on his drafting owner&apos;s roster
           (§1.3). Sorted by the round cost the pick carried. {pool.length} players.
-        </p>
-      </div>
+      </PageHeader>
 
       <div className="card" style={{ maxWidth: 640, margin: "0 auto" }}>
         <div className="card-body">

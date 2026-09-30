@@ -886,7 +886,7 @@ export default function TrophyRoomPage() {
     );
   }
 
-  // Ghost card - for owners without ESPN data (Sean, Kenny)
+  // Ghost card - for owners without ESPN data (Kenny)
   // fillAll = true fills every shelf with fillImage (for Honorary owners)
   function buildGhostCard(o: string, fillAll = false, fillImage: string | null = null): ReactNode {
     const oClean = o.toLowerCase().replace(/ /g, "");
@@ -1003,10 +1003,10 @@ export default function TrophyRoomPage() {
   // Build active owner cards (sorted by championships desc, sackos asc)
   const activeCards = activeSorted.map((o, i) => buildOwnerCard(o, i === 0));
 
-  // Build legacy owner cards (existing + ghost cards for Sean/Kenny)
+  // Build legacy owner cards (existing + a ghost card for Kenny; Sean
+  // rejoined in 2026 and has a real card among the active owners)
   const legacyCards = [
     ...legacySorted.map((o) => buildOwnerCard(o)),
-    buildGhostCard("Sean"),
     buildGhostCard("Kenny"),
   ];
 

@@ -29,8 +29,25 @@ export default function RecapBody({ body }: { body: string }) {
         if (!b) return null;
         if (b === "---") return <hr key={i} />;
         if (b.startsWith("## ")) {
+          // "Winner 161.56 — Loser 98.32" becomes a scoreline; anything
+          // else (Superlatives, Standings) is a plain section heading
+          const m = b.slice(3).match(/^(.+?)\s+([\d.]+)\s+—\s+(.+?)\s+([\d.]+)$/);
+          if (m) {
+            return (
+              <h3 key={i} className="gffl-scoreline">
+                <span className="w">
+                  <span className="n">{m[1]}</span>
+                  <span className="s">{m[2]}</span>
+                </span>
+                <span className="l">
+                  <span className="n">{m[3]}</span>
+                  <span className="s">{m[4]}</span>
+                </span>
+              </h3>
+            );
+          }
           return (
-            <h3 key={i} className="h5 fw-bold mt-4 mb-2">
+            <h3 key={i} className="gffl-recap-h">
               {inline(b.slice(3), `h${i}`)}
             </h3>
           );
@@ -47,6 +64,13 @@ export default function RecapBody({ body }: { body: string }) {
             <blockquote key={i} className="blockquote fst-italic ps-3 border-start border-3">
               {inline(b.replace(/^> /gm, ""), `q${i}`)}
             </blockquote>
+          );
+        }
+        if (i === 0 && /^\*[^*].*\*$/.test(b)) {
+          return (
+            <p key={i} className="gffl-epigraph">
+              {inline(b.slice(1, -1), `e${i}`)}
+            </p>
           );
         }
         const lines = b.split("\n");
