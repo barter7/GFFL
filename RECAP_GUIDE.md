@@ -5,7 +5,25 @@ archive lives in the auction repo at `nfl_auction/data/blog/posts.json`).
 Published Tuesday after Monday Night Football once the daily refresh has
 recorded the week as final (dispatch `update-data.yml` if it hasn't run).
 
+## 0. When and how it runs
+
+A scheduled Claude routine writes and publishes the recap every Tuesday
+around 10 a.m. ET (it waits for the week to be final in `src/data`,
+dispatching `update-data.yml` if needed), then sends the commissioner the
+link. Fix anything with the **✎ Edit this recap** button. Length: about
+1,500–2,000 words. Tone: same level of ribbing as weeks 1–3.
+
+**League notes:** read `RECAP_NOTES.md` first and work its notes in (inside
+jokes, trades, trash talk). After publishing, clear the notes you used from
+that file in the same commit, leaving its header.
+
 ## 1. Facts
+
+- **Start here**: `npx tsx scripts/recap-facts.ts <season> <week>` prints every
+  matchup with both lineups and benches (points, projections, draft round),
+  each team's best possible lineup and best bench swaps, whether a better
+  lineup would have flipped the result, renames since last week's recap, the
+  week's superlatives computed across all matchups, and the standings.
 
 - **Lineups, scores, bench**: `src/data/starters.json` (week rows appear only
   once every matchup is final), `schedule.json`, `drafts.json` (round,
@@ -39,7 +57,8 @@ invent the rest from the week.
 
 ## Standings
 ---
-Sign-off. *Message From the Commissioner: "one or two lines."*
+Sign-off. *Message From the Commissioner: "one or two lines."* — written in
+character every week (the commissioner is also the recapper, Remix to Commission).
 ```
 
 About 1,500–2,000 words. The original ran about 1,300.
